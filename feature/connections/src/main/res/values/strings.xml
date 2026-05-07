@@ -209,4 +209,7 @@
     <string name="connections_field_color_scheme">Terminal colour scheme</string>
     <string name="connections_color_scheme_inherit">Use default (global setting)</string>
     <string name="connections_tunnel_dropdown_label">Tunnel: %1$s</string>
+    <string name="connections_session_default_with">Default (%1$s)</string>
+    <string name="connections_discovered_count">Discovered (%1$d)</string>
+    <string name="connections_discovered_count_filtered">Discovered (%1$d of %2$d)</string>
 </resources>

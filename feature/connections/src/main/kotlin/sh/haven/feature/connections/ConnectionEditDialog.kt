@@ -326,7 +326,7 @@ fun ConnectionEditDialog(
                         if (colorTag == 0) {
                             Icon(
                                 Icons.Filled.Check,
-                                contentDescription = "None",
+                                contentDescription = stringResource(R.string.connections_dropdown_none),
                                 modifier = Modifier.size(14.dp),
                                 tint = MaterialTheme.colorScheme.primary,
                             )
@@ -368,7 +368,7 @@ fun ConnectionEditDialog(
                         onExpandedChange = { groupExpanded = it },
                     ) {
                         OutlinedTextField(
-                            value = selectedGroup?.label ?: "None",
+                            value = selectedGroup?.label ?: stringResource(R.string.connections_dropdown_none),
                             onValueChange = {},
                             readOnly = true,
                             label = { Text(stringResource(R.string.connections_field_group)) },
@@ -834,7 +834,7 @@ fun ConnectionEditDialog(
                     ) {
                         if (filteredSmbHosts.isNotEmpty()) {
                             Text(
-                                "Discovered (${filteredSmbHosts.size})",
+                                stringResource(R.string.connections_discovered_count, filteredSmbHosts.size),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.weight(1f),
@@ -1075,7 +1075,7 @@ fun ConnectionEditDialog(
                     ) {
                         if (filteredHosts.isNotEmpty()) {
                             Text(
-                                "Discovered (${filteredHosts.size})",
+                                stringResource(R.string.connections_discovered_count, filteredHosts.size),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.weight(1f),
@@ -1228,7 +1228,7 @@ fun ConnectionEditDialog(
                             onExpandedChange = { jumpExpanded = it },
                         ) {
                             OutlinedTextField(
-                                value = selectedJump?.label ?: "None (direct)",
+                                value = selectedJump?.label ?: stringResource(R.string.connections_dropdown_none_direct),
                                 onValueChange = {},
                                 readOnly = true,
                                 label = { Text(stringResource(R.string.connections_field_jump_host)) },
@@ -1292,10 +1292,14 @@ fun ConnectionEditDialog(
                     Spacer(Modifier.height(4.dp))
                     var proxyExpanded by remember { mutableStateOf(false) }
                     val selectedTunnel = tunnelConfigs.firstOrNull { it.id == tunnelConfigId }
+                    val noneDirectLabel = stringResource(R.string.connections_dropdown_none_direct)
+                    val tunnelDropdownLabel = selectedTunnel?.let {
+                        stringResource(R.string.connections_tunnel_dropdown_label, it.label)
+                    }
                     val selectedLabel = when {
-                        selectedTunnel != null -> "Tunnel: ${selectedTunnel.label}"
+                        tunnelDropdownLabel != null -> tunnelDropdownLabel
                         proxyType != null -> proxyType!!
-                        else -> "None (direct)"
+                        else -> noneDirectLabel
                     }
                     ExposedDropdownMenuBox(
                         expanded = proxyExpanded,
@@ -1448,9 +1452,14 @@ fun ConnectionEditDialog(
 
                     // Session manager
                     Spacer(Modifier.height(4.dp))
+                    val defaultSessionLabel = stringResource(
+                        R.string.connections_session_default_with,
+                        globalSessionManagerLabel,
+                    )
+                    val noneSessionLabel = stringResource(R.string.connections_dropdown_none)
                     val sessionManagerOptions = listOf(
-                        null to "Default ($globalSessionManagerLabel)",
-                        "NONE" to "None",
+                        null to defaultSessionLabel,
+                        "NONE" to noneSessionLabel,
                         "TMUX" to "tmux",
                         "ZELLIJ" to "zellij",
                         "SCREEN" to "screen",
@@ -1462,7 +1471,7 @@ fun ConnectionEditDialog(
                         onExpandedChange = { smExpanded = it },
                     ) {
                         OutlinedTextField(
-                            value = sessionManagerOptions.firstOrNull { it.first == selectedSessionManager }?.second ?: "Default ($globalSessionManagerLabel)",
+                            value = sessionManagerOptions.firstOrNull { it.first == selectedSessionManager }?.second ?: defaultSessionLabel,
                             onValueChange = {},
                             readOnly = true,
                             label = { Text(stringResource(R.string.connections_field_session_manager)) },
@@ -1986,9 +1995,9 @@ fun ConnectionEditDialog(
                         val hiddenCount = discoveredDestinations.size - filtered.size
                         Text(
                             text = if (hiddenCount > 0) {
-                                "Discovered (${filtered.size} of ${discoveredDestinations.size})"
+                                stringResource(R.string.connections_discovered_count_filtered, filtered.size, discoveredDestinations.size)
                             } else {
-                                "Discovered (${filtered.size})"
+                                stringResource(R.string.connections_discovered_count, filtered.size)
                             },
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
