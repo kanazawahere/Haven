@@ -183,21 +183,22 @@ private fun StepCaConfigRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    val context = LocalContext.current
     var menuOpen by remember { mutableStateOf(false) }
-    val supporting = remember(testResult, testing) {
-        when {
-            testing -> null
-            testResult is StepCaApiClient.TestResult.Ok ->
-                context.getString(R.string.stepca_test_ok)
-            testResult is StepCaApiClient.TestResult.BadRootCert ->
-                context.getString(R.string.stepca_test_bad_root_cert, testResult.reason)
-            testResult is StepCaApiClient.TestResult.HttpError ->
-                context.getString(R.string.stepca_test_http_error, testResult.code, testResult.message)
-            testResult is StepCaApiClient.TestResult.NetworkError ->
-                context.getString(R.string.stepca_test_network_error, testResult.message)
-            else -> config.caUrl
-        }
+    // Use stringResource(...) directly so a Configuration change (locale
+    // switch, dark-mode flip) invalidates this row — Context.getString
+    // inside remember would cache stale text. Lint id:
+    // LocalContextGetResourceValueCall.
+    val supporting: String? = when {
+        testing -> null
+        testResult is StepCaApiClient.TestResult.Ok ->
+            stringResource(R.string.stepca_test_ok)
+        testResult is StepCaApiClient.TestResult.BadRootCert ->
+            stringResource(R.string.stepca_test_bad_root_cert, testResult.reason)
+        testResult is StepCaApiClient.TestResult.HttpError ->
+            stringResource(R.string.stepca_test_http_error, testResult.code, testResult.message)
+        testResult is StepCaApiClient.TestResult.NetworkError ->
+            stringResource(R.string.stepca_test_network_error, testResult.message)
+        else -> config.caUrl
     }
     val statusIcon: @Composable () -> Unit = {
         when {
