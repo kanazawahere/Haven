@@ -1,5 +1,8 @@
 package sh.haven.core.tunnel
 
+import com.jcraft.jsch.ProxyHTTP
+import com.jcraft.jsch.ProxySOCKS4
+import com.jcraft.jsch.ProxySOCKS5
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -77,11 +80,80 @@ class TunnelResolverTest {
         assertNull(resolver.socksEndpoint(profile(tunnelConfigId = "tid")))
     }
 
-    private fun profile(tunnelConfigId: String?): ConnectionProfile = ConnectionProfile(
+    @Test
+    fun jschProxyReturnsTunnelProxyWhenConfigPresent() = runTest {
+        val tunnel = mockk<Tunnel>(relaxed = true)
+        val mgr = mockk<TunnelManager> {
+            coEvery { getTunnel("tid") } returns tunnel
+        }
+        val resolver = TunnelResolver(mgr)
+
+        val proxy = resolver.jschProxy(profile(tunnelConfigId = "tid"))
+
+        assertNotNull(proxy)
+        assertTrue(proxy is TunnelProxy)
+    }
+
+    @Test
+    fun jschProxyReturnsSocks5WhenSet() = runTest {
+        val resolver = TunnelResolver(mockk(relaxed = true))
+        val proxy = resolver.jschProxy(profile(proxyType = "SOCKS5", proxyHost = "127.0.0.1", proxyPort = 1080))
+        assertTrue(proxy is ProxySOCKS5)
+    }
+
+    @Test
+    fun jschProxyReturnsSocks4WhenSet() = runTest {
+        val resolver = TunnelResolver(mockk(relaxed = true))
+        val proxy = resolver.jschProxy(profile(proxyType = "SOCKS4", proxyHost = "127.0.0.1", proxyPort = 1080))
+        assertTrue(proxy is ProxySOCKS4)
+    }
+
+    @Test
+    fun jschProxyReturnsHttpWhenSet() = runTest {
+        val resolver = TunnelResolver(mockk(relaxed = true))
+        val proxy = resolver.jschProxy(profile(proxyType = "HTTP", proxyHost = "127.0.0.1", proxyPort = 8080))
+        assertTrue(proxy is ProxyHTTP)
+    }
+
+    @Test
+    fun jschProxyTunnelTakesPrecedenceOverSocks() = runTest {
+        val tunnel = mockk<Tunnel>(relaxed = true)
+        val mgr = mockk<TunnelManager> {
+            coEvery { getTunnel("tid") } returns tunnel
+        }
+        val resolver = TunnelResolver(mgr)
+        val p = profile(tunnelConfigId = "tid", proxyType = "SOCKS5", proxyHost = "127.0.0.1", proxyPort = 1080)
+
+        val proxy = resolver.jschProxy(p)
+
+        assertTrue("tunnel must take precedence over legacy SOCKS proxy", proxy is TunnelProxy)
+    }
+
+    @Test
+    fun jschProxyReturnsNullForDirectProfile() = runTest {
+        val resolver = TunnelResolver(mockk(relaxed = true))
+        assertNull(resolver.jschProxy(profile()))
+    }
+
+    @Test
+    fun jschProxyReturnsNullForUnknownProxyType() = runTest {
+        val resolver = TunnelResolver(mockk(relaxed = true))
+        assertNull(resolver.jschProxy(profile(proxyType = "WAT", proxyHost = "x", proxyPort = 1)))
+    }
+
+    private fun profile(
+        tunnelConfigId: String? = null,
+        proxyType: String? = null,
+        proxyHost: String? = null,
+        proxyPort: Int = 0,
+    ): ConnectionProfile = ConnectionProfile(
         label = "test",
         host = "example.com",
         username = "user",
         tunnelConfigId = tunnelConfigId,
+        proxyType = proxyType,
+        proxyHost = proxyHost,
+        proxyPort = proxyPort,
     )
 
     private fun stubConn(): TunneledConnection = object : TunneledConnection {

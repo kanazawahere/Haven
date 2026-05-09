@@ -99,7 +99,7 @@ class ConnectionsViewModel @Inject constructor(
     private val preferencesRepository: UserPreferencesRepository,
     private val hostKeyVerifier: HostKeyVerifier,
     private val connectionLogRepository: ConnectionLogRepository,
-    private val tunnelManager: sh.haven.core.tunnel.TunnelManager,
+    private val tunnelResolver: sh.haven.core.tunnel.TunnelResolver,
     private val tunnelConfigRepository: sh.haven.core.data.repository.TunnelConfigRepository,
     private val certRenewalGate: CertRenewalGate,
 ) : ViewModel() {
@@ -1430,21 +1430,14 @@ class ConnectionsViewModel @Inject constructor(
                         agentIdentities = agentIdentitiesFor(profile),
                     )
 
-                    // Proxy precedence: jump host > WireGuard tunnel (#102) > SOCKS/HTTP.
-                    // The three are mutually exclusive at connect time — if a
-                    // profile somehow has both a jump host and a tunnel configured,
-                    // the jump host wins (it's the more explicit hop) and the
-                    // tunnel is ignored for now.
-                    val tunnelId = profile.tunnelConfigId
-                    val proxy = when {
-                        jumpSessionId != null -> sshSessionManager.createProxyJump(jumpSessionId)
+                    // Proxy precedence: jump host > Route-through (tunnel /
+                    // SOCKS / HTTP). Jump host needs a live SSH session so it
+                    // stays inline; everything else delegates to TunnelResolver.
+                    val proxy = if (jumpSessionId != null) {
+                        sshSessionManager.createProxyJump(jumpSessionId)
                             ?: throw Exception("Jump host session not usable for tunneling")
-                        tunnelId != null -> {
-                            val tunnel = tunnelManager.getTunnel(tunnelId)
-                                ?: throw Exception("Tunnel config $tunnelId not found")
-                            sh.haven.core.tunnel.TunnelProxy(tunnel)
-                        }
-                        else -> createNetworkProxy(profile)
+                    } else {
+                        tunnelResolver.jschProxy(profile)
                     }
                     Log.d(TAG, "Connecting to ${config.host}:${config.port} (proxy=${proxy != null})")
                     try {
@@ -1662,7 +1655,7 @@ class ConnectionsViewModel @Inject constructor(
                         val (jid, _) = connectJumpHost(jumpProfileId, password)
                         sshSessionManager.createProxyJump(jid)
                     } else {
-                        createNetworkProxy(profile)
+                        tunnelResolver.jschProxy(profile)
                     }
 
                     try {
@@ -1794,7 +1787,7 @@ class ConnectionsViewModel @Inject constructor(
                         val (jid, _) = connectJumpHost(jumpProfileId, password)
                         sshSessionManager.createProxyJump(jid)
                     } else {
-                        createNetworkProxy(profile)
+                        tunnelResolver.jschProxy(profile)
                     }
 
                     try {
@@ -2186,16 +2179,6 @@ class ConnectionsViewModel @Inject constructor(
         val sel = _sessionSelection.value ?: return
         _sessionSelection.value = null
         sshSessionManager.removeSession(sel.sessionId)
-    }
-
-    private fun createNetworkProxy(profile: ConnectionProfile): Proxy? {
-        val proxyHost = profile.proxyHost ?: return null
-        return when (profile.proxyType) {
-            "SOCKS5" -> com.jcraft.jsch.ProxySOCKS5(proxyHost, profile.proxyPort)
-            "SOCKS4" -> com.jcraft.jsch.ProxySOCKS4(proxyHost, profile.proxyPort)
-            "HTTP" -> com.jcraft.jsch.ProxyHTTP(proxyHost, profile.proxyPort)
-            else -> null
-        }
     }
 
     /**
@@ -3008,13 +2991,7 @@ class ConnectionsViewModel @Inject constructor(
             return sshSessionManager.createProxyJump(jumpSessionId)
                 ?: throw Exception("Jump host session not usable for tunneling")
         }
-        val tunnelId = profile.tunnelConfigId
-        if (tunnelId != null) {
-            val tunnel = tunnelManager.getTunnel(tunnelId)
-                ?: throw Exception("Tunnel config $tunnelId not found")
-            return sh.haven.core.tunnel.TunnelProxy(tunnel)
-        }
-        return createNetworkProxy(profile)
+        return tunnelResolver.jschProxy(profile)
     }
 
     private fun startForegroundServiceIfNeeded() {
@@ -3167,7 +3144,7 @@ class ConnectionsViewModel @Inject constructor(
                     sshSessionManager.createProxyJump(jumpSessionId)
                         ?: throw Exception("Jump host session not usable for tunneling")
                 } else {
-                    createNetworkProxy(profile)
+                    tunnelResolver.jschProxy(profile)
                 }
                 val hostKeyEntry = client.connect(config, proxy = proxy)
 
@@ -3231,7 +3208,7 @@ class ConnectionsViewModel @Inject constructor(
                     val (jid, _) = connectJumpHost(jumpProfileId, password)
                     sshSessionManager.createProxyJump(jid)
                 } else {
-                    createNetworkProxy(profile)
+                    tunnelResolver.jschProxy(profile)
                 }
                 val hostKeyEntry = sshClient.connect(config, proxy = proxy)
 
@@ -3284,7 +3261,7 @@ class ConnectionsViewModel @Inject constructor(
                     val (jid, _) = connectJumpHost(jumpProfileId, password)
                     sshSessionManager.createProxyJump(jid)
                 } else {
-                    createNetworkProxy(profile)
+                    tunnelResolver.jschProxy(profile)
                 }
                 val hostKeyEntry = sshClient.connect(config, proxy = proxy)
 

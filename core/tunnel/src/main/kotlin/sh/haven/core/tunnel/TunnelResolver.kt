@@ -1,5 +1,9 @@
 package sh.haven.core.tunnel
 
+import com.jcraft.jsch.Proxy
+import com.jcraft.jsch.ProxyHTTP
+import com.jcraft.jsch.ProxySOCKS4
+import com.jcraft.jsch.ProxySOCKS5
 import sh.haven.core.data.db.entities.ConnectionProfile
 import java.net.InetSocketAddress
 import javax.inject.Inject
@@ -27,11 +31,12 @@ import javax.net.SocketFactory
  * All three return null when the profile has no tunnel selected — the
  * caller falls through to dialling a real Socket directly.
  *
- * Note: SOCKS / HTTP proxy fallback (the existing `proxyType`/`proxyHost`
- * /`proxyPort` columns on [ConnectionProfile]) is **not** consulted here
- * yet. Today those are read by `ConnectionsViewModel.createNetworkProxy`
- * for the SSH path only. Folding that path into TunnelResolver is part
- * of step 2 of the #149 rollout.
+ * A fourth surface, [jschProxy], is for JSch consumers. It wraps the
+ * tunnel as a `com.jcraft.jsch.Proxy` and *also* honours the legacy
+ * `proxyType`/`proxyHost`/`proxyPort` columns on [ConnectionProfile]
+ * (SOCKS5 / SOCKS4 / HTTP). [dial] and [socketFactory] don't yet honour
+ * the SOCKS columns; that will land alongside non-SSH transport adoption
+ * (step 7 of #149).
  */
 @Singleton
 class TunnelResolver @Inject constructor(
@@ -59,6 +64,26 @@ class TunnelResolver @Inject constructor(
         // the wgbridge / tsnet SOCKS5 listener. Until that lands,
         // FFI-bound transports (rclone, IronRDP) fall through to direct.
         return null
+    }
+
+    /**
+     * com.jcraft.jsch.Proxy chain for a profile. WireGuard / Tailscale
+     * tunnel takes precedence over the legacy `proxyType` columns; both
+     * are mutually exclusive at the UI level. Returns null for direct
+     * dialling.
+     *
+     * Does **not** handle SSH jump-host — that needs a live SSH session,
+     * so callers resolve it before delegating here.
+     */
+    suspend fun jschProxy(profile: ConnectionProfile): Proxy? {
+        tunnelFor(profile)?.let { return TunnelProxy(it) }
+        val proxyHost = profile.proxyHost ?: return null
+        return when (profile.proxyType) {
+            "SOCKS5" -> ProxySOCKS5(proxyHost, profile.proxyPort)
+            "SOCKS4" -> ProxySOCKS4(proxyHost, profile.proxyPort)
+            "HTTP" -> ProxyHTTP(proxyHost, profile.proxyPort)
+            else -> null
+        }
     }
 
     private suspend fun tunnelFor(profile: ConnectionProfile): Tunnel? {
