@@ -478,6 +478,12 @@ class DesktopViewModel @Inject constructor(
                 var tunnelPort: Int? = null
                 var tunnelSessionId: String? = null
 
+                // SOCKS5 endpoint of any WireGuard / Tailscale tunnel the
+                // profile selected (#149 step 4 + 9). Only consulted when
+                // not going through SSH RemoteForward — that already
+                // tunnels the connection via 127.0.0.1:<localPort>.
+                var rdpSocksProxy: sh.haven.rdp.SocksProxyConfig? = null
+
                 if (sshForward && sshSessionId != null) {
                     val sshClient = findSshClient(sshSessionId)
                         ?: throw IllegalStateException("SSH session not found")
@@ -490,6 +496,18 @@ class DesktopViewModel @Inject constructor(
                 } else {
                     actualHost = host
                     actualPort = port
+                    if (profileId != null) {
+                        val profile = connectionRepository.getById(profileId)
+                        if (profile != null) {
+                            tunnelResolver.socksEndpoint(profile)?.let { addr ->
+                                rdpSocksProxy = sh.haven.rdp.SocksProxyConfig(
+                                    host = addr.hostString,
+                                    port = addr.port.toUShort(),
+                                )
+                                Log.d(TAG, "RDP routed via SOCKS5 ${addr.hostString}:${addr.port} -> $host:$port")
+                            }
+                        }
+                    }
                 }
 
                 val connected = MutableStateFlow(false)
@@ -509,6 +527,7 @@ class DesktopViewModel @Inject constructor(
                     useNla = useNla,
                     colorDepth = colorDepth,
                     verboseBuffer = verboseBuffer,
+                    socksProxy = rdpSocksProxy,
                 )
                 session.onFrameUpdate = { bitmap -> frame.value = bitmap }
                 session.onError = { e ->

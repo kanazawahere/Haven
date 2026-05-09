@@ -9,6 +9,7 @@ import sh.haven.rdp.RdpClient
 import sh.haven.rdp.RdpConfig
 import sh.haven.rdp.RdpException
 import sh.haven.rdp.SessionCallback
+import sh.haven.rdp.SocksProxyConfig
 import java.io.Closeable
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -37,6 +38,12 @@ class RdpSession(
     private val colorDepth: Int = 16,
     private val onDisconnected: (() -> Unit)? = null,
     private val verboseBuffer: ConcurrentLinkedQueue<String>? = null,
+    /**
+     * Optional SOCKS5 endpoint for routing IronRDP's TCP through a
+     * userspace tunnel — typically the WireGuard / Tailscale tunnel's
+     * 127.0.0.1 listener (#149). Null = direct kernel dial.
+     */
+    private val socksProxy: SocksProxyConfig? = null,
 ) : Closeable {
 
     @Volatile
@@ -143,8 +150,8 @@ class RdpSession(
                 }
             })
 
-            log("D", "Connecting to $host:$port (worker thread will handle handshake)")
-            c.connect(host, port.toUShort())
+            log("D", "Connecting to $host:$port (worker thread will handle handshake, socks=${socksProxy != null})")
+            c.connect(host, port.toUShort(), socksProxy)
         } catch (e: UnsatisfiedLinkError) {
             val msg = "RDP native library failed to load: ${e.message}"
             log("E", msg)

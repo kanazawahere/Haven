@@ -71,6 +71,16 @@ pub struct RdpRect {
     pub height: u16,
 }
 
+/// Optional SOCKS5 endpoint used by [RdpClient::connect] in place of a
+/// direct kernel dial. Lets IronRDP route its TCP through Haven's
+/// in-app WireGuard / Tailscale tunnel via the per-tunnel localhost
+/// SOCKS5 listener that wgbridge / tsbridge expose (#149 step 4).
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct SocksProxyConfig {
+    pub host: String,
+    pub port: u16,
+}
+
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum MouseButton {
     Left,
@@ -158,14 +168,30 @@ impl RdpClient {
         }
     }
 
-    pub fn connect(&self, host: String, port: u16) -> Result<(), RdpError> {
-        let addr = format!("{}:{}", host, port);
-        let stream = TcpStream::connect(&addr).map_err(|e| {
-            // TCP-level failure is surfaced synchronously through the return
-            // value — no thread yet, no callback to fire.
-            error!("TCP connect to {} failed: {}", addr, e);
-            RdpError::ConnectionFailed
-        })?;
+    pub fn connect(
+        &self,
+        host: String,
+        port: u16,
+        socks_proxy: Option<SocksProxyConfig>,
+    ) -> Result<(), RdpError> {
+        let stream = match socks_proxy {
+            Some(ref proxy) => socks5_connect(&proxy.host, proxy.port, &host, port).map_err(|e| {
+                error!(
+                    "SOCKS5 connect via {}:{} -> {}:{} failed: {}",
+                    proxy.host, proxy.port, host, port, e
+                );
+                RdpError::ConnectionFailed
+            })?,
+            None => {
+                let addr = format!("{}:{}", host, port);
+                TcpStream::connect(&addr).map_err(|e| {
+                    // TCP-level failure surfaces synchronously — no thread yet,
+                    // no callback to fire.
+                    error!("TCP connect to {} failed: {}", addr, e);
+                    RdpError::ConnectionFailed
+                })?
+            }
+        };
         stream
             .set_nonblocking(false)
             .map_err(|_| RdpError::IoError)?;
@@ -1258,6 +1284,75 @@ fn update_framebuffer(
     if let Some(cb) = frame_cb {
         cb.on_frame_update(rdp_rect.x, rdp_rect.y, rdp_rect.width, rdp_rect.height);
     }
+}
+
+/// Minimal RFC 1928 SOCKS5 CONNECT client. Vendored inline (~50 lines)
+/// rather than pulling another crate — IronRDP's only need is "dial
+/// `target_host:target_port` through `proxy_host:proxy_port`". No-auth
+/// only; that matches what wgbridge / tsbridge serve on the other side.
+fn socks5_connect(
+    proxy_host: &str,
+    proxy_port: u16,
+    target_host: &str,
+    target_port: u16,
+) -> std::io::Result<TcpStream> {
+    use std::io::{Error, ErrorKind, Read, Write};
+
+    let mut stream = TcpStream::connect(format!("{}:{}", proxy_host, proxy_port))?;
+
+    // METHOD-NEG: ver=5, nmethods=1, methods=[0x00 no-auth]
+    stream.write_all(&[0x05, 0x01, 0x00])?;
+    let mut method_reply = [0u8; 2];
+    stream.read_exact(&mut method_reply)?;
+    if method_reply[0] != 0x05 || method_reply[1] != 0x00 {
+        return Err(Error::new(
+            ErrorKind::Other,
+            format!("SOCKS5 method negotiation failed: {:?}", method_reply),
+        ));
+    }
+
+    // CONNECT: ver=5, cmd=1 (CONNECT), rsv=0, atyp=3 (DOMAIN), len, name, port BE
+    let host_bytes = target_host.as_bytes();
+    if host_bytes.len() > 255 {
+        return Err(Error::new(ErrorKind::InvalidInput, "host longer than 255 bytes"));
+    }
+    let mut req = Vec::with_capacity(5 + host_bytes.len() + 2);
+    req.extend_from_slice(&[0x05, 0x01, 0x00, 0x03, host_bytes.len() as u8]);
+    req.extend_from_slice(host_bytes);
+    req.extend_from_slice(&target_port.to_be_bytes());
+    stream.write_all(&req)?;
+
+    // Reply: ver, rep, rsv, atyp, BND.ADDR (variable), BND.PORT (2)
+    let mut reply_hdr = [0u8; 4];
+    stream.read_exact(&mut reply_hdr)?;
+    if reply_hdr[0] != 0x05 {
+        return Err(Error::new(ErrorKind::Other, "SOCKS5 reply: not version 5"));
+    }
+    if reply_hdr[1] != 0x00 {
+        return Err(Error::new(
+            ErrorKind::Other,
+            format!("SOCKS5 CONNECT failed: REP=0x{:02x}", reply_hdr[1]),
+        ));
+    }
+    let bnd_len: usize = match reply_hdr[3] {
+        0x01 => 4,  // IPv4
+        0x04 => 16, // IPv6
+        0x03 => {
+            let mut name_len = [0u8; 1];
+            stream.read_exact(&mut name_len)?;
+            name_len[0] as usize
+        }
+        atyp => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("SOCKS5: unsupported BND atyp 0x{:02x}", atyp),
+            ));
+        }
+    };
+    let mut bnd_skip = vec![0u8; bnd_len + 2]; // +2 for BND.PORT
+    stream.read_exact(&mut bnd_skip)?;
+
+    Ok(stream)
 }
 
 #[cfg(test)]

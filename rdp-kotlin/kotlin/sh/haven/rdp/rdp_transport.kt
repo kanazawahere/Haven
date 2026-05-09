@@ -886,7 +886,7 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_rdp_transport_fn_constructor_rdpclient_new(`config`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
-    fun uniffi_rdp_transport_fn_method_rdpclient_connect(`ptr`: Pointer,`host`: RustBuffer.ByValue,`port`: Short,uniffi_out_err: UniffiRustCallStatus, 
+    fun uniffi_rdp_transport_fn_method_rdpclient_connect(`ptr`: Pointer,`host`: RustBuffer.ByValue,`port`: Short,`socksProxy`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun uniffi_rdp_transport_fn_method_rdpclient_disconnect(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
@@ -1106,7 +1106,7 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_rdp_transport_checksum_method_framecallback_on_resize() != 54094.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_rdp_transport_checksum_method_rdpclient_connect() != 32811.toShort()) {
+    if (lib.uniffi_rdp_transport_checksum_method_rdpclient_connect() != 51883.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_rdp_transport_checksum_method_rdpclient_disconnect() != 46360.toShort()) {
@@ -2161,7 +2161,7 @@ public object FfiConverterTypeFrameCallback: FfiConverter<FrameCallback, Pointer
 
 public interface RdpClientInterface {
     
-    fun `connect`(`host`: kotlin.String, `port`: kotlin.UShort)
+    fun `connect`(`host`: kotlin.String, `port`: kotlin.UShort, `socksProxy`: SocksProxyConfig?)
     
     fun `disconnect`()
     
@@ -2281,12 +2281,12 @@ open class RdpClient: Disposable, AutoCloseable, RdpClientInterface {
     }
 
     
-    @Throws(RdpException::class)override fun `connect`(`host`: kotlin.String, `port`: kotlin.UShort)
+    @Throws(RdpException::class)override fun `connect`(`host`: kotlin.String, `port`: kotlin.UShort, `socksProxy`: SocksProxyConfig?)
         = 
     callWithPointer {
     uniffiRustCallWithError(RdpException) { _status ->
     UniffiLib.INSTANCE.uniffi_rdp_transport_fn_method_rdpclient_connect(
-        it, FfiConverterString.lower(`host`),FfiConverterUShort.lower(`port`),_status)
+        it, FfiConverterString.lower(`host`),FfiConverterUShort.lower(`port`),FfiConverterOptionalTypeSocksProxyConfig.lower(`socksProxy`),_status)
 }
     }
     
@@ -2971,6 +2971,44 @@ public object FfiConverterTypeRdpRect: FfiConverterRustBuffer<RdpRect> {
 
 
 
+/**
+ * Optional SOCKS5 endpoint used by [RdpClient::connect] in place of a
+ * direct kernel dial. Lets IronRDP route its TCP through Haven's
+ * in-app WireGuard / Tailscale tunnel via the per-tunnel localhost
+ * SOCKS5 listener that wgbridge / tsbridge expose (#149 step 4).
+ */
+data class SocksProxyConfig (
+    var `host`: kotlin.String, 
+    var `port`: kotlin.UShort
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSocksProxyConfig: FfiConverterRustBuffer<SocksProxyConfig> {
+    override fun read(buf: ByteBuffer): SocksProxyConfig {
+        return SocksProxyConfig(
+            FfiConverterString.read(buf),
+            FfiConverterUShort.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SocksProxyConfig) = (
+            FfiConverterString.allocationSize(value.`host`) +
+            FfiConverterUShort.allocationSize(value.`port`)
+    )
+
+    override fun write(value: SocksProxyConfig, buf: ByteBuffer) {
+            FfiConverterString.write(value.`host`, buf)
+            FfiConverterUShort.write(value.`port`, buf)
+    }
+}
+
+
+
 
 enum class MouseButton {
     
@@ -3156,6 +3194,38 @@ public object FfiConverterOptionalTypeFrameData: FfiConverterRustBuffer<FrameDat
         } else {
             buf.put(1)
             FfiConverterTypeFrameData.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeSocksProxyConfig: FfiConverterRustBuffer<SocksProxyConfig?> {
+    override fun read(buf: ByteBuffer): SocksProxyConfig? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeSocksProxyConfig.read(buf)
+    }
+
+    override fun allocationSize(value: SocksProxyConfig?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeSocksProxyConfig.allocationSize(value)
+        }
+    }
+
+    override fun write(value: SocksProxyConfig?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeSocksProxyConfig.write(value, buf)
         }
     }
 }
