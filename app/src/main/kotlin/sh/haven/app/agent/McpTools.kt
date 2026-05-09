@@ -1246,7 +1246,7 @@ internal class McpTools(
 
     // --- Write-tool implementations -------------------------------------
 
-    private fun disconnectProfile(args: JSONObject): JSONObject {
+    private suspend fun disconnectProfile(args: JSONObject): JSONObject {
         val profileId = args.optString("profileId").ifEmpty {
             throw McpError(-32602, "Missing required argument: profileId")
         }
@@ -1254,6 +1254,14 @@ internal class McpTools(
         // transports have sessions for this profile and only acts where
         // there's something to do, so it's safe to call unconditionally.
         sessionManagerRegistry.disconnectProfile(profileId)
+        // Match ConnectionsViewModel.disconnect — release any auto-opened
+        // SSH-tunnel dependent (#121) and the WG / Tailscale refcount
+        // (#149). Bypassing these from the MCP path was the original gap
+        // — without them, a profile disconnected through the agent path
+        // left its tunnel handle live, and live_tunnels surfaced the
+        // bogus "still depending" state.
+        sshSessionManager.releaseTunnelDependent(profileId)
+        tunnelManager.release(profileId)
         return JSONObject().apply {
             put("profileId", profileId)
             put("disconnected", true)
