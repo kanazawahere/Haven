@@ -224,4 +224,12 @@
     <string name="settings_font_install_title">URL에서 글꼴 설치</string>
     <string name="settings_ime_flags_title">IME 플래그</string>
     <!-- #133 phase 2b: SSH host CA pubkey field -->
+    <string name="settings_scrollback_rows_title">스크롤백 행 수</string>
+    <string name="settings_scrollback_rows_subtitle">탭당 %1$,d 행 유지 — 새 탭에 적용</string>
+    <string name="settings_scrollback_rows_dialog_title">탭당 스크롤백 행 수</string>
+    <string name="settings_scrollback_rows_dialog_body">스크롤백이 크면 메모리를 더 많이 사용합니다. 일반적인 열 너비에서 행당 약 2 KB이며 열린 탭 수에 비례합니다.</string>
+    <string name="settings_scrollback_rows_value">%1$,d 행</string>
+    <string name="settings_tap_to_position_title">지원되는 프롬프트에서 탭하여 커서 이동</string>
+    <string name="settings_tap_to_position_subtitle">셸 프롬프트 내부를 탭하여 해당 열로 커서를 이동합니다. OSC 133 프롬프트 마커가 필요합니다(starship, fish 3.6+, 최신 bash/zsh 셸 통합). 이를 내보내지 않는 셸에는 영향 없음</string>
+
 </resources>

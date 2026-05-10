@@ -204,4 +204,12 @@
     <string name="settings_font_install_title">Install font from URL</string>
     <string name="settings_ime_flags_title">IME flags</string>
     <!-- #133 phase 2b: SSH host CA pubkey field --> (en fallback)
+    <string name="settings_scrollback_rows_title">স্ক্রলব্যাক সারি</string>
+    <string name="settings_scrollback_rows_subtitle">প্রতি ট্যাবে %1$,d লাইন সংরক্ষিত — নতুন ট্যাবে প্রযোজ্য</string>
+    <string name="settings_scrollback_rows_dialog_title">প্রতি ট্যাবের স্ক্রলব্যাক সারি</string>
+    <string name="settings_scrollback_rows_dialog_body">বড় স্ক্রলব্যাক বেশি মেমরি ব্যবহার করে। সাধারণ কলাম প্রস্থে প্রতি লাইনে প্রায় 2 KB, খোলা ট্যাবের সংখ্যা দিয়ে গুণিত।</string>
+    <string name="settings_scrollback_rows_value">%1$,d লাইন</string>
+    <string name="settings_tap_to_position_title">সমর্থিত প্রম্পটে কার্সার সরাতে ট্যাপ করুন</string>
+    <string name="settings_tap_to_position_subtitle">শেল প্রম্পটের ভিতরে ট্যাপ করে সেই কলামে কার্সার সরান। OSC 133 প্রম্পট মার্কার প্রয়োজন (starship, fish 3.6+, সাম্প্রতিক bash/zsh শেল-ইন্টিগ্রেশন সেটআপ)। যে শেলগুলি এগুলি প্রকাশ করে না তাদের উপর কোন প্রভাব নেই</string>
+
 </resources>

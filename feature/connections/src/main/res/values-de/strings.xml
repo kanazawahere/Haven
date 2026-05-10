@@ -253,4 +253,6 @@
 
     <!-- #133 phase 2b: cert renewal status banner --> (en fallback)
     <string name="connections_renewing_cert">Renewing %1$s\'s cert via %2$s…</string>
+    <string name="connections_open_plain_shell">Plain Shell öffnen</string>
+
 </resources>

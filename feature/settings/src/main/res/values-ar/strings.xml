@@ -204,4 +204,12 @@
     <string name="settings_font_install_title">Install font from URL</string>
     <string name="settings_ime_flags_title">IME flags</string>
     <!-- #133 phase 2b: SSH host CA pubkey field --> (en fallback)
+    <string name="settings_scrollback_rows_title">صفوف السجل</string>
+    <string name="settings_scrollback_rows_subtitle">%1$,d سطر محفوظ لكل علامة تبويب — يُطبَّق على العلامات الجديدة</string>
+    <string name="settings_scrollback_rows_dialog_title">عدد صفوف السجل لكل علامة تبويب</string>
+    <string name="settings_scrollback_rows_dialog_body">السجل الأكبر يستهلك ذاكرة أكثر. حوالي 2 كيلوبايت لكل سطر بعرض أعمدة نموذجي، مضروبًا في عدد علامات التبويب المفتوحة.</string>
+    <string name="settings_scrollback_rows_value">%1$,d سطر</string>
+    <string name="settings_tap_to_position_title">اضغط لتحريك المؤشر في الأوامر المدعومة</string>
+    <string name="settings_tap_to_position_subtitle">اضغط داخل أمر shell لنقل المؤشر إلى ذلك العمود. يتطلب علامات OSC 133 (starship وfish 3.6+ وإعدادات bash/zsh حديثة). لا يؤثر على الأصداف التي لا تُصدرها</string>
+
 </resources>

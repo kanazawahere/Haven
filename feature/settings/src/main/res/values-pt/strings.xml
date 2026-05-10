@@ -204,4 +204,12 @@
     <string name="settings_font_install_title">Install font from URL</string>
     <string name="settings_ime_flags_title">IME flags</string>
     <!-- #133 phase 2b: SSH host CA pubkey field --> (en fallback)
+    <string name="settings_scrollback_rows_title">Linhas de histórico</string>
+    <string name="settings_scrollback_rows_subtitle">%1$,d linhas mantidas por aba — aplica-se a novas abas</string>
+    <string name="settings_scrollback_rows_dialog_title">Linhas de histórico por aba</string>
+    <string name="settings_scrollback_rows_dialog_body">Histórico maior usa mais memória. Aproximadamente 2 KB por linha em larguras de coluna típicas, multiplicado pelo número de abas abertas.</string>
+    <string name="settings_scrollback_rows_value">%1$,d linhas</string>
+    <string name="settings_tap_to_position_title">Toque para mover cursor em prompts compatíveis</string>
+    <string name="settings_tap_to_position_subtitle">Toque dentro de um prompt de shell para mover o cursor para aquela coluna. Requer marcadores OSC 133 (starship, fish 3.6+, configurações recentes de bash/zsh). Sem efeito em shells que não os emitem</string>
+
 </resources>

@@ -204,4 +204,12 @@
     <string name="settings_font_install_title">Install font from URL</string>
     <string name="settings_ime_flags_title">IME flags</string>
     <!-- #133 phase 2b: SSH host CA pubkey field --> (en fallback)
+    <string name="settings_scrollback_rows_title">Lignes d\'historique</string>
+    <string name="settings_scrollback_rows_subtitle">%1$,d lignes conservées par onglet — s\'applique aux nouveaux onglets</string>
+    <string name="settings_scrollback_rows_dialog_title">Lignes d\'historique par onglet</string>
+    <string name="settings_scrollback_rows_dialog_body">Un historique plus large utilise plus de mémoire. Environ 2 Ko par ligne à largeur de colonne typique, multiplié par le nombre d\'onglets ouverts.</string>
+    <string name="settings_scrollback_rows_value">%1$,d lignes</string>
+    <string name="settings_tap_to_position_title">Toucher pour déplacer le curseur sur les invites prises en charge</string>
+    <string name="settings_tap_to_position_subtitle">Toucher dans une invite shell pour déplacer le curseur à cette colonne. Nécessite les marqueurs OSC 133 (starship, fish 3.6+, configurations récentes bash/zsh avec intégration shell). Sans effet sur les shells qui ne les émettent pas</string>
+
 </resources>

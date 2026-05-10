@@ -204,4 +204,12 @@
     <string name="settings_font_install_title">Install font from URL</string>
     <string name="settings_ime_flags_title">IME flags</string>
     <!-- #133 phase 2b: SSH host CA pubkey field --> (en fallback)
+    <string name="settings_scrollback_rows_title">स्क्रॉलबैक पंक्तियाँ</string>
+    <string name="settings_scrollback_rows_subtitle">प्रति टैब %1$,d पंक्तियाँ सुरक्षित — नए टैब पर लागू</string>
+    <string name="settings_scrollback_rows_dialog_title">प्रति टैब स्क्रॉलबैक पंक्तियाँ</string>
+    <string name="settings_scrollback_rows_dialog_body">बड़ा स्क्रॉलबैक अधिक मेमोरी का उपयोग करता है। सामान्य कॉलम चौड़ाई पर प्रति पंक्ति लगभग 2 KB, खुले टैब की संख्या से गुणा।</string>
+    <string name="settings_scrollback_rows_value">%1$,d पंक्तियाँ</string>
+    <string name="settings_tap_to_position_title">समर्थित प्रॉम्प्ट पर कर्सर ले जाने के लिए टैप करें</string>
+    <string name="settings_tap_to_position_subtitle">उस कॉलम में कर्सर ले जाने के लिए शेल प्रॉम्प्ट के अंदर टैप करें। OSC 133 प्रॉम्प्ट मार्कर आवश्यक (starship, fish 3.6+, हाल ही के bash/zsh शेल-इंटीग्रेशन सेटअप)। जो शेल इन्हें नहीं भेजते उन पर कोई प्रभाव नहीं</string>
+
 </resources>

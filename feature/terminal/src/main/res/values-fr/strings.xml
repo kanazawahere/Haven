@@ -74,4 +74,6 @@
     <string name="terminal_vnc_username_label">Username (optional — VeNCrypt only)</string>
     <string name="terminal_vnc_username_placeholder">Leave blank for classic VncAuth</string>
     <string name="terminal_vnc_color_depth">Colour depth</string>
+    <string name="terminal_open_plain_shell">Ouvrir shell brut</string>
+
 </resources>

@@ -204,4 +204,12 @@
     <string name="settings_font_install_title">Install font from URL</string>
     <string name="settings_ime_flags_title">IME flags</string>
     <!-- #133 phase 2b: SSH host CA pubkey field --> (en fallback)
+    <string name="settings_scrollback_rows_title">スクロールバック行数</string>
+    <string name="settings_scrollback_rows_subtitle">タブごとに%1$,d行保持 — 新しいタブに適用</string>
+    <string name="settings_scrollback_rows_dialog_title">タブごとのスクロールバック行数</string>
+    <string name="settings_scrollback_rows_dialog_body">スクロールバックが大きいほどメモリ使用量が増えます。一般的な列幅で1行あたり約2 KB、開いているタブ数に比例します。</string>
+    <string name="settings_scrollback_rows_value">%1$,d 行</string>
+    <string name="settings_tap_to_position_title">対応プロンプトでタップしてカーソル移動</string>
+    <string name="settings_tap_to_position_subtitle">シェルプロンプト内をタップしてその列にカーソルを移動。OSC 133プロンプトマーカーが必要です（starship、fish 3.6+、最近のbash/zshシェル統合設定）。これらを送信しないシェルでは効果なし</string>
+
 </resources>

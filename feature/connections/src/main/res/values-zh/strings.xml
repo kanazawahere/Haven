@@ -299,4 +299,6 @@
 
     <!-- #133 phase 2b: cert renewal status banner -->
     <string name="connections_renewing_cert">正在通过 %2$s 续签 %1$s 的证书…</string>
+    <string name="connections_open_plain_shell">打开纯 shell</string>
+
 </resources>

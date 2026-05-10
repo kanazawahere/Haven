@@ -74,4 +74,6 @@
     <string name="terminal_vnc_username_label">用户名（可选 — 仅 VeNCrypt）</string>
     <string name="terminal_vnc_username_placeholder">留空使用经典 VncAuth</string>
     <string name="terminal_vnc_color_depth">色深</string>
+    <string name="terminal_open_plain_shell">打开纯 shell</string>
+
 </resources>
