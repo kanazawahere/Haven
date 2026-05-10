@@ -1256,8 +1256,16 @@ class TerminalViewModel @Inject constructor(
                 terminalSessionRegistry.register(tab.sessionId, tab.emulator)
             }
         }
+        // Unregister registry entries whose underlying *session* has
+        // disconnected — not just entries without a UI tab. Headless
+        // shells opened by the MCP agent (open_local_shell) live in
+        // localSessions but never appear in currentTabs; sweeping by
+        // tab presence alone tore those out immediately and broke
+        // every snapshot-style MCP tool against agent-owned shells.
+        val knownSessionIds = sshSessions.keys + rnsSessions.keys +
+            moshSessions.keys + etSessions.keys + localSessions.keys
         for (id in terminalSessionRegistry.sessions.value.keys.toList()) {
-            if (id !in liveIds) terminalSessionRegistry.unregister(id)
+            if (id !in knownSessionIds) terminalSessionRegistry.unregister(id)
         }
 
         // Clamp active index
