@@ -295,5 +295,18 @@
     <string name="connections_vm_view_script">스크립트 보기</string>
     <string name="connections_vnc_password_title">VNC 비밀번호</string>
 
-
+    <!-- Port knocking -->
+    <string name="connections_section_port_knock">포트 노킹</string>
+    <string name="connections_field_port_knock_sequence">노크 시퀀스 (선택)</string>
+    <string name="connections_hint_port_knock_sequence">예: 7000 8000 9000 또는 7000/tcp 8000/udp</string>
+    <string name="connections_helper_port_knock_active">직접 연결 전에 전송됩니다. SSH/SOCKS 터널 경로에서는 건너뜁니다.</string>
+    <string name="connections_helper_port_knock_blank">비활성화하려면 비워두세요.</string>
+    <string name="connections_field_port_knock_delay">노크 간격 (ms)</string>
+    <string name="connections_button_test_knock">노크 테스트</string>
+    <string name="connections_button_test_knock_running">노킹 중…</string>
+    <string name="connections_knock_invalid_sequence">잘못된 시퀀스: %1$s</string>
+    <string name="connections_knock_empty">노크 시퀀스가 비어 있습니다</string>
+    <string name="connections_knock_host_blank">호스트가 비어 있습니다</string>
+    <string name="connections_knock_success">%2$d ms 동안 노크 %1$d회 전송됨</string>
+    <string name="connections_knock_failed">%1$d ms 후 실패: %2$s</string>
 </resources>

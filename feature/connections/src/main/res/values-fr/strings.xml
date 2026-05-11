@@ -255,4 +255,18 @@
     <string name="connections_renewing_cert">Renewing %1$s\'s cert via %2$s…</string>
     <string name="connections_open_plain_shell">Ouvrir shell brut</string>
 
+    <!-- Port knocking -->
+    <string name="connections_section_port_knock">Port knocking</string>
+    <string name="connections_field_port_knock_sequence">Séquence de knock (facultative)</string>
+    <string name="connections_hint_port_knock_sequence">ex. 7000 8000 9000 ou 7000/tcp 8000/udp</string>
+    <string name="connections_helper_port_knock_active">Envoyée avant chaque connexion directe. Ignorée sur les chemins tunnelés SSH/SOCKS.</string>
+    <string name="connections_helper_port_knock_blank">Laisser vide pour désactiver.</string>
+    <string name="connections_field_port_knock_delay">Délai entre les knocks (ms)</string>
+    <string name="connections_button_test_knock">Tester le knock</string>
+    <string name="connections_button_test_knock_running">Knock en cours…</string>
+    <string name="connections_knock_invalid_sequence">Séquence invalide : %1$s</string>
+    <string name="connections_knock_empty">La séquence de knock est vide</string>
+    <string name="connections_knock_host_blank">L\'hôte est vide</string>
+    <string name="connections_knock_success">%1$d knocks envoyés en %2$d ms</string>
+    <string name="connections_knock_failed">Échec après %1$d ms : %2$s</string>
 </resources>

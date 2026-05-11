@@ -60,6 +60,7 @@ import sh.haven.core.reticulum.ReticulumTransport
 import sh.haven.core.knock.KnockResult
 import sh.haven.core.knock.KnockSequence
 import sh.haven.core.knock.PortKnocker
+import sh.haven.feature.connections.R
 import sh.haven.core.smb.SmbSessionManager
 import sh.haven.core.stepca.CertRenewalGate
 import android.util.Log
@@ -870,16 +871,26 @@ class ConnectionsViewModel @Inject constructor(
     ): Pair<Boolean, String> {
         val parsed = KnockSequence.parse(sequenceText, delayMs)
         val seq = parsed.getOrElse {
-            return false to "Invalid sequence: ${it.message}"
-        } ?: return false to "Knock sequence is empty"
+            return false to appContext.getString(
+                R.string.connections_knock_invalid_sequence, it.message ?: "",
+            )
+        } ?: return false to appContext.getString(R.string.connections_knock_empty)
         if (host.isBlank()) {
-            return false to "Host is blank"
+            return false to appContext.getString(R.string.connections_knock_host_blank)
         }
         val result = portKnocker.knock(host, seq)
         return if (result.ok) {
-            true to "Sent ${result.sentSteps} knocks in ${result.totalDurationMs} ms"
+            true to appContext.getString(
+                R.string.connections_knock_success,
+                result.sentSteps,
+                result.totalDurationMs.toInt(),
+            )
         } else {
-            false to "Failed after ${result.totalDurationMs} ms: ${result.error?.message ?: "unknown"}"
+            false to appContext.getString(
+                R.string.connections_knock_failed,
+                result.totalDurationMs.toInt(),
+                result.error?.message ?: "unknown",
+            )
         }
     }
 

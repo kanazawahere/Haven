@@ -255,4 +255,18 @@
     <string name="connections_renewing_cert">Renewing %1$s\'s cert via %2$s…</string>
     <string name="connections_open_plain_shell">فتح shell عادي</string>
 
+    <!-- Port knocking -->
+    <string name="connections_section_port_knock">الطرق على المنافذ</string>
+    <string name="connections_field_port_knock_sequence">تسلسل الطرق (اختياري)</string>
+    <string name="connections_hint_port_knock_sequence">مثال: 7000 8000 9000 أو 7000/tcp 8000/udp</string>
+    <string name="connections_helper_port_knock_active">يُرسل قبل كل اتصال مباشر. يُتجاوز على المسارات النفقية SSH/SOCKS.</string>
+    <string name="connections_helper_port_knock_blank">اتركه فارغًا للتعطيل.</string>
+    <string name="connections_field_port_knock_delay">التأخير بين الطرقات (مللي ثانية)</string>
+    <string name="connections_button_test_knock">اختبار الطرق</string>
+    <string name="connections_button_test_knock_running">جارٍ الطرق…</string>
+    <string name="connections_knock_invalid_sequence">تسلسل غير صالح: %1$s</string>
+    <string name="connections_knock_empty">تسلسل الطرق فارغ</string>
+    <string name="connections_knock_host_blank">المضيف فارغ</string>
+    <string name="connections_knock_success">تم إرسال %1$d طرقات في %2$d مللي ثانية</string>
+    <string name="connections_knock_failed">فشل بعد %1$d مللي ثانية: %2$s</string>
 </resources>

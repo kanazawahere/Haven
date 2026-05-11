@@ -255,4 +255,18 @@
     <string name="connections_renewing_cert">Renewing %1$s\'s cert via %2$s…</string>
     <string name="connections_open_plain_shell">সাধারণ শেল খুলুন</string>
 
+    <!-- Port knocking -->
+    <string name="connections_section_port_knock">পোর্ট নকিং</string>
+    <string name="connections_field_port_knock_sequence">নক ক্রম (ঐচ্ছিক)</string>
+    <string name="connections_hint_port_knock_sequence">উদাহরণ: 7000 8000 9000 অথবা 7000/tcp 8000/udp</string>
+    <string name="connections_helper_port_knock_active">প্রতিটি সরাসরি সংযোগের আগে পাঠানো হয়। SSH/SOCKS টানেল পথে এড়িয়ে যাওয়া হয়।</string>
+    <string name="connections_helper_port_knock_blank">অক্ষম করতে ফাঁকা রাখুন।</string>
+    <string name="connections_field_port_knock_delay">নকের মধ্যে বিলম্ব (মিলিসেকেন্ড)</string>
+    <string name="connections_button_test_knock">নক পরীক্ষা করুন</string>
+    <string name="connections_button_test_knock_running">নক করছে…</string>
+    <string name="connections_knock_invalid_sequence">অবৈধ ক্রম: %1$s</string>
+    <string name="connections_knock_empty">নক ক্রম খালি</string>
+    <string name="connections_knock_host_blank">হোস্ট খালি</string>
+    <string name="connections_knock_success">%2$d ms-এ %1$d নক পাঠানো হয়েছে</string>
+    <string name="connections_knock_failed">%1$d ms পরে ব্যর্থ: %2$s</string>
 </resources>

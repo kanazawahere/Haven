@@ -255,4 +255,18 @@
     <string name="connections_renewing_cert">Renewing %1$s\'s cert via %2$s…</string>
     <string name="connections_open_plain_shell">プレーンシェルを開く</string>
 
+    <!-- Port knocking -->
+    <string name="connections_section_port_knock">ポートノッキング</string>
+    <string name="connections_field_port_knock_sequence">ノックシーケンス (任意)</string>
+    <string name="connections_hint_port_knock_sequence">例: 7000 8000 9000 または 7000/tcp 8000/udp</string>
+    <string name="connections_helper_port_knock_active">直接接続のたびに送信されます。SSH/SOCKS トンネル経路ではスキップされます。</string>
+    <string name="connections_helper_port_knock_blank">空欄で無効になります。</string>
+    <string name="connections_field_port_knock_delay">ノック間の遅延 (ms)</string>
+    <string name="connections_button_test_knock">ノックをテスト</string>
+    <string name="connections_button_test_knock_running">ノック中…</string>
+    <string name="connections_knock_invalid_sequence">無効なシーケンス: %1$s</string>
+    <string name="connections_knock_empty">ノックシーケンスが空です</string>
+    <string name="connections_knock_host_blank">ホストが空です</string>
+    <string name="connections_knock_success">%2$d ms で %1$d 回ノックを送信しました</string>
+    <string name="connections_knock_failed">%1$d ms 後に失敗: %2$s</string>
 </resources>

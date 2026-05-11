@@ -2141,7 +2141,7 @@ fun ConnectionEditDialog(
                 if (connectionType !in setOf("LOCAL", "RCLONE", "RETICULUM")) {
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        "Port knocking",
+                        stringResource(R.string.connections_section_port_knock),
                         style = MaterialTheme.typography.labelLarge,
                     )
                     val parsedKnock = KnockSequence.parse(
@@ -2152,16 +2152,16 @@ fun ConnectionEditDialog(
                     OutlinedTextField(
                         value = portKnockSequence,
                         onValueChange = { portKnockSequence = it },
-                        label = { Text("Knock sequence (optional)") },
-                        placeholder = { Text("e.g. 7000 8000 9000 or 7000/tcp 8000/udp") },
+                        label = { Text(stringResource(R.string.connections_field_port_knock_sequence)) },
+                        placeholder = { Text(stringResource(R.string.connections_hint_port_knock_sequence)) },
                         isError = knockError != null,
                         supportingText = {
                             if (knockError != null) {
                                 Text(knockError, color = MaterialTheme.colorScheme.error)
                             } else if (portKnockSequence.isNotBlank()) {
-                                Text("Sent before each direct connect. Skipped on SSH/SOCKS-tunneled paths.")
+                                Text(stringResource(R.string.connections_helper_port_knock_active))
                             } else {
-                                Text("Leave blank to disable.")
+                                Text(stringResource(R.string.connections_helper_port_knock_blank))
                             }
                         },
                         singleLine = true,
@@ -2174,7 +2174,7 @@ fun ConnectionEditDialog(
                             onValueChange = { v ->
                                 portKnockDelayMs = v.filter { c -> c.isDigit() }.take(5)
                             },
-                            label = { Text("Delay between knocks (ms)") },
+                            label = { Text(stringResource(R.string.connections_field_port_knock_delay)) },
                             placeholder = { Text("100") },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -2209,9 +2209,9 @@ fun ConnectionEditDialog(
                                             strokeWidth = 2.dp,
                                         )
                                         Spacer(Modifier.width(8.dp))
-                                        Text("Knocking…")
+                                        Text(stringResource(R.string.connections_button_test_knock_running))
                                     } else {
-                                        Text("Test knock")
+                                        Text(stringResource(R.string.connections_button_test_knock))
                                     }
                                 }
                                 Spacer(Modifier.width(8.dp))

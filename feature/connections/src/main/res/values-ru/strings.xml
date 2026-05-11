@@ -255,4 +255,18 @@
     <string name="connections_renewing_cert">Renewing %1$s\'s cert via %2$s…</string>
     <string name="connections_open_plain_shell">Открыть простой shell</string>
 
+    <!-- Port knocking -->
+    <string name="connections_section_port_knock">Port knocking</string>
+    <string name="connections_field_port_knock_sequence">Последовательность knock (необязательно)</string>
+    <string name="connections_hint_port_knock_sequence">напр. 7000 8000 9000 или 7000/tcp 8000/udp</string>
+    <string name="connections_helper_port_knock_active">Отправляется перед каждым прямым подключением. Пропускается на маршрутах через SSH/SOCKS-туннель.</string>
+    <string name="connections_helper_port_knock_blank">Оставьте пустым, чтобы отключить.</string>
+    <string name="connections_field_port_knock_delay">Задержка между knock (мс)</string>
+    <string name="connections_button_test_knock">Проверить knock</string>
+    <string name="connections_button_test_knock_running">Стучу…</string>
+    <string name="connections_knock_invalid_sequence">Неверная последовательность: %1$s</string>
+    <string name="connections_knock_empty">Последовательность knock пуста</string>
+    <string name="connections_knock_host_blank">Хост пуст</string>
+    <string name="connections_knock_success">Отправлено %1$d knock за %2$d мс</string>
+    <string name="connections_knock_failed">Сбой через %1$d мс: %2$s</string>
 </resources>

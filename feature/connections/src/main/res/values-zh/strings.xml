@@ -301,4 +301,18 @@
     <string name="connections_renewing_cert">正在通过 %2$s 续签 %1$s 的证书…</string>
     <string name="connections_open_plain_shell">打开纯 shell</string>
 
+    <!-- Port knocking -->
+    <string name="connections_section_port_knock">端口敲门</string>
+    <string name="connections_field_port_knock_sequence">敲门序列（可选）</string>
+    <string name="connections_hint_port_knock_sequence">例如 7000 8000 9000 或 7000/tcp 8000/udp</string>
+    <string name="connections_helper_port_knock_active">在每次直接连接前发送。在 SSH/SOCKS 隧道路径上跳过。</string>
+    <string name="connections_helper_port_knock_blank">留空以停用。</string>
+    <string name="connections_field_port_knock_delay">敲门间隔（毫秒）</string>
+    <string name="connections_button_test_knock">测试敲门</string>
+    <string name="connections_button_test_knock_running">正在敲门…</string>
+    <string name="connections_knock_invalid_sequence">无效序列：%1$s</string>
+    <string name="connections_knock_empty">敲门序列为空</string>
+    <string name="connections_knock_host_blank">主机为空</string>
+    <string name="connections_knock_success">已在 %2$d 毫秒内发送 %1$d 次敲门</string>
+    <string name="connections_knock_failed">在 %1$d 毫秒后失败：%2$s</string>
 </resources>
