@@ -812,7 +812,7 @@ internal class McpTools(
         ) { _ -> listLiveTunnels() },
 
         "create_tunnel" to ToolHandler(
-            description = "Add a new WireGuard or Tailscale tunnel config. For WIREGUARD pass `configText` containing a wg-quick INI body. For TAILSCALE pass `tailscaleAuthKey` (and optionally `tailscaleControlUrl` for Headscale). Returns the new tunnel id, which can then be passed to set_profile_routing.",
+            description = "Add a new WireGuard, Tailscale, or Cloudflare Tunnel config. WIREGUARD: pass `configText` (wg-quick INI body). TAILSCALE: pass `tailscaleAuthKey` (and optional `tailscaleControlUrl` for Headscale). CLOUDFLARE_ACCESS: pass `accessHostname`; for Access-protected routes also pass `accessJwt` (from `cloudflared access token --app https://<host>`); optional `accessJumpDestination` for bastion-mode multi-target tunnels. Returns the new tunnel id, which can then be passed to set_profile_routing.",
             inputSchema = JSONObject().apply {
                 put("type", "object")
                 put("properties", JSONObject().apply {
@@ -822,7 +822,7 @@ internal class McpTools(
                     })
                     put("type", JSONObject().apply {
                         put("type", "string")
-                        put("description", "WIREGUARD or TAILSCALE.")
+                        put("description", "WIREGUARD, TAILSCALE, or CLOUDFLARE_ACCESS.")
                     })
                     put("configText", JSONObject().apply {
                         put("type", "string")
@@ -835,6 +835,26 @@ internal class McpTools(
                     put("tailscaleControlUrl", JSONObject().apply {
                         put("type", "string")
                         put("description", "Self-hosted Headscale coordination URL. Optional — empty defaults to controlplane.tailscale.com.")
+                    })
+                    put("accessHostname", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Cloudflare Tunnel published hostname (e.g. ssh.example.com). Required when type=CLOUDFLARE_ACCESS.")
+                    })
+                    put("accessJwt", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Cloudflare Access JWT (`CF_Authorization` value). Optional — only needed when the Tunnel route is Access-protected.")
+                    })
+                    put("accessTeamDomain", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Cloudflare Access team domain (myteam.cloudflareaccess.com). Optional; only meaningful for Access-protected routes.")
+                    })
+                    put("accessExpiresAt", JSONObject().apply {
+                        put("type", "integer")
+                        put("description", "Optional explicit JWT expiry (Unix epoch seconds). Defaults to parsing the `exp` claim out of accessJwt.")
+                    })
+                    put("accessJumpDestination", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Optional `Cf-Access-Jump-Destination` value for bastion-mode multi-target tunnels (e.g. internal-host:22).")
                     })
                 })
                 put("required", JSONArray().put("label").put("type"))
@@ -2676,11 +2696,12 @@ internal class McpTools(
                 wgQuick.toByteArray()
             }
             TunnelConfigType.CLOUDFLARE_ACCESS -> {
-                // MCP path only supports the paste-JWT mode; the in-app
-                // WebView login is interactive and can't be driven by an
-                // agent. Agents that want a Cloudflare Access tunnel must
-                // already hold a JWT (e.g. from `cloudflared access token
-                // --app <host>` on a desktop).
+                // MCP path supports unprotected Cloudflare Tunnel routes
+                // (hostname only) as well as Access-protected ones
+                // (additionally requiring a JWT). The in-app WebView
+                // sign-in flow is interactive and can't be driven by an
+                // agent — agents wanting Access auth must already hold
+                // a JWT (e.g. from `cloudflared access token --app <host>`).
                 val hostname = args.optString("accessHostname")
                 if (hostname.isBlank()) {
                     throw IllegalArgumentException(
@@ -2688,24 +2709,21 @@ internal class McpTools(
                     )
                 }
                 val jwt = args.optString("accessJwt")
-                if (jwt.isBlank()) {
-                    throw IllegalArgumentException(
-                        "accessJwt required for CLOUDFLARE_ACCESS type"
-                    )
-                }
                 val teamDomain = args.optString("accessTeamDomain")
+                val jumpDestination = args.optString("accessJumpDestination")
                 val explicitExpiry = args.optLong("accessExpiresAt", 0L)
                 val derivedExpiry = if (explicitExpiry > 0) {
                     explicitExpiry
-                } else {
+                } else if (jwt.isNotBlank()) {
                     sh.haven.core.security.JwtPayload.parse(jwt)
                         ?.expiresAtSeconds ?: 0L
-                }
+                } else 0L
                 sh.haven.core.tunnel.CloudflareAccessConfigBlob(
                     hostname = hostname,
                     teamDomain = teamDomain,
                     jwt = jwt,
                     jwtExpiresAt = derivedExpiry,
+                    jumpDestination = jumpDestination,
                 ).encode()
             }
             TunnelConfigType.TAILSCALE -> {

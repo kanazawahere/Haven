@@ -41,11 +41,13 @@ enum class TunnelConfigType {
     WIREGUARD,
     TAILSCALE,
 
-    /** Cloudflare Access SSH gateway. Per-hostname proxy that wraps SSH
-     *  bytes in a WebSocket to `wss://<hostname>/cdn-cgi/access/ssh-gateway`
-     *  with a `CF_Authorization` JWT obtained via the team's IdP. The wire
-     *  protocol is reverse-engineered from cloudflared; flagged Experimental
-     *  in the UI until verified against multiple tenants. See GH #154. */
+    /** Cloudflare Tunnel published hostname. Per-hostname proxy that
+     *  wraps SSH bytes in a WebSocket to `wss://<hostname>/` (binary
+     *  frames carry raw TCP). Optional `Cf-Access-Token` header carries
+     *  a JWT for Access-protected routes; without it, the route must be
+     *  unprotected. The wire protocol is verified against cloudflared's
+     *  `carrier/websocket.go` rather than guessed. Surfaced in the UI
+     *  as "Cloudflare Tunnel". See GH #154. */
     CLOUDFLARE_ACCESS,
     ;
 

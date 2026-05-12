@@ -14,12 +14,14 @@ class CloudflareAccessConfigBlobTest {
             teamDomain = "myteam.cloudflareaccess.com",
             jwt = "eyJhbGciOiJSUzI1NiJ9.eyJleHAiOjE3Mzc5MzQ4MDB9.sig",
             jwtExpiresAt = 1737934800L,
+            jumpDestination = "internal-host:22",
         )
         val parsed = CloudflareAccessConfigBlob.parse(blob.encode())
         assertEquals("ssh.example.com", parsed.hostname)
         assertEquals("myteam.cloudflareaccess.com", parsed.teamDomain)
         assertEquals("eyJhbGciOiJSUzI1NiJ9.eyJleHAiOjE3Mzc5MzQ4MDB9.sig", parsed.jwt)
         assertEquals(1737934800L, parsed.jwtExpiresAt)
+        assertEquals("internal-host:22", parsed.jumpDestination)
     }
 
     @Test
@@ -32,12 +34,23 @@ class CloudflareAccessConfigBlobTest {
     }
 
     @Test
-    fun `missing jwt is rejected`() {
-        val bytes = """{"hostname":"ssh.example.com","teamDomain":"x"}""".toByteArray()
-        val ex = assertThrows(IllegalArgumentException::class.java) {
-            CloudflareAccessConfigBlob.parse(bytes)
-        }
-        assertTrue(ex.message!!.contains("jwt"))
+    fun `unprotected Tunnel route — missing jwt is allowed and parses cleanly`() {
+        // rkxspace's case (#154): Cloudflare Tunnel published-hostname
+        // route with no Access protection. The blob has no jwt; this
+        // is legal from rc4 onwards.
+        val bytes = """{"hostname":"ssh.example.com"}""".toByteArray()
+        val parsed = CloudflareAccessConfigBlob.parse(bytes)
+        assertEquals("ssh.example.com", parsed.hostname)
+        assertEquals("", parsed.jwt)
+        assertEquals(0L, parsed.jwtExpiresAt)
+        assertEquals("", parsed.jumpDestination)
+    }
+
+    @Test
+    fun `unknown json keys are ignored — newer fields don't break older clients`() {
+        val bytes = """{"hostname":"x","futureField":"surprise","jwt":""}""".toByteArray()
+        val parsed = CloudflareAccessConfigBlob.parse(bytes)
+        assertEquals("x", parsed.hostname)
     }
 
     @Test

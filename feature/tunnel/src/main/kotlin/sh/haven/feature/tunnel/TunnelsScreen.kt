@@ -136,9 +136,11 @@ fun TunnelsScreen(
                 showAddDialog = false
             },
             cfTestResult = cfTestResult,
-            onTestCfAccess = { hostname, jwt -> viewModel.testCloudflareAccess(hostname, jwt) },
-            onSubmitCloudflareAccess = { label, hostname, teamDomain, jwt, expiresAt ->
-                viewModel.addCloudflareAccessConfig(label, hostname, teamDomain, jwt, expiresAt)
+            onTestCfAccess = { hostname, jwt, jumpDestination ->
+                viewModel.testCloudflareAccess(hostname, jwt, jumpDestination)
+            },
+            onSubmitCloudflareAccess = { label, hostname, teamDomain, jwt, expiresAt, jumpDestination ->
+                viewModel.addCloudflareAccessConfig(label, hostname, teamDomain, jwt, expiresAt, jumpDestination)
                 showAddDialog = false
                 viewModel.resetCfTestResult()
             },
@@ -263,13 +265,14 @@ private fun AddTunnelDialog(
     onSubmitWireguard: (label: String, configText: String) -> Unit,
     onSubmitTailscale: (label: String, authKey: String, controlUrl: String) -> Unit,
     cfTestResult: TunnelViewModel.CloudflareAccessTestResult,
-    onTestCfAccess: (hostname: String, jwt: String) -> Unit,
+    onTestCfAccess: (hostname: String, jwt: String, jumpDestination: String) -> Unit,
     onSubmitCloudflareAccess: (
         label: String,
         hostname: String,
         teamDomain: String,
         jwt: String,
         expiresAtSeconds: Long,
+        jumpDestination: String,
     ) -> Unit,
 ) {
     var type by remember { mutableStateOf(sh.haven.core.data.db.entities.TunnelConfigType.WIREGUARD) }
@@ -277,12 +280,13 @@ private fun AddTunnelDialog(
     var configText by remember { mutableStateOf("") }
     var authKey by remember { mutableStateOf("") }
     var controlUrl by remember { mutableStateOf("") }
-    // Cloudflare Access form state — survives type-switch in case user
+    // Cloudflare Tunnel form state — survives type-switch in case user
     // flips back and forth before saving.
     var cfHostname by remember { mutableStateOf("") }
     var cfTeamDomain by remember { mutableStateOf("") }
     var cfJwt by remember { mutableStateOf("") }
     var cfExpiresAt by remember { mutableStateOf(0L) }
+    var cfJumpDestination by remember { mutableStateOf("") }
     var cfAdvancedOpen by remember { mutableStateOf(false) }
     val cfLoginLauncher = rememberLauncherForActivityResult(
         contract = CloudflareAccessLoginContract(),
@@ -443,13 +447,15 @@ private fun AddTunnelDialog(
                     androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
                 }
                 sh.haven.core.data.db.entities.TunnelConfigType.CLOUDFLARE_ACCESS -> {
-                    CloudflareAccessForm(
+                    CloudflareTunnelForm(
                         hostname = cfHostname,
                         onHostnameChange = { cfHostname = it; cfJwt = ""; cfExpiresAt = 0L },
                         teamDomain = cfTeamDomain,
                         onTeamDomainChange = { cfTeamDomain = it },
                         jwt = cfJwt,
                         jwtExpiresAt = cfExpiresAt,
+                        jumpDestination = cfJumpDestination,
+                        onJumpDestinationChange = { cfJumpDestination = it },
                         onSignInClick = {
                             val host = cfHostname.trim()
                             if (host.isNotEmpty()) {
@@ -468,7 +474,7 @@ private fun AddTunnelDialog(
                             cfExpiresAt = expiresAt
                         },
                         testResult = cfTestResult,
-                        onTestClick = { onTestCfAccess(cfHostname.trim(), cfJwt.trim()) },
+                        onTestClick = { onTestCfAccess(cfHostname.trim(), cfJwt.trim(), cfJumpDestination.trim()) },
                     )
                     androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
                 }
@@ -482,8 +488,9 @@ private fun AddTunnelDialog(
                 val canSubmit = label.isNotBlank() && when (type) {
                     sh.haven.core.data.db.entities.TunnelConfigType.WIREGUARD -> configText.isNotBlank()
                     sh.haven.core.data.db.entities.TunnelConfigType.TAILSCALE -> authKey.isNotBlank()
+                    // JWT is optional — unprotected Tunnel routes need only a hostname.
                     sh.haven.core.data.db.entities.TunnelConfigType.CLOUDFLARE_ACCESS ->
-                        cfHostname.isNotBlank() && cfJwt.isNotBlank()
+                        cfHostname.isNotBlank()
                 }
                 Button(
                     onClick = {
@@ -493,7 +500,7 @@ private fun AddTunnelDialog(
                             sh.haven.core.data.db.entities.TunnelConfigType.TAILSCALE ->
                                 onSubmitTailscale(label, authKey, controlUrl)
                             sh.haven.core.data.db.entities.TunnelConfigType.CLOUDFLARE_ACCESS ->
-                                onSubmitCloudflareAccess(label, cfHostname, cfTeamDomain, cfJwt, cfExpiresAt)
+                                onSubmitCloudflareAccess(label, cfHostname, cfTeamDomain, cfJwt, cfExpiresAt, cfJumpDestination)
                         }
                     },
                     enabled = canSubmit,
@@ -508,17 +515,19 @@ private fun tunnelTypeLabel(t: sh.haven.core.data.db.entities.TunnelConfigType):
     when (t) {
         sh.haven.core.data.db.entities.TunnelConfigType.WIREGUARD -> "WireGuard"
         sh.haven.core.data.db.entities.TunnelConfigType.TAILSCALE -> "Tailscale"
-        sh.haven.core.data.db.entities.TunnelConfigType.CLOUDFLARE_ACCESS -> "Cloudflare Access"
+        sh.haven.core.data.db.entities.TunnelConfigType.CLOUDFLARE_ACCESS -> "Cloudflare Tunnel"
     }
 
 @Composable
-private fun CloudflareAccessForm(
+private fun CloudflareTunnelForm(
     hostname: String,
     onHostnameChange: (String) -> Unit,
     teamDomain: String,
     onTeamDomainChange: (String) -> Unit,
     jwt: String,
     jwtExpiresAt: Long,
+    jumpDestination: String,
+    onJumpDestinationChange: (String) -> Unit,
     onSignInClick: () -> Unit,
     advancedOpen: Boolean,
     onAdvancedToggle: () -> Unit,
@@ -532,7 +541,7 @@ private fun CloudflareAccessForm(
             shape = MaterialTheme.shapes.small,
         ) {
             Text(
-                "Experimental — wire protocol is reverse-engineered from cloudflared; may break with Cloudflare edge updates.",
+                "Experimental — Haven implements the same WebSocket wire protocol as `cloudflared access ssh`. Tested against a small set of tenants; please report mismatches via GitHub #154.",
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onTertiaryContainer,
@@ -540,7 +549,8 @@ private fun CloudflareAccessForm(
         }
 
         Text(
-            "Route SSH for a single Access-protected hostname through Cloudflare's edge — the in-app equivalent of `cloudflared access ssh --hostname <host>`. Tap Sign in to authenticate with your team's identity provider; the resulting JWT is stored encrypted alongside the config.",
+            "Route SSH through a Cloudflare Tunnel published hostname — the in-app equivalent of `cloudflared access ssh --hostname <host>`. " +
+                "Public Tunnel routes need only a hostname. Access-protected routes additionally require a JWT — tap Sign in to capture one via your team's IdP.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -548,24 +558,7 @@ private fun CloudflareAccessForm(
         OutlinedTextField(
             value = hostname,
             onValueChange = onHostnameChange,
-            label = { Text("Access hostname (e.g. ssh.example.com)") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                fontFamily = FontFamily.Monospace,
-            ),
-        )
-
-        OutlinedTextField(
-            value = teamDomain,
-            onValueChange = onTeamDomainChange,
-            label = { Text("Team domain (optional)") },
-            placeholder = {
-                Text(
-                    "myteam.cloudflareaccess.com",
-                    fontFamily = FontFamily.Monospace,
-                )
-            },
+            label = { Text("Hostname (e.g. ssh.example.com)") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             textStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -575,7 +568,7 @@ private fun CloudflareAccessForm(
 
         val now = remember { System.currentTimeMillis() / 1000 }
         val jwtStatus = when {
-            jwt.isBlank() -> "Not signed in"
+            jwt.isBlank() -> "No JWT — only works for unprotected Tunnel routes"
             jwtExpiresAt in 1 until now -> "JWT expired — sign in again"
             jwtExpiresAt > 0 -> {
                 val secs = jwtExpiresAt - now
@@ -587,28 +580,20 @@ private fun CloudflareAccessForm(
         Text(
             jwtStatus,
             style = MaterialTheme.typography.bodySmall,
-            color = if (jwt.isBlank() || (jwtExpiresAt in 1 until now)) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.primary
+            color = when {
+                jwt.isBlank() -> MaterialTheme.colorScheme.onSurfaceVariant
+                jwtExpiresAt in 1 until now -> MaterialTheme.colorScheme.error
+                else -> MaterialTheme.colorScheme.primary
             },
         )
 
-        OutlinedButton(
-            onClick = onSignInClick,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = hostname.isNotBlank(),
-        ) {
-            Text(if (jwt.isBlank()) "Sign in via Cloudflare Access" else "Re-authenticate")
-        }
-
-        // Test the gateway handshake without creating an SSH profile.
-        // The button is intentionally placed below the auth flow so the
-        // happy path (sign-in → test → save) reads top-to-bottom.
+        // Test the WS handshake without creating an SSH profile. Works
+        // with or without a JWT — the failure surface will tell you if
+        // the route needs Access auth.
         OutlinedButton(
             onClick = onTestClick,
             modifier = Modifier.fillMaxWidth(),
-            enabled = hostname.isNotBlank() && jwt.isNotBlank() &&
+            enabled = hostname.isNotBlank() &&
                 testResult !is TunnelViewModel.CloudflareAccessTestResult.Running,
         ) {
             Text(
@@ -655,9 +640,62 @@ private fun CloudflareAccessForm(
         }
 
         TextButton(onClick = onAdvancedToggle) {
-            Text(if (advancedOpen) "Hide advanced" else "Advanced (paste JWT)")
+            Text(if (advancedOpen) "Hide advanced" else "Advanced (Access auth, bastion, paste JWT)")
         }
         if (advancedOpen) {
+            // Access-protected route fields. Hidden by default because
+            // the common case (public Tunnel route) doesn't need them.
+            OutlinedButton(
+                onClick = onSignInClick,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = hostname.isNotBlank(),
+            ) {
+                Text(if (jwt.isBlank()) "Sign in via Cloudflare Access" else "Re-authenticate")
+            }
+            OutlinedTextField(
+                value = teamDomain,
+                onValueChange = onTeamDomainChange,
+                label = { Text("Team domain (optional)") },
+                placeholder = {
+                    Text(
+                        "myteam.cloudflareaccess.com",
+                        fontFamily = FontFamily.Monospace,
+                    )
+                },
+                supportingText = {
+                    Text(
+                        "Only needed for Access-protected routes; lets us capture the team-domain cookie as a fallback if the per-app one is missing.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = FontFamily.Monospace,
+                ),
+            )
+            OutlinedTextField(
+                value = jumpDestination,
+                onValueChange = onJumpDestinationChange,
+                label = { Text("Jump destination (optional)") },
+                placeholder = {
+                    Text(
+                        "internal-host:22",
+                        fontFamily = FontFamily.Monospace,
+                    )
+                },
+                supportingText = {
+                    Text(
+                        "Bastion-mode multi-target tunnels: forwarded as `Cf-Access-Jump-Destination`. Leave blank for one-target routes.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = FontFamily.Monospace,
+                ),
+            )
             Text(
                 "For headless setups: run `cloudflared access token --app https://<hostname>` on another machine and paste the JWT here. Expiry is parsed from the token automatically.",
                 style = MaterialTheme.typography.bodySmall,
@@ -670,7 +708,7 @@ private fun CloudflareAccessForm(
                         ?.expiresAtSeconds ?: 0L
                     onJwtPaste(pasted, expiry)
                 },
-                label = { Text("Cloudflare Access JWT") },
+                label = { Text("Cloudflare Access JWT (optional)") },
                 singleLine = false,
                 minLines = 3,
                 modifier = Modifier

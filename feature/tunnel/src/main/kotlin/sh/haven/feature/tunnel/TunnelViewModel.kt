@@ -55,39 +55,43 @@ class TunnelViewModel @Inject constructor(
 
     /**
      * Build a transient [CloudflareAccessTunnel] from the form's current
-     * state and try a single dial+close against the Access gateway.
+     * state and try a single dial+close against the Cloudflare Tunnel
+     * endpoint.
      *
-     * Success means the WebSocket upgrade completed and the gateway
-     * accepted the JWT. Failure carries the diagnostic detail produced
-     * by `CloudflareAccessTunnel.mapFailure` — typically status code +
-     * `cf-ray` + a body excerpt for Cloudflare error pages.
+     * Success means the WebSocket upgrade completed. Failure carries the
+     * diagnostic detail produced by `CloudflareAccessTunnel.mapFailure` —
+     * typically status code + `cf-ray` + a body excerpt for Cloudflare
+     * error pages. The 302→`/cdn-cgi/access/login` case is mapped to a
+     * "this route needs Access auth, sign in" hint.
+     *
+     * JWT is optional — unprotected Tunnel routes need only a hostname.
      *
      * Writes a row to the Connection Log either way so the user has a
-     * persistent record after the inline UI clears. The
-     * synthetic profileId `cf-access-test:<hostname>` keeps the row
-     * out of the per-profile log lookups but visible in the global
-     * summary view.
+     * persistent record after the inline UI clears. The synthetic
+     * profileId `cf-tunnel-test:<hostname>` keeps the row out of the
+     * per-profile log lookups but visible in the global summary view.
      */
-    fun testCloudflareAccess(hostname: String, jwt: String) {
+    fun testCloudflareAccess(hostname: String, jwt: String, jumpDestination: String = "") {
         val trimmedHost = hostname.trim()
             .removePrefix("https://")
             .removePrefix("http://")
             .substringBefore('/')
-        if (trimmedHost.isEmpty() || jwt.isBlank()) {
+        if (trimmedHost.isEmpty()) {
             _cfTestResult.value = CloudflareAccessTestResult.Failure(
-                "Need both a hostname and a captured JWT",
+                "Hostname required to test the Cloudflare Tunnel connection",
             )
             return
         }
         _cfTestResult.value = CloudflareAccessTestResult.Running
         viewModelScope.launch {
-            val syntheticId = "cf-access-test:$trimmedHost"
+            val syntheticId = "cf-tunnel-test:$trimmedHost"
             val started = System.currentTimeMillis()
             try {
                 withContext(Dispatchers.IO) {
                     val tunnel = CloudflareAccessTunnel.forTest(
                         hostname = trimmedHost,
                         jwt = jwt.trim(),
+                        jumpDestination = jumpDestination.trim(),
                         httpClient = httpClient.newBuilder()
                             .callTimeout(8, TimeUnit.SECONDS)
                             .build(),
@@ -98,13 +102,17 @@ class TunnelViewModel @Inject constructor(
                         tunnel.close()
                     }
                 }
-                val msg = "Gateway reachable; WebSocket upgrade succeeded."
+                val msg = if (jwt.isBlank()) {
+                    "Cloudflare Tunnel reachable; WebSocket upgrade succeeded (no Access auth)."
+                } else {
+                    "Cloudflare Tunnel reachable; WebSocket upgrade succeeded with Access JWT."
+                }
                 _cfTestResult.value = CloudflareAccessTestResult.Success(msg)
                 connectionLogRepository.logEvent(
                     profileId = syntheticId,
                     status = ConnectionLog.Status.CONNECTED,
                     durationMs = System.currentTimeMillis() - started,
-                    details = "Cloudflare Access test connection: $msg",
+                    details = "Cloudflare Tunnel test: $msg",
                 )
             } catch (e: Throwable) {
                 val msg = e.message?.takeIf { it.isNotBlank() } ?: e.javaClass.simpleName
@@ -113,7 +121,7 @@ class TunnelViewModel @Inject constructor(
                     profileId = syntheticId,
                     status = ConnectionLog.Status.FAILED,
                     durationMs = System.currentTimeMillis() - started,
-                    details = "Cloudflare Access test connection failed: $msg",
+                    details = "Cloudflare Tunnel test failed: $msg",
                 )
             }
         }
@@ -153,16 +161,21 @@ class TunnelViewModel @Inject constructor(
     }
 
     /**
-     * Create a Cloudflare Access SSH tunnel config (#154). [jwt] is the
+     * Create a Cloudflare Tunnel config (#154). JWT is **optional** —
+     * unprotected Cloudflare Tunnel published-hostname routes need no
+     * auth; only Access-protected ones do. When present, [jwt] is the
      * `CF_Authorization` JWT obtained either from the in-app WebView
      * login flow or pasted from a desktop `cloudflared access token`
-     * run. [expiresAtSeconds] is the JWT's `exp` claim — used by the
-     * list view to flag stale rows; pass 0 if it couldn't be parsed
-     * (we then skip expiry-aware UX for that row).
+     * run, and [expiresAtSeconds] is its `exp` claim (0 if unparseable).
+     *
+     * [jumpDestination] forwards as `Cf-Access-Jump-Destination` on the
+     * WS upgrade — only meaningful for bastion-mode multi-target
+     * tunnels. Blank for one-target routes.
      *
      * The config is **per-hostname**: dial() on the resulting tunnel
-     * only accepts the configured hostname. This is a deliberate
-     * limitation of how `cloudflared access ssh` itself works.
+     * only accepts the configured hostname. This mirrors how
+     * `cloudflared access ssh --hostname X` itself works — the server
+     * side connector decides the upstream SSH target.
      */
     fun addCloudflareAccessConfig(
         label: String,
@@ -170,6 +183,7 @@ class TunnelViewModel @Inject constructor(
         teamDomain: String,
         jwt: String,
         expiresAtSeconds: Long,
+        jumpDestination: String = "",
     ) {
         if (label.isBlank()) {
             _error.value = "Label is required"
@@ -177,10 +191,6 @@ class TunnelViewModel @Inject constructor(
         }
         if (hostname.isBlank()) {
             _error.value = "Hostname is required"
-            return
-        }
-        if (jwt.isBlank()) {
-            _error.value = "Sign in to capture a Cloudflare Access JWT, or paste one in Advanced"
             return
         }
         val blob = sh.haven.core.tunnel.CloudflareAccessConfigBlob(
@@ -191,6 +201,7 @@ class TunnelViewModel @Inject constructor(
             teamDomain = teamDomain.trim().removePrefix("https://").removePrefix("http://"),
             jwt = jwt.trim(),
             jwtExpiresAt = expiresAtSeconds,
+            jumpDestination = jumpDestination.trim(),
         )
         save(label, TunnelConfigType.CLOUDFLARE_ACCESS, blob.encode())
     }

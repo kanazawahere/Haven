@@ -9,6 +9,8 @@ import okio.ByteString
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -60,21 +62,76 @@ class CloudflareAccessTunnelTest {
     }
 
     @Test
-    fun `dial sends CF_Authorization cookie and ssh subprotocol`() {
+    fun `unprotected route dial sends no auth headers and uses root path`() {
+        // Reproduces rkxspace's setup (issue #154): a Cloudflare Tunnel
+        // published-hostname route with no Access in front. The client
+        // dials `wss://<hostname>/` with no JWT, no subprotocol, and
+        // standard gorilla WS headers — same as `cloudflared access ssh`.
         echoOnce()
         val tunnel = CloudflareAccessTunnel(
             hostname = "ssh.example.com",
-            jwt = "test-jwt-token",
+            jwt = "",
+            jumpDestination = "",
             httpClient = client,
-            gatewayUrlOverride = server.url("/cdn-cgi/access/ssh-gateway").toString(),
+            gatewayUrlOverride = server.url("/").toString(),
         )
         val conn = tunnel.dial("ssh.example.com", 22, 3_000)
         conn.close()
 
         val req = server.takeRequest(2, TimeUnit.SECONDS)!!
-        assertEquals("CF_Authorization=test-jwt-token", req.getHeader("Cookie"))
-        assertEquals("ssh", req.getHeader("Sec-WebSocket-Protocol"))
-        assertEquals("/cdn-cgi/access/ssh-gateway", req.path)
+        assertEquals("/", req.path)
+        assertNull("unauth path must not send Cf-Access-Token", req.getHeader("Cf-Access-Token"))
+        assertNull(
+            "subprotocol header must not be set — cloudflared uses gorilla default",
+            req.getHeader("Sec-WebSocket-Protocol"),
+        )
+        // Standard WS handshake headers should be present (set by OkHttp).
+        assertEquals("websocket", req.getHeader("Upgrade")?.lowercase())
+        tunnel.close()
+    }
+
+    @Test
+    fun `Access-protected route adds Cf-Access-Token header, not a cookie`() {
+        // cloudflared sets Cf-Access-Token: <jwt> as an HTTP header on
+        // the WS upgrade (carrier/carrier.go:154). The CF_Authorization
+        // cookie shape is the browser path — only `Cf-Access-Token` is
+        // what the gateway expects from a programmatic client.
+        echoOnce()
+        val tunnel = CloudflareAccessTunnel(
+            hostname = "ssh.example.com",
+            jwt = "test-jwt-token",
+            jumpDestination = "",
+            httpClient = client,
+            gatewayUrlOverride = server.url("/").toString(),
+        )
+        val conn = tunnel.dial("ssh.example.com", 22, 3_000)
+        conn.close()
+
+        val req = server.takeRequest(2, TimeUnit.SECONDS)!!
+        assertEquals("test-jwt-token", req.getHeader("Cf-Access-Token"))
+        val cookieHeader = req.getHeader("Cookie") ?: ""
+        assertFalse(
+            "Must not send CF_Authorization cookie — gateway uses Cf-Access-Token header",
+            cookieHeader.contains("CF_Authorization"),
+        )
+        tunnel.close()
+    }
+
+    @Test
+    fun `bastion-mode tunnel adds Cf-Access-Jump-Destination header`() {
+        echoOnce()
+        val tunnel = CloudflareAccessTunnel(
+            hostname = "bastion.example.com",
+            jwt = "",
+            jumpDestination = "internal-host:22",
+            httpClient = client,
+            gatewayUrlOverride = server.url("/").toString(),
+        )
+        val conn = tunnel.dial("bastion.example.com", 22, 3_000)
+        conn.close()
+
+        val req = server.takeRequest(2, TimeUnit.SECONDS)!!
+        assertEquals("internal-host:22", req.getHeader("Cf-Access-Jump-Destination"))
         tunnel.close()
     }
 
@@ -83,9 +140,10 @@ class CloudflareAccessTunnelTest {
         val serverInbox = echoOnce()
         val tunnel = CloudflareAccessTunnel(
             hostname = "ssh.example.com",
-            jwt = "j",
+            jwt = "",
+            jumpDestination = "",
             httpClient = client,
-            gatewayUrlOverride = server.url("/cdn-cgi/access/ssh-gateway").toString(),
+            gatewayUrlOverride = server.url("/").toString(),
         )
         val conn = tunnel.dial("ssh.example.com", 22, 3_000)
 
@@ -113,9 +171,10 @@ class CloudflareAccessTunnelTest {
     fun `dial rejects hostname mismatch with a clear error`() {
         val tunnel = CloudflareAccessTunnel(
             hostname = "ssh.example.com",
-            jwt = "j",
+            jwt = "",
+            jumpDestination = "",
             httpClient = client,
-            gatewayUrlOverride = server.url("/cdn-cgi/access/ssh-gateway").toString(),
+            gatewayUrlOverride = server.url("/").toString(),
         )
         val ex = assertThrows(IllegalArgumentException::class.java) {
             tunnel.dial("other.example.com", 22, 3_000)
@@ -126,10 +185,37 @@ class CloudflareAccessTunnelTest {
     }
 
     @Test
-    fun `403 on upgrade surfaces status + cf-ray + body excerpt in the failure message`() {
-        // When the gateway rejects the JWT we want the IOException to
-        // carry enough context that a connection-log row tells us
-        // exactly what happened — not just "Expected HTTP 101".
+    fun `302 to Access login surfaces a sign-in hint`() {
+        // The signal that a Cloudflare Tunnel route is Access-protected
+        // is the edge replying with a 302 whose Location starts with
+        // /cdn-cgi/access/login (cloudflared's IsAccessResponse check).
+        // Surface that as actionable text rather than the generic
+        // "Expected HTTP 101".
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(302)
+                .setHeader("Location", "https://myteam.cloudflareaccess.com/cdn-cgi/access/login/ssh.example.com?kid=abcd")
+                .setHeader("cf-ray", "8c34abcde1234567-LHR"),
+        )
+        val tunnel = CloudflareAccessTunnel(
+            hostname = "ssh.example.com",
+            jwt = "",
+            jumpDestination = "",
+            httpClient = client,
+            gatewayUrlOverride = server.url("/").toString(),
+        )
+        val ex = assertThrows(java.io.IOException::class.java) {
+            tunnel.dial("ssh.example.com", 22, 3_000)
+        }
+        val msg = ex.message ?: ""
+        assertTrue("expected sign-in hint, got: $msg", msg.contains("requires Access auth"))
+        assertTrue("expected hostname in message, got: $msg", msg.contains("ssh.example.com"))
+        assertTrue("expected cf-ray in message, got: $msg", msg.contains("8c34abcde1234567-LHR"))
+        tunnel.close()
+    }
+
+    @Test
+    fun `403 on upgrade surfaces JWT-rejected hint with cf-ray and body excerpt`() {
         server.enqueue(
             MockResponse()
                 .setResponseCode(403)
@@ -141,14 +227,15 @@ class CloudflareAccessTunnelTest {
         val tunnel = CloudflareAccessTunnel(
             hostname = "ssh.example.com",
             jwt = "stale",
+            jumpDestination = "",
             httpClient = client,
-            gatewayUrlOverride = server.url("/cdn-cgi/access/ssh-gateway").toString(),
+            gatewayUrlOverride = server.url("/").toString(),
         )
         val ex = assertThrows(java.io.IOException::class.java) {
             tunnel.dial("ssh.example.com", 22, 3_000)
         }
         val msg = ex.message ?: ""
-        assertTrue("expected re-authenticate hint, got: $msg", msg.contains("re-authenticate"))
+        assertTrue("expected JWT-invalid hint, got: $msg", msg.contains("JWT may be invalid"))
         assertTrue("expected HTTP 403 in message, got: $msg", msg.contains("403"))
         assertTrue("expected cf-ray in message, got: $msg", msg.contains("8c34abcde1234567-LHR"))
         assertTrue(
@@ -168,9 +255,10 @@ class CloudflareAccessTunnelTest {
         )
         val tunnel = CloudflareAccessTunnel(
             hostname = "ssh.example.com",
-            jwt = "j",
+            jwt = "",
+            jumpDestination = "",
             httpClient = client,
-            gatewayUrlOverride = server.url("/cdn-cgi/access/ssh-gateway").toString(),
+            gatewayUrlOverride = server.url("/").toString(),
         )
         val ex = assertThrows(java.io.IOException::class.java) {
             tunnel.dial("ssh.example.com", 22, 3_000)
@@ -187,9 +275,10 @@ class CloudflareAccessTunnelTest {
         echoOnce()
         val tunnel = CloudflareAccessTunnel(
             hostname = "ssh.example.com",
-            jwt = "j",
+            jwt = "",
+            jumpDestination = "",
             httpClient = client,
-            gatewayUrlOverride = server.url("/cdn-cgi/access/ssh-gateway").toString(),
+            gatewayUrlOverride = server.url("/").toString(),
         )
         val conn = tunnel.dial("ssh.example.com", 22, 3_000)
         tunnel.close()

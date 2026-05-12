@@ -185,6 +185,7 @@ class DefaultTunnelFactory @Inject constructor(
             CloudflareAccessTunnel(
                 hostname = parsed.hostname,
                 jwt = parsed.jwt,
+                jumpDestination = parsed.jumpDestination,
                 httpClient = httpClient,
             )
         }
