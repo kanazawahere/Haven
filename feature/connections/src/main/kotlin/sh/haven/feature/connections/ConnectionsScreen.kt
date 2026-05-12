@@ -164,6 +164,13 @@ fun ConnectionsScreen(
     val sshKeys by viewModel.sshKeys.collectAsState()
     val tunnelConfigs by viewModel.tunnelConfigs.collectAsState()
     var showTunnelsScreen by remember { mutableStateOf(false) }
+    // When the user picks "+ New Cloudflare Tunnel" / "+ New WireGuard
+    // tunnel" from a profile's Route-through dropdown, navigate to the
+    // Tunnels screen with the Add dialog auto-opened on that type.
+    // null means "Manage tunnels…" (no auto-open).
+    var pendingTunnelAddType by remember {
+        mutableStateOf<sh.haven.core.data.db.entities.TunnelConfigType?>(null)
+    }
     var showDesktopsScreen by remember { mutableStateOf(false) }
     val profileStatuses by viewModel.profileStatuses.collectAsState()
     val sessions by viewModel.sessions.collectAsState()
@@ -427,7 +434,10 @@ fun ConnectionsScreen(
             groups = groups,
             sshKeys = sshKeys,
             tunnelConfigs = tunnelConfigs,
-            onManageTunnels = { showTunnelsScreen = true },
+            onManageTunnels = { preselect ->
+                pendingTunnelAddType = preselect
+                showTunnelsScreen = true
+            },
             globalSessionManagerLabel = globalSessionManagerLabel,
             subnetScanning = subnetScanning,
             smbSubnetScanning = smbSubnetScanning,
@@ -530,7 +540,10 @@ fun ConnectionsScreen(
             groups = groups,
             sshKeys = sshKeys,
             tunnelConfigs = tunnelConfigs,
-            onManageTunnels = { showTunnelsScreen = true },
+            onManageTunnels = { preselect ->
+                pendingTunnelAddType = preselect
+                showTunnelsScreen = true
+            },
             globalSessionManagerLabel = globalSessionManagerLabel,
             subnetScanning = subnetScanning,
             smbSubnetScanning = smbSubnetScanning,
@@ -650,13 +663,20 @@ fun ConnectionsScreen(
     // edit dialog when the user taps "Manage tunnels…" from the picker.
     if (showTunnelsScreen) {
         androidx.compose.ui.window.Dialog(
-            onDismissRequest = { showTunnelsScreen = false },
+            onDismissRequest = {
+                showTunnelsScreen = false
+                pendingTunnelAddType = null
+            },
             properties = androidx.compose.ui.window.DialogProperties(
                 usePlatformDefaultWidth = false,
             ),
         ) {
             sh.haven.feature.tunnel.TunnelsScreen(
-                onBack = { showTunnelsScreen = false },
+                onBack = {
+                    showTunnelsScreen = false
+                    pendingTunnelAddType = null
+                },
+                initialAddType = pendingTunnelAddType,
             )
         }
     }
@@ -920,7 +940,10 @@ fun ConnectionsScreen(
                     // WireGuard configs that other profiles route
                     // through), so they belong on this screen rather
                     // than in app Settings where they used to live.
-                    IconButton(onClick = { showTunnelsScreen = true }) {
+                    IconButton(onClick = {
+                        pendingTunnelAddType = null
+                        showTunnelsScreen = true
+                    }) {
                         Icon(Icons.Filled.VpnLock, contentDescription = stringResource(R.string.connections_action_tunnels))
                     }
                     IconButton(onClick = { showNewGroupDialog = true }) {

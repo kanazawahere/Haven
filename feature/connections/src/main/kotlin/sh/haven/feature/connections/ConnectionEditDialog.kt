@@ -95,7 +95,13 @@ fun ConnectionEditDialog(
     groups: List<sh.haven.core.data.db.entities.ConnectionGroup> = emptyList(),
     sshKeys: List<sh.haven.core.data.db.entities.SshKey> = emptyList(),
     tunnelConfigs: List<sh.haven.core.data.db.entities.TunnelConfig> = emptyList(),
-    onManageTunnels: (() -> Unit)? = null,
+    /**
+     * Opens the Tunnels screen. When the preselect is non-null, the
+     * destination should auto-open its Add dialog with that type
+     * pre-selected. Used by the Route-through dropdown's "+ New X tunnel"
+     * quick-add affordances; "Manage tunnels…" passes null.
+     */
+    onManageTunnels: ((preselect: sh.haven.core.data.db.entities.TunnelConfigType?) -> Unit)? = null,
     globalSessionManagerLabel: String = "None",
     subnetScanning: Boolean = false,
     smbSubnetScanning: Boolean = false,
@@ -2036,8 +2042,9 @@ fun ConnectionEditDialog(
                                                 Text(stringResource(R.string.connections_tunnel_dropdown_label, tunnel.label))
                                                 Text(
                                                     runCatching {
-                                                        sh.haven.core.data.db.entities.TunnelConfigType
-                                                            .fromStorage(tunnel.type).name
+                                                        friendlyTunnelTypeLabel(
+                                                            sh.haven.core.data.db.entities.TunnelConfigType.fromStorage(tunnel.type),
+                                                        )
                                                     }.getOrDefault(tunnel.type),
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -2054,18 +2061,51 @@ fun ConnectionEditDialog(
                                 }
                             }
                             if (onManageTunnels != null) {
+                                // Three always-visible actions: quick-add
+                                // for each backend with a usable add path,
+                                // and a manage-everything link. CFT and
+                                // WireGuard navigate to the Tunnels add
+                                // dialog with the type chip pre-selected
+                                // so the user doesn't have to know which
+                                // chip to pick. Tailscale's add path is
+                                // disabled in the Tunnels screen pending
+                                // the tsnet bridge, so we don't list it
+                                // here yet.
                                 HorizontalDivider()
                                 DropdownMenuItem(
                                     text = {
                                         Text(
-                                            if (tunnelConfigs.isEmpty()) "Add WireGuard tunnel…"
-                                            else "Manage tunnels…",
+                                            "+ New Cloudflare Tunnel",
                                             color = MaterialTheme.colorScheme.primary,
                                         )
                                     },
                                     onClick = {
                                         proxyExpanded = false
-                                        onManageTunnels()
+                                        onManageTunnels(sh.haven.core.data.db.entities.TunnelConfigType.CLOUDFLARE_ACCESS)
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            "+ New WireGuard tunnel",
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                    },
+                                    onClick = {
+                                        proxyExpanded = false
+                                        onManageTunnels(sh.haven.core.data.db.entities.TunnelConfigType.WIREGUARD)
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            "Manage tunnels…",
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                    },
+                                    onClick = {
+                                        proxyExpanded = false
+                                        onManageTunnels(null)
                                     },
                                 )
                             }
@@ -2564,3 +2604,17 @@ private fun ProfileColorSchemeDialog(
         },
     )
 }
+
+/**
+ * User-facing label for a tunnel type, shown under each tunnel entry in
+ * the Route-through dropdown. Kept in sync with `tunnelTypeLabel` in
+ * `feature:tunnel` — duplicated here rather than re-exported because
+ * exposing the private helper across module boundaries would surface a
+ * UI string from another feature's translation unit.
+ */
+private fun friendlyTunnelTypeLabel(t: sh.haven.core.data.db.entities.TunnelConfigType): String =
+    when (t) {
+        sh.haven.core.data.db.entities.TunnelConfigType.WIREGUARD -> "WireGuard"
+        sh.haven.core.data.db.entities.TunnelConfigType.TAILSCALE -> "Tailscale"
+        sh.haven.core.data.db.entities.TunnelConfigType.CLOUDFLARE_ACCESS -> "Cloudflare Tunnel"
+    }

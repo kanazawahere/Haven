@@ -69,6 +69,16 @@ import java.util.Locale
 fun TunnelsScreen(
     viewModel: TunnelViewModel = hiltViewModel(),
     onBack: (() -> Unit)? = null,
+    /**
+     * If non-null, the Add Tunnel dialog auto-opens on first composition
+     * with this type pre-selected on the chip row. Used by the connection
+     * edit dialog's quick-add affordances ("+ New Cloudflare Tunnel" /
+     * "+ New WireGuard tunnel") so the user doesn't have to know which
+     * chip to pick after navigating in. Default null preserves the
+     * existing entry-point behaviour (manual + button, type starts on
+     * WireGuard).
+     */
+    initialAddType: sh.haven.core.data.db.entities.TunnelConfigType? = null,
 ) {
     val tunnels by viewModel.tunnels.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -77,6 +87,15 @@ fun TunnelsScreen(
 
     var showAddDialog by remember { mutableStateOf(false) }
     var pendingDeleteId by remember { mutableStateOf<String?>(null) }
+
+    // Auto-open the Add dialog if the caller pre-selected a type. The
+    // key parameter scopes this to the first composition for a given
+    // type — re-entering with the same type doesn't re-trigger.
+    LaunchedEffect(initialAddType) {
+        if (initialAddType != null) {
+            showAddDialog = true
+        }
+    }
 
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(error) {
@@ -123,6 +142,8 @@ fun TunnelsScreen(
 
     if (showAddDialog) {
         AddTunnelDialog(
+            initialType = initialAddType
+                ?: sh.haven.core.data.db.entities.TunnelConfigType.WIREGUARD,
             onDismiss = {
                 showAddDialog = false
                 viewModel.resetCfTestResult()
@@ -261,6 +282,7 @@ private fun TunnelRow(
 
 @Composable
 private fun AddTunnelDialog(
+    initialType: sh.haven.core.data.db.entities.TunnelConfigType,
     onDismiss: () -> Unit,
     onSubmitWireguard: (label: String, configText: String) -> Unit,
     onSubmitTailscale: (label: String, authKey: String, controlUrl: String) -> Unit,
@@ -275,7 +297,7 @@ private fun AddTunnelDialog(
         jumpDestination: String,
     ) -> Unit,
 ) {
-    var type by remember { mutableStateOf(sh.haven.core.data.db.entities.TunnelConfigType.WIREGUARD) }
+    var type by remember { mutableStateOf(initialType) }
     var label by remember { mutableStateOf("") }
     var configText by remember { mutableStateOf("") }
     var authKey by remember { mutableStateOf("") }
