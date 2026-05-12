@@ -30,6 +30,18 @@ data class StepCaConfig(
     /** Public OIDC client ID registered with the IdP. */
     val oidcClientId: String,
     /**
+     * OIDC client secret. Null/empty = PKCE-only public client. Non-null
+     * = confidential client; secret is appended to the token-exchange body.
+     *
+     * step-ca's own model treats the secret as semi-public: it's published
+     * via the unauthenticated `/provisioners` endpoint so the bootstrap
+     * flow can fetch it. We persist it in plaintext for parity with
+     * [rootCertPem] (also non-secret-by-design). Real-world deployments
+     * with confidential-client IdPs (Authentik default, Keycloak, Okta)
+     * require this to be set or the token endpoint returns `invalid_client`.
+     */
+    val oidcClientSecret: String? = null,
+    /**
      * step-ca provisioner name — what shows up in `step ca provisioner list`.
      * Sent in the sign-ssh request alongside the OIDC ID token.
      */

@@ -7,9 +7,13 @@ import org.json.JSONObject
 import sh.haven.core.data.db.entities.StepCaConfig
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.SecureRandom
 import javax.inject.Inject
 import javax.inject.Singleton
 import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 
 /**
  * Talks to a step-ca instance over its HTTPS API. Pins TLS to the
@@ -168,6 +172,185 @@ class StepCaApiClient @Inject constructor() {
         val parts = openSsh.trim().split(Regex("\\s+"), limit = 3)
         if (parts.size < 2) return null
         return parts[1].takeIf { it.isNotEmpty() }
+    }
+
+    /**
+     * Equivalent of `step ca bootstrap --ca-url <caUrl> --fingerprint <fp>`.
+     *
+     * Two-hop discovery: first an unverified HTTPS GET for `/roots.pem`
+     * (we can't trust the chain yet — `/roots.pem` is what we'd verify
+     * *against*), then a fingerprint check, then a pinned-TLS GET against
+     * `/provisioners` so the user doesn't have to type OIDC URLs +
+     * client ID + secret. Each OIDC entry's `configurationEndpoint` is
+     * resolved via [OidcDiscovery] to fill in `issuer`/`auth`/`token`.
+     *
+     * On any failure — fingerprint mismatch, transport error, no OIDC
+     * provisioner — returns [BootstrapResult.Failure] with a
+     * human-readable message; the UI shows it next to the bootstrap form.
+     */
+    suspend fun bootstrap(caUrl: String, fingerprintHex: String): BootstrapResult =
+        withContext(Dispatchers.IO) {
+            val trimmedCa = caUrl.trimEnd('/')
+            val rootsPem = try {
+                fetchRootsPemUnverified(trimmedCa)
+            } catch (e: Throwable) {
+                return@withContext BootstrapResult.Failure(
+                    "Couldn't reach $trimmedCa/roots.pem: ${e.message}",
+                )
+            }
+
+            try {
+                CaFingerprint.verifyPem(rootsPem, fingerprintHex)
+            } catch (e: CaFingerprint.FingerprintMismatch) {
+                return@withContext BootstrapResult.Failure(
+                    "Root cert fingerprint mismatch. Expected ${e.expected}, server returned ${e.actual}.",
+                )
+            } catch (e: Throwable) {
+                return@withContext BootstrapResult.Failure(e.message ?: "Invalid fingerprint")
+            }
+
+            val pinned = try {
+                PinnedTls.fromPem(rootsPem)
+            } catch (e: Throwable) {
+                return@withContext BootstrapResult.Failure(
+                    "Couldn't load downloaded /roots.pem: ${e.message}",
+                )
+            }
+
+            val provisionersBody = try {
+                pinnedGet("$trimmedCa/provisioners", pinned)
+            } catch (e: Throwable) {
+                return@withContext BootstrapResult.Failure(
+                    "Couldn't fetch /provisioners: ${e.message}",
+                )
+            }
+
+            val provisioners = try {
+                Provisioners.parseOidc(provisionersBody)
+            } catch (e: Throwable) {
+                return@withContext BootstrapResult.Failure(
+                    "Couldn't parse /provisioners JSON: ${e.message}",
+                )
+            }
+            if (provisioners.isEmpty()) {
+                return@withContext BootstrapResult.Failure(
+                    "This CA exposes no OIDC provisioner. Use Manual entry for JWK/X5C/ACME-only deployments.",
+                )
+            }
+
+            val resolved = provisioners.map { prov ->
+                val endpoints = try {
+                    OidcDiscovery.parse(plainGet(prov.configurationEndpoint))
+                } catch (e: Throwable) {
+                    return@withContext BootstrapResult.Failure(
+                        "OIDC discovery failed for provisioner ${prov.name}: ${e.message}",
+                    )
+                }
+                BootstrapResult.ResolvedProvisioner(
+                    provisioner = prov,
+                    endpoints = endpoints,
+                )
+            }
+
+            BootstrapResult.Success(rootsPem = rootsPem, provisioners = resolved)
+        }
+
+    /**
+     * `/roots.pem` without TLS verification — we're downloading what we'd
+     * verify against. After the response body comes back, the caller
+     * fingerprint-checks it; the connection itself is throwaway.
+     */
+    private fun fetchRootsPemUnverified(caUrlTrimmed: String): String {
+        val url = URL("$caUrlTrimmed/roots.pem")
+        val ctx = SSLContext.getInstance("TLS").apply {
+            init(null, arrayOf<TrustManager>(BlindTrustManager), SecureRandom())
+        }
+        val conn = (url.openConnection() as HttpsURLConnection).apply {
+            sslSocketFactory = ctx.socketFactory
+            hostnameVerifier = javax.net.ssl.HostnameVerifier { _, _ -> true }
+            connectTimeout = 10_000
+            readTimeout = 10_000
+            requestMethod = "GET"
+        }
+        try {
+            val rc = conn.responseCode
+            if (rc !in 200..299) {
+                val err = (conn.errorStream ?: conn.inputStream).bufferedReader().use { it.readText() }
+                error("HTTP $rc: ${err.take(200)}")
+            }
+            return conn.inputStream.bufferedReader().use { it.readText() }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    private fun pinnedGet(url: String, pinned: PinnedTls.Pinned): String {
+        val conn = (URL(url).openConnection() as HttpsURLConnection).apply {
+            sslSocketFactory = pinned.socketFactory
+            connectTimeout = 10_000
+            readTimeout = 10_000
+            requestMethod = "GET"
+            setRequestProperty("Accept", "application/json")
+        }
+        try {
+            val rc = conn.responseCode
+            if (rc !in 200..299) {
+                val err = (conn.errorStream ?: conn.inputStream).bufferedReader().use { it.readText() }
+                error("HTTP $rc: ${err.take(200)}")
+            }
+            return conn.inputStream.bufferedReader().use { it.readText() }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    /**
+     * Plain HTTPS GET against the OIDC discovery endpoint, which lives on
+     * the IdP — *not* the step-ca CA. The IdP is publicly trusted (Authentik
+     * behind LE, Google, Okta) so we use the system trust store here.
+     */
+    private fun plainGet(url: String): String {
+        val conn = (URL(url).openConnection() as HttpsURLConnection).apply {
+            connectTimeout = 10_000
+            readTimeout = 10_000
+            requestMethod = "GET"
+            setRequestProperty("Accept", "application/json")
+        }
+        try {
+            val rc = conn.responseCode
+            if (rc !in 200..299) {
+                val err = (conn.errorStream ?: conn.inputStream).bufferedReader().use { it.readText() }
+                error("HTTP $rc: ${err.take(200)}")
+            }
+            return conn.inputStream.bufferedReader().use { it.readText() }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    /**
+     * Accepts any chain — only safe for the throwaway `/roots.pem` fetch,
+     * which the caller fingerprint-checks before doing anything else with
+     * the bytes.
+     */
+    private object BlindTrustManager : X509TrustManager {
+        override fun checkClientTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) = Unit
+        override fun checkServerTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) = Unit
+        override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = emptyArray()
+    }
+
+    sealed interface BootstrapResult {
+        data class Success(
+            val rootsPem: String,
+            val provisioners: List<ResolvedProvisioner>,
+        ) : BootstrapResult
+
+        data class Failure(val message: String) : BootstrapResult
+
+        data class ResolvedProvisioner(
+            val provisioner: Provisioners.OidcProvisioner,
+            val endpoints: OidcDiscovery.Endpoints,
+        )
     }
 
     sealed interface TestResult {

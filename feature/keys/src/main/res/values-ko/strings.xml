@@ -129,4 +129,15 @@
     <string name="stepca_discovering">검색 중…</string>
     <string name="stepca_import_from_file">파일에서 가져오기</string>
     <string name="stepca_import_failed">가져오기 실패: %1$s</string>
+
+    <!-- 부트스트랩 사전 단계 (#133 2c) -->
+    <string name="stepca_bootstrap_intro">CA URL 과 SHA-256 지문만 입력하면 됩니다. 루트 인증서, 프로비저너, OIDC URL 및 클라이언트 시크릿은 CA 에서 가져옵니다.</string>
+    <string name="stepca_field_fingerprint">루트 인증서 지문 (SHA-256)</string>
+    <string name="stepca_field_fingerprint_hint">`step certificate fingerprint` 출력을 붙여넣기</string>
+    <string name="stepca_bootstrap_action">CA 에서 부트스트랩</string>
+    <string name="stepca_bootstrapping">CA 통신 중…</string>
+    <string name="stepca_bootstrap_pick_provisioner">OIDC 프로비저너 선택:</string>
+    <string name="stepca_manual_entry">직접 입력…</string>
+    <string name="stepca_field_oidc_client_secret">OIDC 클라이언트 시크릿 (선택)</string>
+    <string name="stepca_field_oidc_client_secret_hint">공개 PKCE 전용 클라이언트는 비워 두세요</string>
 </resources>

@@ -32,7 +32,7 @@ import sh.haven.core.data.db.entities.WorkspaceProfile
         WorkspaceItem::class,
         StepCaConfig::class,
     ],
-    version = 51,
+    version = 52,
     exportSchema = true,
 )
 abstract class HavenDatabase : RoomDatabase() {
@@ -763,6 +763,24 @@ abstract class HavenDatabase : RoomDatabase() {
                 addColumnIfMissing(
                     db, "connection_profiles", "portKnockDelayMs",
                     "INTEGER NOT NULL DEFAULT 100",
+                )
+            }
+        }
+
+        /**
+         * Add `oidcClientSecret` to `step_ca_configs` (#133 phase 2c).
+         * Confidential-client IdPs — Authentik default, Keycloak, Okta —
+         * require the secret on the token-exchange POST or reject with
+         * `invalid_client`. step-ca publishes the secret via its public
+         * `/provisioners` endpoint so the new bootstrap flow can pre-fill
+         * it; rows persisted before this migration keep the column NULL
+         * and continue working as PKCE-only public clients.
+         */
+        val MIGRATION_51_52 = object : Migration(51, 52) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                addColumnIfMissing(
+                    db, "step_ca_configs", "oidcClientSecret",
+                    "TEXT DEFAULT NULL",
                 )
             }
         }

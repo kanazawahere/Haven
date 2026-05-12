@@ -128,6 +128,17 @@
     <string name="stepca_import_from_file">Import from file</string>
     <string name="stepca_import_failed">Import failed: %1$s</string>
 
+    <!-- Bootstrap pre-stage (#133 phase 2c) -->
+    <string name="stepca_bootstrap_intro">Bootstrap from CA URL + SHA-256 fingerprint. The rest (root cert, provisioners, OIDC URLs and secret) is fetched from the CA.</string>
+    <string name="stepca_field_fingerprint">Root cert fingerprint (SHA-256)</string>
+    <string name="stepca_field_fingerprint_hint">paste from `step certificate fingerprint`</string>
+    <string name="stepca_bootstrap_action">Bootstrap from CA</string>
+    <string name="stepca_bootstrapping">Talking to CA…</string>
+    <string name="stepca_bootstrap_pick_provisioner">Pick an OIDC provisioner:</string>
+    <string name="stepca_manual_entry">Manual entry…</string>
+    <string name="stepca_field_oidc_client_secret">OIDC client secret (optional)</string>
+    <string name="stepca_field_oidc_client_secret_hint">leave blank for public PKCE-only clients</string>
+
     <!-- FIDO2 resident-key discovery (#152) -->
     <string name="keys_discover_from_security_key">Discover from security key</string>
     <string name="keys_discover_from_security_key_hint">Enumerate resident SSH-SK credentials from an inserted/tapped security key. Skips ssh-keygen -K.</string>

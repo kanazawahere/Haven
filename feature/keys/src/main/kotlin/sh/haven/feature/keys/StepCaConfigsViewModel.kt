@@ -81,4 +81,14 @@ class StepCaConfigsViewModel @Inject constructor(
         )
         return apiClient.fetchSshConfig(transient)
     }
+
+    /**
+     * `step ca bootstrap` equivalent — exposed so the dialog can shrink
+     * from 9 required fields to two (CA URL + SHA-256 fingerprint).
+     * Delegates straight to [StepCaApiClient.bootstrap].
+     */
+    suspend fun bootstrap(
+        caUrl: String,
+        fingerprintHex: String,
+    ): StepCaApiClient.BootstrapResult = apiClient.bootstrap(caUrl, fingerprintHex)
 }

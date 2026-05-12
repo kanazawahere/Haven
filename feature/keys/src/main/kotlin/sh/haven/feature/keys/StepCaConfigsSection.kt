@@ -121,6 +121,9 @@ internal fun StepCaConfigsSectionContent(
             onDiscoverHostCa = { caUrl, rootCert ->
                 viewModel.discoverSshHostCa(caUrl, rootCert)
             },
+            onBootstrap = { caUrl, fingerprint ->
+                viewModel.bootstrap(caUrl, fingerprint)
+            },
         )
     }
     editing?.let { existing ->
@@ -133,6 +136,9 @@ internal fun StepCaConfigsSectionContent(
             },
             onDiscoverHostCa = { caUrl, rootCert ->
                 viewModel.discoverSshHostCa(caUrl, rootCert)
+            },
+            onBootstrap = { caUrl, fingerprint ->
+                viewModel.bootstrap(caUrl, fingerprint)
             },
         )
     }
@@ -251,13 +257,30 @@ private fun StepCaConfigDialog(
     onDismiss: () -> Unit,
     onConfirm: (StepCaConfig) -> Unit,
     onDiscoverHostCa: suspend (caUrl: String, rootCertPem: String) -> StepCaApiClient.SshConfigResult,
+    onBootstrap: suspend (caUrl: String, fingerprintHex: String) -> StepCaApiClient.BootstrapResult,
 ) {
+    // Edit always opens straight in manual mode (rows are already populated).
+    // Add starts in bootstrap mode; the user can switch to manual if their CA
+    // doesn't expose `/provisioners` or runs only non-OIDC provisioners.
+    var manualMode by remember { mutableStateOf(initial != null) }
+
+    // Bootstrap pre-stage state.
+    var bootstrapCaUrl by remember { mutableStateOf("") }
+    var bootstrapFingerprint by remember { mutableStateOf("") }
+    var bootstrapping by remember { mutableStateOf(false) }
+    var bootstrapError by remember { mutableStateOf<String?>(null) }
+    var bootstrapChoices by remember {
+        mutableStateOf<List<StepCaApiClient.BootstrapResult.ResolvedProvisioner>>(emptyList())
+    }
+    var bootstrapRoots by remember { mutableStateOf("") }
+
     var name by remember { mutableStateOf(initial?.name.orEmpty()) }
     var caUrl by remember { mutableStateOf(initial?.caUrl.orEmpty()) }
     var oidcIssuer by remember { mutableStateOf(initial?.oidcIssuer.orEmpty()) }
     var oidcAuthUrl by remember { mutableStateOf(initial?.oidcAuthUrl.orEmpty()) }
     var oidcTokenUrl by remember { mutableStateOf(initial?.oidcTokenUrl.orEmpty()) }
     var oidcClientId by remember { mutableStateOf(initial?.oidcClientId.orEmpty()) }
+    var oidcClientSecret by remember { mutableStateOf(initial?.oidcClientSecret.orEmpty()) }
     var provisioner by remember { mutableStateOf(initial?.provisioner.orEmpty()) }
     var principals by remember { mutableStateOf(initial?.defaultPrincipals.orEmpty()) }
     var rootCert by remember { mutableStateOf(initial?.rootCertPem.orEmpty()) }
@@ -267,6 +290,23 @@ private fun StepCaConfigDialog(
     var importError by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     var error by remember { mutableStateOf<String?>(null) }
+
+    fun adoptProvisioner(chosen: StepCaApiClient.BootstrapResult.ResolvedProvisioner) {
+        provisioner = chosen.provisioner.name
+        oidcClientId = chosen.provisioner.clientId
+        oidcClientSecret = chosen.provisioner.clientSecret.orEmpty()
+        oidcIssuer = chosen.endpoints.issuer
+        oidcAuthUrl = chosen.endpoints.authorizationEndpoint
+        oidcTokenUrl = chosen.endpoints.tokenEndpoint
+        rootCert = bootstrapRoots
+        caUrl = bootstrapCaUrl.trim()
+        if (name.isBlank()) {
+            val host = runCatching { java.net.URI(bootstrapCaUrl.trim()).host }.getOrNull().orEmpty()
+            name = if (host.isNotBlank()) "${chosen.provisioner.name}@$host" else chosen.provisioner.name
+        }
+        bootstrapChoices = emptyList()
+        manualMode = true
+    }
 
     val context = LocalContext.current
     val importFailedTemplate = stringResource(R.string.stepca_import_failed)
@@ -319,6 +359,113 @@ private fun StepCaConfigDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                if (!manualMode) {
+                    Text(
+                        stringResource(R.string.stepca_bootstrap_intro),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    OutlinedTextField(
+                        value = bootstrapCaUrl,
+                        onValueChange = { bootstrapCaUrl = it },
+                        label = { Text(stringResource(R.string.stepca_field_ca_url)) },
+                        placeholder = { Text(stringResource(R.string.stepca_field_ca_url_hint)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Uri,
+                            capitalization = KeyboardCapitalization.None,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = bootstrapFingerprint,
+                        onValueChange = { bootstrapFingerprint = it },
+                        label = { Text(stringResource(R.string.stepca_field_fingerprint)) },
+                        placeholder = { Text(stringResource(R.string.stepca_field_fingerprint_hint)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (bootstrapping) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                            )
+                            Text(
+                                stringResource(R.string.stepca_bootstrapping),
+                                modifier = Modifier.padding(start = 8.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                    if (bootstrapChoices.isNotEmpty()) {
+                        Text(
+                            stringResource(R.string.stepca_bootstrap_pick_provisioner),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                        bootstrapChoices.forEach { choice ->
+                            TextButton(
+                                onClick = { adoptProvisioner(choice) },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(
+                                    "${choice.provisioner.name} — ${choice.endpoints.issuer}",
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        }
+                    }
+                    bootstrapError?.let {
+                        Text(
+                            it,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    TextButton(
+                        enabled = !bootstrapping &&
+                            bootstrapCaUrl.trim().startsWith("https://") &&
+                            bootstrapFingerprint.trim().isNotEmpty(),
+                        onClick = {
+                            bootstrapError = null
+                            bootstrapChoices = emptyList()
+                            bootstrapping = true
+                            coroutineScope.launch {
+                                try {
+                                    val result = onBootstrap(
+                                        bootstrapCaUrl.trim(),
+                                        bootstrapFingerprint.trim(),
+                                    )
+                                    when (result) {
+                                        is StepCaApiClient.BootstrapResult.Failure ->
+                                            bootstrapError = result.message
+                                        is StepCaApiClient.BootstrapResult.Success -> {
+                                            bootstrapRoots = result.rootsPem
+                                            if (result.provisioners.size == 1) {
+                                                adoptProvisioner(result.provisioners.first())
+                                            } else {
+                                                bootstrapChoices = result.provisioners
+                                            }
+                                        }
+                                    }
+                                } finally {
+                                    bootstrapping = false
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.stepca_bootstrap_action))
+                    }
+                    TextButton(
+                        onClick = { manualMode = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.stepca_manual_entry))
+                    }
+                    return@Column
+                }
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -367,6 +514,19 @@ private fun StepCaConfigDialog(
                     onValueChange = { oidcClientId = it },
                     label = { Text(stringResource(R.string.stepca_field_oidc_client_id)) },
                     singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = oidcClientSecret,
+                    onValueChange = { oidcClientSecret = it },
+                    label = { Text(stringResource(R.string.stepca_field_oidc_client_secret)) },
+                    placeholder = { Text(stringResource(R.string.stepca_field_oidc_client_secret_hint)) },
+                    singleLine = true,
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        capitalization = KeyboardCapitalization.None,
+                    ),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
@@ -465,7 +625,7 @@ private fun StepCaConfigDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = {
+            if (manualMode) TextButton(onClick = {
                 val problem = validate(
                     context = context,
                     name = name,
@@ -498,6 +658,7 @@ private fun StepCaConfigDialog(
                     oidcAuthUrl = oidcAuthUrl.trim(),
                     oidcTokenUrl = oidcTokenUrl.trim(),
                     oidcClientId = oidcClientId.trim(),
+                    oidcClientSecret = oidcClientSecret.trim().ifBlank { null },
                     provisioner = provisioner.trim(),
                     defaultPrincipals = principals.trim(),
                     rootCertPem = rootCert.trim(),
