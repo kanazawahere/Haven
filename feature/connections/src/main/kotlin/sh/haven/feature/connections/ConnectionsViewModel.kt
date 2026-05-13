@@ -1225,11 +1225,13 @@ class ConnectionsViewModel @Inject constructor(
         val domain = profile.smbDomain ?: ""
         viewModelScope.launch {
             repository.markConnected(profile.id)
+            // Hoisted out of try so the catch block can see them when
+            // cleaning up after a connect failure (#121).
+            var sshClientCloseable: java.io.Closeable? = null
+            var tunnelPort: Int? = null
             try {
                 _connectingProfileId.value = profile.id
                 val sshProfileId = profile.smbSshProfileId
-                var sshClientCloseable: java.io.Closeable? = null
-                var tunnelPort: Int? = null
 
                 if (profile.smbSshForward && sshProfileId != null) {
                     val (sshSessionId, _) = connectJumpHost(
@@ -1277,6 +1279,22 @@ class ConnectionsViewModel @Inject constructor(
                 _navigateToSmb.value = profile.id
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to connect SMB", e)
+                // Connect-failure cleanup — same pattern as the VNC/RDP
+                // path in DesktopViewModel (#121). On failure neither the
+                // local port forward nor the SSH tunnel-dependent set
+                // unwound on its own, leaving the SSH session green-dotted
+                // in the connections list and the next retry racing
+                // against stale state.
+                if (tunnelPort != null && sshClientCloseable is SshClient) {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            sshClientCloseable.delPortForwardingL("127.0.0.1", tunnelPort!!)
+                        }
+                    } catch (cleanupErr: Throwable) {
+                        Log.w(TAG, "SMB tunnel cleanup failed after connect error", cleanupErr)
+                    }
+                }
+                sshSessionManager.releaseTunnelDependent(profile.id)
                 _error.value = "SMB: ${e.message}"
             } finally {
                 _connectingProfileId.value = null

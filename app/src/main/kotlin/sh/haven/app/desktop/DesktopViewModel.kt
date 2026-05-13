@@ -313,11 +313,13 @@ class DesktopViewModel @Inject constructor(
                 profileId = profileId,
             )
 
+            // Hoisted out of try so the catch block can clean them up
+            // when the dial fails (#121).
+            var tunnelPort: Int? = null
+            var tunnelSessionId: String? = null
             try {
                 val actualHost: String
                 val actualPort: Int
-                var tunnelPort: Int? = null
-                var tunnelSessionId: String? = null
                 // WireGuard / Tailscale TunneledConnection — non-null when
                 // the profile has tunnelConfigId set and we're not going
                 // through SSH RemoteForward instead.
@@ -438,6 +440,18 @@ class DesktopViewModel @Inject constructor(
                 _activeTabIndex.value = tabs.size - 1
             } catch (e: Exception) {
                 Log.e(TAG, "VNC connect failed", e)
+                // Connect-failure cleanup (#121, KoriKraut on v5.33.0).
+                // The successful-disconnect path runs these via
+                // disconnectTab, but on a failed dial neither runs without
+                // help here: the local port forward stays bound on the
+                // SSH client and the SSH session keeps this profile in
+                // its tunnel-dependent set, so the connections list still
+                // shows a green dot. The next retry then races against
+                // that stale state. Both calls are no-op when the value
+                // is null / unknown, so a failure before setPortForwardingL
+                // is also safe.
+                tearDownTunnel(tunnelPort, tunnelSessionId)
+                releaseSshTunnelDependent(profileId)
                 // Add tab in error state so user sees the error
                 val errorTab = tab.copy(
                     _error = MutableStateFlow(VncViewModel.describeError(e, host, port)),
@@ -482,11 +496,13 @@ class DesktopViewModel @Inject constructor(
             val colorTag = resolveColorTag(profileId)
             val tabId = UUID.randomUUID().toString()
 
+            // Hoisted out of try so the catch block can clean them up
+            // when the dial fails (#121).
+            var tunnelPort: Int? = null
+            var tunnelSessionId: String? = null
             try {
                 val actualHost: String
                 val actualPort: Int
-                var tunnelPort: Int? = null
-                var tunnelSessionId: String? = null
 
                 // SOCKS5 endpoint of any WireGuard / Tailscale tunnel the
                 // profile selected (#149 step 4 + 9). Only consulted when
@@ -598,6 +614,10 @@ class DesktopViewModel @Inject constructor(
                 if (profileId != null) {
                     connectionLogRepository.logEvent(profileId, ConnectionLog.Status.FAILED, details = e.message)
                 }
+                // Connect-failure cleanup — same reasoning as the VNC
+                // path above (#121).
+                tearDownTunnel(tunnelPort, tunnelSessionId)
+                releaseSshTunnelDependent(profileId)
                 // Show error in a temporary tab (no session to close)
                 val errorTab = DesktopTab.Rdp(
                     id = tabId,
