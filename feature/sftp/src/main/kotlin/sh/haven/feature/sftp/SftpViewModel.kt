@@ -6,8 +6,10 @@ import androidx.documentfile.provider.DocumentFile
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.jcraft.jsch.ChannelSftp
-import com.jcraft.jsch.SftpProgressMonitor
+import sh.haven.core.ssh.SshIoException
+import sh.haven.core.ssh.sftp.ListResult
+import sh.haven.core.ssh.sftp.SftpSession
+import sh.haven.core.ssh.sftp.SftpWriteMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -93,8 +95,8 @@ data class FileClipboard(
     val sourceBackendType: BackendType,
     val sourceRemoteName: String?,
     val isCut: Boolean,
-    /** Cached SFTP channel from source — survives profile switch. */
-    @Transient val sourceSftpChannel: com.jcraft.jsch.ChannelSftp? = null,
+    /** Cached SFTP session from source — survives profile switch. */
+    @Transient val sourceSftpSession: SftpSession? = null,
     /** Cached SMB client from source — survives profile switch. */
     @Transient val sourceSmbClient: sh.haven.core.smb.SmbClient? = null,
 )
@@ -838,25 +840,25 @@ class SftpViewModel @Inject constructor(
         val profileId = _activeProfileId.value ?: return
         Log.d(TAG, "copyToClipboard: ${entries.size} entries, isCut=$isCut, profile=$profileId, " +
             "isRclone=${_isRcloneProfile.value}, isSmb=${_isSmbProfile.value}, " +
-            "rcloneRemote=$activeRcloneRemote, sftpChannel=${sftpChannel?.isConnected}, smbClient=${activeSmbClient != null}")
+            "rcloneRemote=$activeRcloneRemote, sftpSession=${sftpSession?.isConnected}, smbClient=${activeSmbClient != null}")
         val backendType = when {
             _isLocalProfile.value -> BackendType.LOCAL
             _isRcloneProfile.value -> BackendType.RCLONE
             _isSmbProfile.value -> BackendType.SMB
             else -> BackendType.SFTP
         }
-        // Open a dedicated SFTP channel for copy (separate from browse channel)
-        val copyChannel = if (backendType == BackendType.SFTP) {
-            sessionManager.openSftpForProfile(profileId)
+        // Open a dedicated SFTP session for copy (separate from browse session)
+        val copySession = if (backendType == BackendType.SFTP) {
+            sessionManager.openSftpSession(profileId)
         } else null
-        Log.d(TAG, "copyToClipboard: dedicated copy channel=${copyChannel?.isConnected}")
+        Log.d(TAG, "copyToClipboard: dedicated copy session=${copySession?.isConnected}")
         _clipboard.value = FileClipboard(
             entries = entries,
             sourceProfileId = profileId,
             sourceBackendType = backendType,
             sourceRemoteName = activeRcloneRemote,
             isCut = isCut,
-            sourceSftpChannel = copyChannel,
+            sourceSftpSession = copySession,
             sourceSmbClient = if (backendType == BackendType.SMB) activeSmbClient else null,
         )
         _message.value = "${entries.size} item${if (entries.size > 1) "s" else ""} ${if (isCut) "cut" else "copied"}"
@@ -866,7 +868,7 @@ class SftpViewModel @Inject constructor(
         _clipboard.value = null
     }
 
-    private var sftpChannel: ChannelSftp? = null
+    private var sftpSession: SftpSession? = null
     private var activeSmbClient: SmbClient? = null
 
     /**
@@ -877,12 +879,14 @@ class SftpViewModel @Inject constructor(
      */
     private fun sftpOpener(profileId: String, path: String): SftpStreamServer.Opener =
         SftpStreamServer.Opener { offset ->
-            val channel = getOrOpenChannel(profileId)
+            val session = getOrOpenSession(profileId)
                 ?: throw java.io.IOException("SFTP not connected")
-            if (offset > 0) {
-                channel.get(path, null as SftpProgressMonitor?, offset)
-            } else {
-                channel.get(path)
+            // SftpStreamServer.Opener.open is a non-suspend functional
+            // interface (called from the HTTP server's worker thread) —
+            // bridge to SftpSession's suspend API with runBlocking. The
+            // calling thread is already happy to block on I/O.
+            kotlinx.coroutines.runBlocking {
+                session.openInputStream(path, if (offset > 0) offset else 0L)
             }
         }
 
@@ -1051,7 +1055,7 @@ class SftpViewModel @Inject constructor(
         _isSmbProfile.value = isSmb
         _isRcloneProfile.value = isRclone
         _activeProfileId.value = profileId
-        sftpChannel = null
+        sftpSession = null
         activeSmbClient = null
         activeRcloneRemote = null
         _remoteCapabilities.value = sh.haven.core.rclone.RemoteCapabilities()
@@ -1080,7 +1084,7 @@ class SftpViewModel @Inject constructor(
                 }
                 else -> {
                     viewModelScope.launch(Dispatchers.IO) {
-                        sftpChannel = sessionManager.openSftpForProfile(profileId)
+                        sftpSession = sessionManager.openSftpSession(profileId)
                     }
                 }
             }
@@ -1342,18 +1346,10 @@ class SftpViewModel @Inject constructor(
                                     _transferProgress.value = TransferProgress(dlLabel, total, transferred)
                                 }
                             } else {
-                                val channel = getOrOpenChannel(profileId) ?: throw IllegalStateException("Not connected")
-                                channel.get(entry.path, out, object : SftpProgressMonitor {
-                                    override fun init(op: Int, src: String, dest: String, max: Long) {
-                                        _transferProgress.value = TransferProgress(dlLabel, max, 0)
-                                    }
-                                    override fun count(bytes: Long): Boolean {
-                                        val prev = _transferProgress.value
-                                        if (prev != null) _transferProgress.value = prev.copy(transferredBytes = prev.transferredBytes + bytes)
-                                        return true
-                                    }
-                                    override fun end() {}
-                                })
+                                val session = getOrOpenSession(profileId) ?: throw IllegalStateException("Not connected")
+                                session.download(entry.path, out) { transferred, total ->
+                                    _transferProgress.value = TransferProgress(dlLabel, total, transferred)
+                                }
                             }
                         }
                     }
@@ -1514,24 +1510,14 @@ class SftpViewModel @Inject constructor(
                             }
                             else -> {
                                 // SFTP
-                                val channel = getOrOpenChannel(profileId)
+                                val session = getOrOpenSession(profileId)
                                     ?: throw IllegalStateException("Not connected")
                                 val uploadLabel = "\u2B06 Uploading $outName"
-                                _transferProgress.value = TransferProgress(uploadLabel, cacheOutput.length(), 0)
-                                withContext(Dispatchers.IO) {
-                                    cacheOutput.inputStream().use { input ->
-                                        var transferred = 0L
-                                        val total = cacheOutput.length()
-                                        val monitor = object : SftpProgressMonitor {
-                                            override fun init(op: Int, src: String, dest: String, max: Long) {}
-                                            override fun count(bytes: Long): Boolean {
-                                                transferred += bytes
-                                                _transferProgress.value = TransferProgress(uploadLabel, total, transferred)
-                                                return true
-                                            }
-                                            override fun end() {}
-                                        }
-                                        channel.put(input, destPath, monitor)
+                                val total = cacheOutput.length()
+                                _transferProgress.value = TransferProgress(uploadLabel, total, 0)
+                                cacheOutput.inputStream().use { input ->
+                                    session.upload(input, total, destPath) { transferred, _ ->
+                                        _transferProgress.value = TransferProgress(uploadLabel, total, transferred)
                                     }
                                 }
                                 sourceDir
@@ -1706,24 +1692,14 @@ class SftpViewModel @Inject constructor(
                         sourceDir
                     }
                     else -> {
-                        val channel = getOrOpenChannel(profileId!!)
+                        val session = getOrOpenSession(profileId!!)
                             ?: throw IllegalStateException("Not connected")
                         val uploadLabel = "\u2B06 Uploading $outName"
-                        _transferProgress.value = TransferProgress(uploadLabel, cacheOutput.length(), 0)
-                        withContext(Dispatchers.IO) {
-                            cacheOutput.inputStream().use { input ->
-                                var transferred = 0L
-                                val total = cacheOutput.length()
-                                val monitor = object : SftpProgressMonitor {
-                                    override fun init(op: Int, src: String, dest: String, max: Long) {}
-                                    override fun count(bytes: Long): Boolean {
-                                        transferred += bytes
-                                        _transferProgress.value = TransferProgress(uploadLabel, total, transferred)
-                                        return true
-                                    }
-                                    override fun end() {}
-                                }
-                                channel.put(input, destPath, monitor)
+                        val total = cacheOutput.length()
+                        _transferProgress.value = TransferProgress(uploadLabel, total, 0)
+                        cacheOutput.inputStream().use { input ->
+                            session.upload(input, total, destPath) { transferred, _ ->
+                                _transferProgress.value = TransferProgress(uploadLabel, total, transferred)
                             }
                         }
                         sourceDir
@@ -3045,11 +3021,11 @@ class SftpViewModel @Inject constructor(
                                 client.upload(input, destPath, fileSize) { _, _ -> }
                             }
                         } else {
-                            val channel = getOrOpenChannel(profileId) ?: throw IllegalStateException("Not connected")
+                            val session = getOrOpenSession(profileId) ?: throw IllegalStateException("Not connected")
                             // Create parent dirs recursively
-                            try { channel.mkdir(destDir) } catch (_: Exception) {}
+                            try { session.mkdir(destDir) } catch (_: Exception) {}
                             appContext.contentResolver.openInputStream(item.doc.uri)?.use { input ->
-                                channel.put(input, destPath)
+                                session.upload(input, fileSize, destPath) { _, _ -> }
                             }
                         }
                     }
@@ -3160,10 +3136,10 @@ class SftpViewModel @Inject constructor(
                 if (f.exists() && f.isFile) f.length() else null
             }
             BackendType.SFTP -> {
-                val channel = getOrOpenChannel(destProfileId) ?: return null
+                val session = getOrOpenSession(destProfileId) ?: return null
                 try {
-                    val attrs = channel.stat(destPath)
-                    if (attrs.isDir) null else attrs.size
+                    val attrs = kotlinx.coroutines.runBlocking { session.stat(destPath) }
+                    if (attrs.isDirectory) null else attrs.size
                 } catch (_: Exception) { null }
             }
             BackendType.SMB -> {
@@ -3308,15 +3284,14 @@ class SftpViewModel @Inject constructor(
                 }
             }
             BackendType.SFTP -> {
-                val channel = cb.sourceSftpChannel
-                    ?: sessionManager.openSftpForProfile(cb.sourceProfileId) ?: return 0
+                val session = cb.sourceSftpSession
+                    ?: sessionManager.openSftpSession(cb.sourceProfileId) ?: return 0
                 val results = mutableListOf<SftpEntry>()
-                channel.ls(entry.path) { lsEntry ->
-                    val name = lsEntry.filename
-                    if (name != "." && name != "..") {
-                        results.add(SftpEntry(name, "${entry.path.trimEnd('/')}/$name", lsEntry.attrs.isDir, 0, 0, ""))
+                kotlinx.coroutines.runBlocking {
+                    session.list(entry.path) { attrs ->
+                        results.add(SftpEntry(attrs.filename, "${entry.path.trimEnd('/')}/${attrs.filename}", attrs.isDirectory, 0, 0, ""))
+                        ListResult.CONTINUE
                     }
-                    com.jcraft.jsch.ChannelSftp.LsEntrySelector.CONTINUE
                 }
                 results
             }
@@ -3387,15 +3362,23 @@ class SftpViewModel @Inject constructor(
                 }
             }
             BackendType.SFTP -> {
-                val channel = cb.sourceSftpChannel
-                    ?: sessionManager.openSftpForProfile(cb.sourceProfileId) ?: return
+                val session = cb.sourceSftpSession
+                    ?: sessionManager.openSftpSession(cb.sourceProfileId) ?: return
                 val results = mutableListOf<SftpEntry>()
-                channel.ls(entry.path) { lsEntry ->
-                    val name = lsEntry.filename
-                    if (name != "." && name != "..") {
-                        results.add(SftpEntry(name, "${entry.path.trimEnd('/')}/$name", lsEntry.attrs.isDir, lsEntry.attrs.size, lsEntry.attrs.mTime.toLong(), ""))
+                kotlinx.coroutines.runBlocking {
+                    session.list(entry.path) { attrs ->
+                        results.add(
+                            SftpEntry(
+                                attrs.filename,
+                                "${entry.path.trimEnd('/')}/${attrs.filename}",
+                                attrs.isDirectory,
+                                attrs.size,
+                                attrs.modifiedTimeSeconds.toLong(),
+                                "",
+                            ),
+                        )
+                        ListResult.CONTINUE
                     }
-                    com.jcraft.jsch.ChannelSftp.LsEntrySelector.CONTINUE
                 }
                 results
             }
@@ -3429,14 +3412,16 @@ class SftpViewModel @Inject constructor(
             when (destType) {
                 BackendType.LOCAL -> java.io.File(parent).mkdirs()
                 BackendType.SFTP -> {
-                    val channel = getOrOpenChannel(destProfileId) ?: return
+                    val session = getOrOpenSession(destProfileId) ?: return
                     // Walk parents shallowest-first, ignoring "already exists".
                     val parts = parent.split("/").filter { it.isNotEmpty() }
                     val isAbsolute = parent.startsWith("/")
                     var acc = if (isAbsolute) "" else "."
-                    for (p in parts) {
-                        acc = if (acc.isEmpty()) "/$p" else "$acc/$p"
-                        try { channel.mkdir(acc) } catch (_: Exception) { /* exists or permission */ }
+                    kotlinx.coroutines.runBlocking {
+                        for (p in parts) {
+                            acc = if (acc.isEmpty()) "/$p" else "$acc/$p"
+                            try { session.mkdir(acc) } catch (_: Exception) { /* exists or permission */ }
+                        }
                     }
                 }
                 BackendType.SMB -> {
@@ -3466,8 +3451,8 @@ class SftpViewModel @Inject constructor(
                 BackendType.LOCAL -> java.io.File(sourcePath).delete()
                 BackendType.RCLONE -> sourceRemoteName?.let { rcloneClient.deleteFile(it, sourcePath) }
                 BackendType.SFTP -> {
-                    val channel = sessionManager.openSftpForProfile(sourceProfileId)
-                    channel?.rm(sourcePath)
+                    val session = sessionManager.openSftpSession(sourceProfileId)
+                    if (session != null) kotlinx.coroutines.runBlocking { session.rm(sourcePath) }
                 }
                 BackendType.SMB -> {
                     val client = smbSessionManager.getClientForProfile(sourceProfileId)
@@ -3764,8 +3749,7 @@ class SftpViewModel @Inject constructor(
      */
     private fun isTransientTransferError(e: Throwable): Boolean {
         return when (e) {
-            is com.jcraft.jsch.JSchException,
-            is com.jcraft.jsch.SftpException,
+            is SshIoException,
             is java.net.SocketException,
             is java.net.SocketTimeoutException,
             is javax.net.ssl.SSLException,
@@ -3854,7 +3838,7 @@ class SftpViewModel @Inject constructor(
      * for an unbounded time while we open a destination channel and the
      * cached file lets us query size and reopen cleanly.
      */
-    private fun crossCopyFile(
+    private suspend fun crossCopyFile(
         cb: FileClipboard, entry: SftpEntry,
         destType: BackendType, destProfileId: String, destRemote: String?,
         destPath: String,
@@ -3887,14 +3871,19 @@ class SftpViewModel @Inject constructor(
                     rcloneClient.copyFile(srcFile.parent!!, srcFile.name, destRemote!!, destPath)
                 }
                 BackendType.SFTP -> {
-                    val channel = getOrOpenChannel(destProfileId) ?: throw IllegalStateException("SFTP not connected")
+                    val session = getOrOpenSession(destProfileId) ?: throw IllegalStateException("SFTP not connected")
                     srcFile.inputStream().use { input ->
-                        val monitor = sftpProgressMonitor(label, total, resumeFromByte)
-                        val mode = if (resumeFromByte > 0) ChannelSftp.RESUME else ChannelSftp.OVERWRITE
-                        // RESUME mode: JSch skips source up to destination size
-                        // and appends the remainder, so we pass the full stream
-                        // (no caller-side skip).
-                        channel.put(input, destPath, monitor, mode)
+                        val mode = if (resumeFromByte > 0) SftpWriteMode.RESUME else SftpWriteMode.OVERWRITE
+                        // RESUME mode: the underlying library skips source up to
+                        // destination size and appends the remainder, so we pass
+                        // the full stream (no caller-side skip).
+                        session.upload(
+                            input,
+                            sizeHint = total,
+                            destPath = destPath,
+                            mode = mode,
+                            onBytes = sftpProgressCallback(label, total, resumeFromByte),
+                        )
                     }
                 }
                 BackendType.SMB -> {
@@ -3927,12 +3916,15 @@ class SftpViewModel @Inject constructor(
                     rcloneClient.copyFile(srcRemote, entry.path, tempFile.parent!!, tempFile.name)
                 }
                 BackendType.SFTP -> {
-                    val channel = cb.sourceSftpChannel
-                        ?: sessionManager.openSftpForProfile(cb.sourceProfileId)
+                    val session = cb.sourceSftpSession
+                        ?: sessionManager.openSftpSession(cb.sourceProfileId)
                         ?: throw IllegalStateException("SFTP not connected")
                     tempFile.outputStream().use { out ->
-                        val monitor = sftpProgressMonitor("\u2B07 $baseLabel", knownSize * 2, 0)
-                        channel.get(entry.path, out, monitor)
+                        session.download(
+                            srcPath = entry.path,
+                            output = out,
+                            onBytes = sftpProgressCallback("\u2B07 $baseLabel", knownSize * 2, 0),
+                        )
                     }
                 }
                 BackendType.SMB -> {
@@ -3975,11 +3967,16 @@ class SftpViewModel @Inject constructor(
                     rcloneClient.copyFile(tempFile.parent!!, tempFile.name, destRemote!!, destPath)
                 }
                 BackendType.SFTP -> {
-                    val channel = getOrOpenChannel(destProfileId) ?: throw IllegalStateException("SFTP not connected")
+                    val session = getOrOpenSession(destProfileId) ?: throw IllegalStateException("SFTP not connected")
                     tempFile.inputStream().use { input ->
-                        val monitor = sftpProgressMonitor("\u2B06 $baseLabel", downloaded * 2, downloaded)
-                        val mode = if (resumeFromByte > 0) ChannelSftp.RESUME else ChannelSftp.OVERWRITE
-                        channel.put(input, destPath, monitor, mode)
+                        val mode = if (resumeFromByte > 0) SftpWriteMode.RESUME else SftpWriteMode.OVERWRITE
+                        session.upload(
+                            input,
+                            sizeHint = downloaded,
+                            destPath = destPath,
+                            mode = mode,
+                            onBytes = sftpProgressCallback("\u2B06 $baseLabel", downloaded * 2, downloaded),
+                        )
                     }
                 }
                 BackendType.SMB -> {
@@ -3997,28 +3994,21 @@ class SftpViewModel @Inject constructor(
     }
 
     /**
-     * Inline-built [SftpProgressMonitor] that updates [_transferProgress] with
-     * the same label/total throughout a single put or get call. Pre-seeds the
-     * running byte counter with [initialTransferred] so resume-mode transfers
-     * show a continuous bar from destination-already-has-this-many-bytes
-     * rather than restarting at zero.
+     * Lambda for [SftpSession.upload] / [SftpSession.download] `onBytes` that
+     * updates [_transferProgress] with the same label/total throughout a
+     * single put or get call. Pre-seeds the running byte counter with
+     * [initialTransferred] so resume-mode transfers show a continuous bar
+     * from destination-already-has-this-many-bytes rather than restarting
+     * at zero.
      */
-    private fun sftpProgressMonitor(
+    private fun sftpProgressCallback(
         label: String,
         total: Long,
         initialTransferred: Long,
-    ): SftpProgressMonitor = object : SftpProgressMonitor {
-        private var transferred = initialTransferred
-        override fun init(op: Int, src: String, dest: String, max: Long) {
-            _transferProgress.value = TransferProgress(label, total, transferred)
-        }
-        override fun count(bytes: Long): Boolean {
-            transferred += bytes
-            _transferProgress.value = TransferProgress(label, total, transferred)
-            maybePersistQueueProgress(transferred)
-            return true
-        }
-        override fun end() {}
+    ): (Long, Long) -> Unit = { transferred, _ ->
+        val effective = initialTransferred + transferred
+        _transferProgress.value = TransferProgress(label, total, effective)
+        maybePersistQueueProgress(effective)
     }
 
     /**
@@ -4171,7 +4161,7 @@ class SftpViewModel @Inject constructor(
     }
 
     /** Recursively copy a directory between backends. */
-    private fun crossCopyDir(
+    private suspend fun crossCopyDir(
         cb: FileClipboard, entry: SftpEntry,
         destType: BackendType, destProfileId: String, destRemote: String?,
         destPath: String,
@@ -4181,8 +4171,8 @@ class SftpViewModel @Inject constructor(
             BackendType.LOCAL -> java.io.File(destPath).mkdirs()
             BackendType.RCLONE -> rcloneClient.mkdir(destRemote!!, destPath)
             BackendType.SFTP -> {
-                val channel = getOrOpenChannel(destProfileId) ?: return
-                try { channel.mkdir(destPath) } catch (_: Exception) {}
+                val session = getOrOpenSession(destProfileId) ?: return
+                try { kotlinx.coroutines.runBlocking { session.mkdir(destPath) } } catch (_: Exception) {}
             }
             BackendType.SMB -> {
                 val client = activeSmbClient ?: return
@@ -4205,15 +4195,23 @@ class SftpViewModel @Inject constructor(
                 }
             }
             BackendType.SFTP -> {
-                val channel = cb.sourceSftpChannel
-                    ?: sessionManager.openSftpForProfile(cb.sourceProfileId) ?: return
+                val session = cb.sourceSftpSession
+                    ?: sessionManager.openSftpSession(cb.sourceProfileId) ?: return
                 val results = mutableListOf<SftpEntry>()
-                channel.ls(entry.path) { lsEntry ->
-                    val name = lsEntry.filename
-                    if (name != "." && name != "..") {
-                        results.add(SftpEntry(name, "${entry.path.trimEnd('/')}/$name", lsEntry.attrs.isDir, lsEntry.attrs.size, lsEntry.attrs.mTime.toLong(), ""))
+                kotlinx.coroutines.runBlocking {
+                    session.list(entry.path) { attrs ->
+                        results.add(
+                            SftpEntry(
+                                attrs.filename,
+                                "${entry.path.trimEnd('/')}/${attrs.filename}",
+                                attrs.isDirectory,
+                                attrs.size,
+                                attrs.modifiedTimeSeconds.toLong(),
+                                "",
+                            ),
+                        )
+                        ListResult.CONTINUE
                     }
-                    com.jcraft.jsch.ChannelSftp.LsEntrySelector.CONTINUE
                 }
                 results
             }
@@ -4265,9 +4263,11 @@ class SftpViewModel @Inject constructor(
                 else rcloneClient.deleteFile(cb.sourceRemoteName!!, entry.path)
             }
             BackendType.SFTP -> {
-                val channel = cb.sourceSftpChannel
-                    ?: sessionManager.openSftpForProfile(cb.sourceProfileId) ?: return
-                if (entry.isDirectory) channel.rmdir(entry.path) else channel.rm(entry.path)
+                val session = cb.sourceSftpSession
+                    ?: sessionManager.openSftpSession(cb.sourceProfileId) ?: return
+                kotlinx.coroutines.runBlocking {
+                    if (entry.isDirectory) session.rmdir(entry.path) else session.rm(entry.path)
+                }
             }
             BackendType.SMB -> {
                 val client = cb.sourceSmbClient
@@ -4285,19 +4285,19 @@ class SftpViewModel @Inject constructor(
             try {
                 if (!pasteInProgress.get()) _loading.value = true
 
-                // All JSch calls below open or write to channels over the
+                // SSH/SFTP calls below open or write to channels over the
                 // network, so they must run off the Main dispatcher.
                 //
                 // Probe for a home directory: SFTP exposes it cheaply via
-                // channel.home; when SFTP is unavailable (SCP-only servers)
-                // we shell out to `echo "$HOME"` over exec instead. Fall
-                // back to "/" as a last resort.
+                // SftpSession.home(); when SFTP is unavailable (SCP-only
+                // servers) we shell out to `echo "$HOME"` over exec instead.
+                // Fall back to "/" as a last resort.
                 val home: String = withContext(Dispatchers.IO) {
-                    val sftpChannelForHome = sessionManager.openSftpForProfile(profileId)
-                        ?: openMoshSftpChannel(profileId)
-                    if (sftpChannelForHome != null) {
-                        sftpChannel = sftpChannelForHome
-                        sftpChannelForHome.home
+                    val sftpSessionForHome = sessionManager.openSftpSession(profileId)
+                        ?: openMoshSftpSession(profileId)
+                    if (sftpSessionForHome != null) {
+                        sftpSession = sftpSessionForHome
+                        sftpSessionForHome.home()
                     } else {
                         val ssh = sessionManager.getSshClientForProfile(profileId)
                             ?: throw IllegalStateException("Session not connected")
@@ -4410,45 +4410,39 @@ class SftpViewModel @Inject constructor(
     }
 
     private fun resetSftpChannel() {
-        sftpChannel?.let { ch ->
-            try {
-                ch.disconnect()
-            } catch (_: Exception) {
-                // best effort — caller already knows the channel is bad
-            }
-        }
-        sftpChannel = null
+        sftpSession?.close()
+        sftpSession = null
     }
 
-    private fun getOrOpenChannel(profileId: String): ChannelSftp? {
-        sftpChannel?.let { if (it.isConnected) return it }
+    private fun getOrOpenSession(profileId: String): SftpSession? {
+        sftpSession?.let { if (it.isConnected) return it }
         // Try SSH session first, then mosh/ET bootstrap SSH client
-        val channel = sessionManager.openSftpForProfile(profileId)
-            ?: openMoshSftpChannel(profileId)
-            ?: openEtSftpChannel(profileId)
+        val session = sessionManager.openSftpSession(profileId)
+            ?: openMoshSftpSession(profileId)
+            ?: openEtSftpSession(profileId)
             ?: return null
-        sftpChannel = channel
-        return channel
+        sftpSession = session
+        return session
     }
 
-    private fun openMoshSftpChannel(profileId: String): ChannelSftp? {
+    private fun openMoshSftpSession(profileId: String): SftpSession? {
         val client = moshSessionManager.getSshClientForProfile(profileId) as? SshClient
             ?: return null
         return try {
-            client.openSftpChannel()
+            client.openSftpSession()
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to open SFTP channel via mosh SSH client", e)
+            Log.e(TAG, "Failed to open SFTP session via mosh SSH client", e)
             null
         }
     }
 
-    private fun openEtSftpChannel(profileId: String): ChannelSftp? {
+    private fun openEtSftpSession(profileId: String): SftpSession? {
         val client = etSessionManager.getSshClientForProfile(profileId) as? SshClient
             ?: return null
         return try {
-            client.openSftpChannel()
+            client.openSftpSession()
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to open SFTP channel via ET SSH client", e)
+            Log.e(TAG, "Failed to open SFTP session via ET SSH client", e)
             null
         }
     }

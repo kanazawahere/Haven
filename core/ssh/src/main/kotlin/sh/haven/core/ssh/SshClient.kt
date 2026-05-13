@@ -195,6 +195,15 @@ class SshClient : Closeable {
     }
 
     /**
+     * Open a new [sh.haven.core.ssh.sftp.SftpSession] on the current SSH
+     * session — Haven-internal facade over [openSftpChannel] so callers in
+     * feature- and app-modules do not import JSch types directly. Must be
+     * called after [connect].
+     */
+    fun openSftpSession(): sh.haven.core.ssh.sftp.SftpSession =
+        sh.haven.core.ssh.sftp.JschSftpSession(openSftpChannel())
+
+    /**
      * Execute a command on the remote host and return stdout, stderr, and exit status.
      * Must be called after [connect].
      */
