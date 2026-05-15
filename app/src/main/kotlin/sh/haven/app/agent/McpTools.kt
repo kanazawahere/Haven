@@ -156,6 +156,78 @@ internal class McpTools(
             },
         ) { args -> listRcloneDirectory(args) },
 
+        "start_rclone_sync" to ToolHandler(
+            description = "Start an async rclone transfer between two remote paths. mode=copy adds new/updated files (no deletes); mode=sync (a.k.a. \"Mirror\" in the UI) makes destination identical to source and deletes extras; mode=move copies then removes source files. srcFs/dstFs use rclone's remote-prefixed notation, e.g. \"gdrive:Backup/Photos\" or \"gdrive:\" for the remote root. Returns { jobId, mode } — poll get_rclone_sync_status to read finished/success and the transfer/delete counters. Honours the same optional filter and dryRun fields the SFTP sync dialog exposes.",
+            inputSchema = JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("srcFs", JSONObject().apply { put("type", "string"); put("description", "Source remote path, e.g. \"gdrive:Backup/Photos\".") })
+                    put("dstFs", JSONObject().apply { put("type", "string"); put("description", "Destination remote path, e.g. \"gdrive:Mirror/Photos\".") })
+                    put("mode", JSONObject().apply {
+                        put("type", "string")
+                        put("enum", JSONArray().put("copy").put("sync").put("move"))
+                        put("description", "copy = add/update only, sync = mirror (deletes extras in dst), move = copy then delete from src.")
+                    })
+                    put("dryRun", JSONObject().apply { put("type", "boolean"); put("description", "If true, simulate without writing.") })
+                    put("includePatterns", JSONObject().apply {
+                        put("type", "array")
+                        put("items", JSONObject().put("type", "string"))
+                        put("description", "Optional include globs, e.g. [\"*.jpg\"].")
+                    })
+                    put("excludePatterns", JSONObject().apply {
+                        put("type", "array")
+                        put("items", JSONObject().put("type", "string"))
+                        put("description", "Optional exclude globs.")
+                    })
+                    put("minSize", JSONObject().apply { put("type", "string"); put("description", "Optional minimum file size, e.g. \"1K\", \"5M\".") })
+                    put("maxSize", JSONObject().apply { put("type", "string"); put("description", "Optional maximum file size.") })
+                    put("bandwidthLimit", JSONObject().apply { put("type", "string"); put("description", "Optional bandwidth limit, e.g. \"10M\".") })
+                })
+                put("required", JSONArray().put("srcFs").put("dstFs").put("mode"))
+            },
+            consentLevel = ConsentLevel.EVERY_CALL,
+            summarise = { args ->
+                val mode = args.optString("mode", "?")
+                val src = args.optString("srcFs", "?")
+                val dst = args.optString("dstFs", "?")
+                val dry = if (args.optBoolean("dryRun")) " (dry run)" else ""
+                "rclone $mode$dry: $src → $dst?"
+            },
+        ) { args -> startRcloneSync(args) },
+
+        "get_rclone_sync_status" to ToolHandler(
+            description = "Poll the status of an async rclone job started by start_rclone_sync. Returns finished/success/error plus live transfer stats: bytes, totalBytes, speed, transfers, totalTransfers, errors, deletes, deletedDirs. If jobId is omitted, reports on the most recently started job (or returns active=false if none).",
+            inputSchema = JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("jobId", JSONObject().apply { put("type", "integer"); put("description", "Job id returned by start_rclone_sync. Optional — defaults to the active job.") })
+                })
+            },
+        ) { args -> getRcloneSyncStatus(args) },
+
+        "cancel_rclone_sync" to ToolHandler(
+            description = "Cancel a running rclone job started by start_rclone_sync. If jobId is omitted, cancels the active job. No-op if the job is already finished or never existed.",
+            inputSchema = JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("jobId", JSONObject().apply { put("type", "integer"); put("description", "Job id to cancel. Optional — defaults to the active job.") })
+                })
+            },
+            consentLevel = ConsentLevel.ONCE_PER_SESSION,
+            summarise = { _ -> "Cancel the running rclone sync job?" },
+        ) { args -> cancelRcloneSync(args) },
+
+        "get_rclone_stats" to ToolHandler(
+            description = "Return rclone's global transfer counters (bytes, totalBytes, speed, transfers, totalTransfers, errors, deletes, deletedDirs). These reset only when reset_rclone_stats is called or a new sync resets them at start.",
+            inputSchema = emptyObjectSchema(),
+        ) { _ -> getRcloneStats() },
+
+        "reset_rclone_stats" to ToolHandler(
+            description = "Reset rclone's global transfer counters to zero. Useful when running ad-hoc operations outside start_rclone_sync (which already resets on start).",
+            inputSchema = emptyObjectSchema(),
+            consentLevel = ConsentLevel.NEVER,
+        ) { _ -> resetRcloneStats() },
+
         "list_sftp_directory" to ToolHandler(
             description = "DEPRECATED: prefer list_directory(profileId=..., path=...). List files at a path on a connected SFTP profile. Requires an already-connected SSH/SFTP session for the profile.",
             inputSchema = JSONObject().apply {
@@ -1269,6 +1341,144 @@ internal class McpTools(
             }
         } catch (e: Exception) {
             throw McpError(-32603, "Failed to list rclone remotes: ${e.message}")
+        }
+    }
+
+    private suspend fun startRcloneSync(args: JSONObject): JSONObject = withContext(Dispatchers.IO) {
+        val srcFs = args.optString("srcFs").ifEmpty {
+            throw McpError(-32602, "Missing required argument: srcFs")
+        }
+        val dstFs = args.optString("dstFs").ifEmpty {
+            throw McpError(-32602, "Missing required argument: dstFs")
+        }
+        val modeStr = args.optString("mode").ifEmpty {
+            throw McpError(-32602, "Missing required argument: mode")
+        }
+        val mode = when (modeStr.lowercase()) {
+            "copy" -> sh.haven.core.rclone.SyncMode.COPY
+            "sync", "mirror" -> sh.haven.core.rclone.SyncMode.SYNC
+            "move" -> sh.haven.core.rclone.SyncMode.MOVE
+            else -> throw McpError(-32602, "Unknown mode: $modeStr (expected copy/sync/move)")
+        }
+        val includes = args.optJSONArray("includePatterns")?.let { arr ->
+            List(arr.length()) { arr.optString(it) }.filter { it.isNotBlank() }
+        } ?: emptyList()
+        val excludes = args.optJSONArray("excludePatterns")?.let { arr ->
+            List(arr.length()) { arr.optString(it) }.filter { it.isNotBlank() }
+        } ?: emptyList()
+        val filters = sh.haven.core.rclone.SyncFilters(
+            includePatterns = includes,
+            excludePatterns = excludes,
+            minSize = args.optString("minSize").ifBlank { null },
+            maxSize = args.optString("maxSize").ifBlank { null },
+            bandwidthLimit = args.optString("bandwidthLimit").ifBlank { null },
+        )
+        val config = sh.haven.core.rclone.SyncConfig(
+            srcFs = srcFs,
+            dstFs = dstFs,
+            mode = mode,
+            filters = filters,
+            dryRun = args.optBoolean("dryRun", false),
+        )
+        try {
+            ensureRcloneReady()
+            rcloneClient.resetStats()
+            val jobId = rcloneClient.startSync(config)
+            JSONObject().apply {
+                put("jobId", jobId)
+                put("mode", mode.name.lowercase())
+                put("rcMethod", mode.rcMethod)
+                put("srcFs", srcFs)
+                put("dstFs", dstFs)
+                put("dryRun", config.dryRun)
+            }
+        } catch (e: Exception) {
+            throw McpError(-32603, "Failed to start rclone sync: ${e.message}")
+        }
+    }
+
+    private suspend fun getRcloneSyncStatus(args: JSONObject): JSONObject = withContext(Dispatchers.IO) {
+        try {
+            ensureRcloneReady()
+            val jobId = if (args.has("jobId") && !args.isNull("jobId")) {
+                args.optLong("jobId")
+            } else {
+                rcloneClient.activeSyncJobId ?: return@withContext JSONObject().apply {
+                    put("active", false)
+                }
+            }
+            val status = rcloneClient.getJobStatus(jobId)
+            val stats = rcloneClient.getStats()
+            JSONObject().apply {
+                put("active", true)
+                put("jobId", jobId)
+                put("finished", status.finished)
+                put("success", status.success)
+                status.error?.let { put("error", it) }
+                put("duration", status.duration)
+                put("stats", JSONObject().apply {
+                    put("bytes", stats.bytes)
+                    put("totalBytes", stats.totalBytes)
+                    put("speed", stats.speed)
+                    put("transfers", stats.transfers)
+                    put("totalTransfers", stats.totalTransfers)
+                    put("errors", stats.errors)
+                    put("deletes", stats.deletes)
+                    put("deletedDirs", stats.deletedDirs)
+                })
+            }
+        } catch (e: Exception) {
+            throw McpError(-32603, "Failed to get rclone sync status: ${e.message}")
+        }
+    }
+
+    private suspend fun cancelRcloneSync(args: JSONObject): JSONObject = withContext(Dispatchers.IO) {
+        try {
+            ensureRcloneReady()
+            val jobId = if (args.has("jobId") && !args.isNull("jobId")) {
+                args.optLong("jobId")
+            } else {
+                rcloneClient.activeSyncJobId ?: return@withContext JSONObject().apply {
+                    put("cancelled", false)
+                    put("reason", "no active job")
+                }
+            }
+            rcloneClient.cancelJob(jobId)
+            JSONObject().apply {
+                put("cancelled", true)
+                put("jobId", jobId)
+            }
+        } catch (e: Exception) {
+            throw McpError(-32603, "Failed to cancel rclone sync: ${e.message}")
+        }
+    }
+
+    private fun getRcloneStats(): JSONObject {
+        return try {
+            ensureRcloneReady()
+            val s = rcloneClient.getStats()
+            JSONObject().apply {
+                put("bytes", s.bytes)
+                put("totalBytes", s.totalBytes)
+                put("speed", s.speed)
+                put("transfers", s.transfers)
+                put("totalTransfers", s.totalTransfers)
+                put("errors", s.errors)
+                put("deletes", s.deletes)
+                put("deletedDirs", s.deletedDirs)
+            }
+        } catch (e: Exception) {
+            throw McpError(-32603, "Failed to get rclone stats: ${e.message}")
+        }
+    }
+
+    private fun resetRcloneStats(): JSONObject {
+        return try {
+            ensureRcloneReady()
+            rcloneClient.resetStats()
+            JSONObject().apply { put("reset", true) }
+        } catch (e: Exception) {
+            throw McpError(-32603, "Failed to reset rclone stats: ${e.message}")
         }
     }
 
