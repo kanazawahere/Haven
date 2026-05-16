@@ -926,7 +926,7 @@ internal class McpTools(
         ) { _ -> openDeveloperSettings() },
 
         "install_apk_from_url" to ToolHandler(
-            description = "Download an APK from a URL and install it on the device via Shizuku-driven `pm install`. Useful for agent-driven self-update or sideloading over VPN where wireless ADB isn't reachable. Requires Shizuku running and granted to Haven. Installation happens silently from the user's perspective once consent is given — no system installer dialog.",
+            description = "Download an APK from a URL and install it on the device. With Shizuku running and granted, install is silent via `pm install`. Without Shizuku, falls back to firing the system installer dialog (single user tap to confirm) — response includes `pending: true` so the caller knows to wait for the user. Useful for agent-driven self-update or sideloading over VPN where wireless ADB isn't reachable.",
             inputSchema = JSONObject().apply {
                 put("type", "object")
                 put("properties", JSONObject().apply {
@@ -942,6 +942,28 @@ internal class McpTools(
                 "INSTALL APK from ${args.optString("url").take(60)} — runs as code on this device. Only allow trusted sources."
             },
         ) { args -> installApkFromUrl(args) },
+
+        "install_apk_from_backend" to ToolHandler(
+            description = "Install an APK from a path on any connected backend (local, SSH/SFTP, SMB, rclone, Reticulum). Streams APK bytes via the existing FileBackend abstraction. Same Shizuku/system-installer fallback as install_apk_from_url. Gated by Settings → Agent endpoint → \"Allow agents to read file contents\" and confirmed per-call.",
+            inputSchema = JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("profileId", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Connection profile ID, or 'local' for the device filesystem.")
+                    })
+                    put("path", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Absolute path to the APK file on the chosen backend.")
+                    })
+                })
+                put("required", JSONArray().put("profileId").put("path"))
+            },
+            consentLevel = ConsentLevel.EVERY_CALL,
+            summarise = { args ->
+                "INSTALL APK from ${args.optString("path").take(60)} on profile ${args.optString("profileId")} — runs as code on this device. Only allow trusted sources."
+            },
+        ) { args -> installApkFromBackend(args) },
 
         "enable_wireless_adb" to ToolHandler(
             description = "Turn on Android's Wireless debugging (`adb connect` over WiFi) by setting `adb_wifi_enabled=1` via Shizuku. Requires Shizuku to be running and Haven to have its permission granted. NOTE: on Android 11+, a host that has never paired with this device must still complete the pairing-code flow manually — this tool cannot bypass that. For an already-paired host (the common case after a phone reboot) flipping the flag is enough.",
@@ -2845,6 +2867,33 @@ internal class McpTools(
         }
     }
 
+    /** Shared upper bound on staged APK size — 200 MiB; release APKs are ~80–100 MiB. */
+    private val agentInstallMaxBytes: Long = 200L * 1024 * 1024
+
+    /** Stage a fresh File handle under cacheDir/agent-install/. */
+    private fun stageApkFile(): File {
+        val dir = File(context.cacheDir, "agent-install").apply { mkdirs() }
+        return File(dir, "haven-agent-install-${System.currentTimeMillis()}.apk")
+    }
+
+    /**
+     * Verify that the staged file's first two bytes are the zip
+     * magic ("PK") — cheap defence against an HTML 200, wrong file
+     * type, or a truncated download.
+     */
+    private fun assertApkMagic(target: File, written: Long) {
+        val firstFour = target.inputStream().use { stream ->
+            ByteArray(4).also { stream.read(it) }
+        }
+        if (firstFour[0] != 0x50.toByte() || firstFour[1] != 0x4B.toByte()) {
+            target.delete()
+            throw McpError(
+                -32603,
+                "Got $written bytes but they don't start with the zip/APK magic — wrong path/URL?",
+            )
+        }
+    }
+
     private suspend fun installApkFromUrl(args: JSONObject): JSONObject = withContext(Dispatchers.IO) {
         val urlString = args.optString("url").ifEmpty {
             throw McpError(-32602, "Missing required argument: url")
@@ -2858,12 +2907,8 @@ internal class McpTools(
             throw McpError(-32602, "Only http(s) URLs are supported (got ${url.protocol})")
         }
         // Stage the APK in app cache, then pipe it into `pm install -S`
-        // via Shizuku. Cap at 200 MB so a misdirected URL can't fill
-        // the device storage; full Haven release APKs are ~80–100 MB,
-        // so the cap leaves headroom.
-        val maxBytes = 200L * 1024 * 1024
-        val cacheDir = File(context.cacheDir, "agent-install").apply { mkdirs() }
-        val target = File(cacheDir, "haven-agent-install-${System.currentTimeMillis()}.apk")
+        // via Shizuku (or hand off to the system installer dialog).
+        val target = stageApkFile()
         val written = try {
             val conn = (url.openConnection() as java.net.HttpURLConnection).apply {
                 connectTimeout = 30_000
@@ -2884,9 +2929,9 @@ internal class McpTools(
                             val n = input.read(buf)
                             if (n < 0) break
                             total += n
-                            if (total > maxBytes) {
+                            if (total > agentInstallMaxBytes) {
                                 target.delete()
-                                throw McpError(-32603, "APK exceeds ${maxBytes / (1024 * 1024)} MiB cap")
+                                throw McpError(-32603, "APK exceeds ${agentInstallMaxBytes / (1024 * 1024)} MiB cap")
                             }
                             output.write(buf, 0, n)
                         }
@@ -2906,47 +2951,190 @@ internal class McpTools(
         // Reject HTML / plain-text bodies that 200'd despite being the
         // wrong content type. Cheap and catches the most common
         // wrong-URL failure mode.
-        val firstFour = target.inputStream().use { stream ->
-            ByteArray(4).also { stream.read(it) }
-        }
-        if (firstFour[0] != 0x50.toByte() || firstFour[1] != 0x4B.toByte()) {
-            target.delete()
-            throw McpError(
-                -32603,
-                "Downloaded $written bytes but they don't start with the zip/APK magic — wrong URL?",
-            )
-        }
+        assertApkMagic(target, written)
+        return@withContext installStagedApk(target, written)
+    }
+
+    /**
+     * Install an APK that's already been staged at [target]. Tries
+     * the Shizuku-driven `pm install -S` path first; falls back to
+     * firing the system installer dialog via `Intent.ACTION_VIEW`
+     * when Shizuku is unavailable.
+     *
+     * Caller owns [target]'s creation; this function takes ownership
+     * of cleanup. On the system-installer fallback path the file
+     * survives long enough for the installer to read it and is
+     * cleaned up by a delayed Handler.
+     */
+    private fun installStagedApk(target: File, written: Long): JSONObject {
         // Hand off to Shizuku — `pm install -S <size>` reads APK bytes
         // from stdin. Working directory of the shell process doesn't
         // need to see our cache dir; we pipe FileInputStream directly.
+        //
+        // NOTE: do NOT wrap the Shizuku call in a `finally { delete }`
+        // here — the Shizuku-unavailable branch needs the staged APK
+        // to survive long enough for the system installer to read it
+        // via FileProvider. Each terminal path handles its own cleanup.
         val result = try {
             sh.haven.core.local.WaylandSocketHelper.execAsShizukuWithStdin(
                 cmd = "pm install -S $written",
                 stdin = target.inputStream(),
             )
         } catch (e: IllegalStateException) {
-            target.delete()
-            throw McpError(
-                -32603,
-                "${e.message}. Install Shizuku from https://shizuku.rikka.app and grant Haven permission, then retry.",
-            )
+            // Shizuku unavailable — fall back to the system installer
+            // dialog. The user gets one confirmation prompt on-device;
+            // the MCP call returns immediately with pending=true. The
+            // staged APK is intentionally not deleted here — the
+            // system installer reads it via FileProvider after this
+            // function returns. A delayed Handler cleans up after 5
+            // min in case the user dismisses the dialog.
+            return launchSystemInstaller(target, written, e.message)
         } catch (e: Exception) {
             target.delete()
             throw McpError(-32603, "Shizuku exec failed: ${e.message}")
-        } finally {
-            // Best-effort cleanup of the staged APK regardless of outcome.
-            target.delete()
         }
+        // Shizuku path took ownership of the bytes; delete the staged
+        // APK regardless of the install outcome.
+        target.delete()
         if (result.exitCode != 0 || !result.output.contains("Success")) {
             throw McpError(
                 -32603,
                 "pm install exited ${result.exitCode}: ${result.output.take(500)}",
             )
         }
-        JSONObject().apply {
+        return JSONObject().apply {
             put("installed", true)
             put("bytesDownloaded", written)
             put("output", result.output)
+        }
+    }
+
+    private suspend fun installApkFromBackend(args: JSONObject): JSONObject = withContext(Dispatchers.IO) {
+        val profileId = args.optString("profileId").ifEmpty {
+            throw McpError(-32602, "Missing required argument: profileId")
+        }
+        val path = args.optString("path").ifEmpty {
+            throw McpError(-32602, "Missing required argument: path")
+        }
+        // Same gate as serve_file — installing an APK reads bytes
+        // from a connected backend, so it falls under "allow agents
+        // to read file contents". The system installer still asks
+        // for confirmation on the Shizuku-less path; on the Shizuku
+        // path the EVERY_CALL consent on this tool covers it.
+        if (!preferencesRepository.agentAllowFileRead.first()) {
+            throw McpError(
+                -32011,
+                "agent file read is disabled — enable in Settings → Agent endpoint",
+            )
+        }
+        val resolution = transportSelector.resolveFileBackend(profileId)
+            ?: throw McpError(-32603, "No connected backend for profile $profileId")
+        val backend = resolution.backend
+
+        val entry = try {
+            backend.stat(path)
+        } catch (t: Throwable) {
+            throw McpError(-32603, "Failed to stat $path: ${t.message}")
+        }
+        if (entry.isDirectory) {
+            throw McpError(-32602, "$path is a directory; need an APK file")
+        }
+        if (entry.size > agentInstallMaxBytes) {
+            throw McpError(
+                -32603,
+                "$path is ${entry.size} bytes — exceeds ${agentInstallMaxBytes / (1024 * 1024)} MiB cap",
+            )
+        }
+
+        val target = stageApkFile()
+        val written = try {
+            backend.openInputStream(path, 0).use { input ->
+                target.outputStream().use { output ->
+                    val buf = ByteArray(64 * 1024)
+                    var total = 0L
+                    while (true) {
+                        val n = input.read(buf)
+                        if (n < 0) break
+                        total += n
+                        if (total > agentInstallMaxBytes) {
+                            target.delete()
+                            throw McpError(-32603, "APK exceeds ${agentInstallMaxBytes / (1024 * 1024)} MiB cap")
+                        }
+                        output.write(buf, 0, n)
+                    }
+                    total
+                }
+            }
+        } catch (e: McpError) {
+            throw e
+        } catch (e: Exception) {
+            target.delete()
+            throw McpError(-32603, "Read from ${backend.label} failed: ${e.message}")
+        }
+        assertApkMagic(target, written)
+        installStagedApk(target, written)
+    }
+
+    /**
+     * Shizuku-less fallback for [installApkFromUrl] — fires the
+     * system installer dialog via `Intent.ACTION_VIEW` with a
+     * FileProvider URI for the staged APK. Returns a structured
+     * response indicating the install is pending user confirmation
+     * on-device.
+     *
+     * The APK stays in [target] until the system installer reads
+     * it. A delayed cleanup job removes the file after a generous
+     * window so it doesn't linger when the user dismisses the
+     * dialog.
+     */
+    private fun launchSystemInstaller(target: java.io.File, written: Long, shizukuReason: String?): JSONObject {
+        val uri = try {
+            androidx.core.content.FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                target,
+            )
+        } catch (e: Exception) {
+            target.delete()
+            throw McpError(
+                -32603,
+                "FileProvider URI build failed: ${e.message}. Cannot show system installer.",
+            )
+        }
+        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            addFlags(
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    or android.content.Intent.FLAG_ACTIVITY_NEW_TASK,
+            )
+        }
+        try {
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            target.delete()
+            throw McpError(
+                -32603,
+                "Failed to launch system installer: ${e.message}. " +
+                    "Shizuku also unavailable (${shizukuReason ?: "no detail"}).",
+            )
+        }
+        // Schedule a delayed cleanup of the staged APK so it doesn't
+        // linger if the user dismisses the install dialog. 5-min
+        // window is generous — the system installer reads the file
+        // when the user taps Install, typically within seconds.
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
+            { target.delete() },
+            5 * 60 * 1000L,
+        )
+        return JSONObject().apply {
+            put("installed", false)
+            put("pending", true)
+            put("bytesDownloaded", written)
+            put(
+                "message",
+                "Shizuku unavailable (${shizukuReason ?: "not running"}); " +
+                    "system installer dialog launched — confirm on-device to complete the install.",
+            )
         }
     }
 
