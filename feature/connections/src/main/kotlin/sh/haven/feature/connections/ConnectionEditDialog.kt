@@ -37,7 +37,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
@@ -596,18 +596,18 @@ fun ConnectionEditDialog(
                     // VNC: same shape as RDP — tunnel toggle first (it changes
                     // what Host means), then connection fields. Mirrors the
                     // RDP block below for consistency (see #107 follow-up).
-                    FilterChip(
-                        selected = vncSshForward,
-                        onClick = {
-                            vncSshForward = !vncSshForward
-                            if (vncSshForward) {
+                    BooleanToggleRow(
+                        label = stringResource(R.string.connections_field_tunnel_through_ssh),
+                        checked = vncSshForward,
+                        onCheckedChange = { newValue ->
+                            vncSshForward = newValue
+                            if (newValue) {
                                 if (host.isBlank() || host == "localhost") host = "127.0.0.1"
                             } else {
                                 vncSshProfileId = null
                                 if (host == "127.0.0.1" || host == "localhost") host = ""
                             }
                         },
-                        label = { Text(stringResource(R.string.connections_field_tunnel_through_ssh)) },
                     )
                     if (vncSshForward) {
                         val sshCandidates = sshProfiles.filter { it.isSsh }
@@ -742,11 +742,12 @@ fun ConnectionEditDialog(
                     ConnectionSection(stringResource(R.string.connections_section_rdp))
                     // RDP: SSH tunnel toggle first (it changes what Host means),
                     // then host, port, username, domain.
-                    FilterChip(
-                        selected = rdpSshForward,
-                        onClick = {
-                            rdpSshForward = !rdpSshForward
-                            if (rdpSshForward) {
+                    BooleanToggleRow(
+                        label = stringResource(R.string.connections_field_tunnel_through_ssh),
+                        checked = rdpSshForward,
+                        onCheckedChange = { newValue ->
+                            rdpSshForward = newValue
+                            if (newValue) {
                                 // Default to 127.0.0.1 (not "localhost") so
                                 // the remote sshd doesn't hit the IPv6
                                 // loopback first and fail against a
@@ -758,7 +759,6 @@ fun ConnectionEditDialog(
                                 if (host == "127.0.0.1" || host == "localhost") host = ""
                             }
                         },
-                        label = { Text(stringResource(R.string.connections_field_tunnel_through_ssh)) },
                     )
                     // SSH profile dropdown sits right next to the tunnel toggle
                     // so the two fields read as one decision ("tunnel through
@@ -1104,11 +1104,12 @@ fun ConnectionEditDialog(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(4.dp))
-                    FilterChip(
-                        selected = smbSshForward,
-                        onClick = {
-                            smbSshForward = !smbSshForward
-                            if (smbSshForward) {
+                    BooleanToggleRow(
+                        label = stringResource(R.string.connections_field_tunnel_through_ssh),
+                        checked = smbSshForward,
+                        onCheckedChange = { newValue ->
+                            smbSshForward = newValue
+                            if (newValue) {
                                 // 127.0.0.1 rather than "localhost" so the
                                 // remote sshd doesn't resolve to the IPv6
                                 // loopback first. Matches the VNC tunnel
@@ -1119,7 +1120,6 @@ fun ConnectionEditDialog(
                                 if (host == "127.0.0.1" || host == "localhost") host = ""
                             }
                         },
-                        label = { Text(stringResource(R.string.connections_field_tunnel_through_ssh)) },
                     )
                     if (smbSshForward) {
                         val sshCandidates = sshProfiles.filter { it.isSsh }
@@ -1527,10 +1527,10 @@ fun ConnectionEditDialog(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     if (postLoginCommand.isNotBlank()) {
-                        FilterChip(
-                            selected = postLoginBeforeSessionManager,
-                            onClick = { postLoginBeforeSessionManager = !postLoginBeforeSessionManager },
-                            label = { Text(stringResource(R.string.connections_toggle_run_before_session_manager)) },
+                        BooleanToggleRow(
+                            label = stringResource(R.string.connections_toggle_run_before_session_manager),
+                            checked = postLoginBeforeSessionManager,
+                            onCheckedChange = { postLoginBeforeSessionManager = it },
                         )
                     }
 
@@ -1542,18 +1542,12 @@ fun ConnectionEditDialog(
                     // (max attempts = 0 = unlimited) for autossh-style
                     // keepalive of the forwards.
                     Spacer(Modifier.height(8.dp))
-                    FilterChip(
-                        selected = tunnelOnly,
-                        onClick = { tunnelOnly = !tunnelOnly },
-                        label = { Text(stringResource(R.string.connections_toggle_tunnel_only)) },
+                    BooleanToggleRow(
+                        label = stringResource(R.string.connections_toggle_tunnel_only),
+                        checked = tunnelOnly,
+                        onCheckedChange = { tunnelOnly = it },
+                        description = stringResource(R.string.connections_helper_tunnel_only),
                     )
-                    if (tunnelOnly) {
-                        Text(
-                            stringResource(R.string.connections_helper_tunnel_only),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
 
                     // Reconnect controls (#150 Phase A). Defaults preserve
                     // current behaviour: auto-reconnect on transport drop,
@@ -1568,10 +1562,10 @@ fun ConnectionEditDialog(
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Spacer(Modifier.height(4.dp))
-                    FilterChip(
-                        selected = autoReconnect,
-                        onClick = { autoReconnect = !autoReconnect },
-                        label = { Text(stringResource(R.string.connections_toggle_auto_reconnect)) },
+                    BooleanToggleRow(
+                        label = stringResource(R.string.connections_toggle_auto_reconnect),
+                        checked = autoReconnect,
+                        onCheckedChange = { autoReconnect = it },
                     )
                     if (autoReconnect) {
                         Spacer(Modifier.height(4.dp))
@@ -1585,10 +1579,10 @@ fun ConnectionEditDialog(
                         )
                     }
                     Spacer(Modifier.height(4.dp))
-                    FilterChip(
-                        selected = reconnectOnNetworkChange,
-                        onClick = { reconnectOnNetworkChange = !reconnectOnNetworkChange },
-                        label = { Text(stringResource(R.string.connections_toggle_reconnect_on_network_change)) },
+                    BooleanToggleRow(
+                        label = stringResource(R.string.connections_toggle_reconnect_on_network_change),
+                        checked = reconnectOnNetworkChange,
+                        onCheckedChange = { reconnectOnNetworkChange = it },
                     )
 
                     // File transport picker — Auto / SFTP / SCP (legacy)
@@ -1639,18 +1633,12 @@ fun ConnectionEditDialog(
 
                     // Alternate screen buffer toggle
                     Spacer(Modifier.height(4.dp))
-                    FilterChip(
-                        selected = disableAltScreen,
-                        onClick = { disableAltScreen = !disableAltScreen },
-                        label = { Text(stringResource(R.string.connections_toggle_disable_alt_screen)) },
+                    BooleanToggleRow(
+                        label = stringResource(R.string.connections_toggle_disable_alt_screen),
+                        checked = disableAltScreen,
+                        onCheckedChange = { disableAltScreen = it },
+                        description = stringResource(R.string.connections_helper_disable_alt_screen),
                     )
-                    if (disableAltScreen) {
-                        Text(
-                            stringResource(R.string.connections_helper_disable_alt_screen),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
 
                     // MCP reverse tunnel — only meaningful for plain SSH
                     // (mosh/ET can't carry an SSH -R forward). Backed by a
@@ -1658,18 +1646,12 @@ fun ConnectionEditDialog(
                     // field.
                     if (selectedTransport == "SSH") {
                         Spacer(Modifier.height(4.dp))
-                        FilterChip(
-                            selected = mcpReverseTunnel,
-                            onClick = { mcpReverseTunnel = !mcpReverseTunnel },
-                            label = { Text(stringResource(R.string.connections_toggle_mcp_tunnel)) },
+                        BooleanToggleRow(
+                            label = stringResource(R.string.connections_toggle_mcp_tunnel),
+                            checked = mcpReverseTunnel,
+                            onCheckedChange = { mcpReverseTunnel = it },
+                            description = stringResource(R.string.connections_helper_mcp_tunnel),
                         )
-                        if (mcpReverseTunnel) {
-                            Text(
-                                stringResource(R.string.connections_helper_mcp_tunnel),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
                     }
 
                     // Per-profile terminal colour scheme (#144). Null on the
@@ -1731,18 +1713,12 @@ fun ConnectionEditDialog(
                     ConnectionSection(stringResource(R.string.connections_section_authentication))
                     // Agent forwarding toggle (OpenSSH ForwardAgent)
                     Spacer(Modifier.height(4.dp))
-                    FilterChip(
-                        selected = forwardAgent,
-                        onClick = { forwardAgent = !forwardAgent },
-                        label = { Text(stringResource(R.string.connections_toggle_forward_agent)) },
+                    BooleanToggleRow(
+                        label = stringResource(R.string.connections_toggle_forward_agent),
+                        checked = forwardAgent,
+                        onCheckedChange = { forwardAgent = it },
+                        description = stringResource(R.string.connections_helper_forward_agent),
                     )
-                    if (forwardAgent) {
-                        Text(
-                            stringResource(R.string.connections_helper_forward_agent),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
 
                     // Address family (#137) — for networks where one of A or
                     // AAAA resolves but doesn't route. Per-connection.
@@ -1929,16 +1905,16 @@ fun ConnectionEditDialog(
                     ConnectionSection(stringResource(R.string.connections_section_reticulum))
 
                     // 1. Gateway configuration
-                    FilterChip(
-                        selected = localSideband,
-                        onClick = {
-                            localSideband = !localSideband
-                            if (localSideband) {
+                    BooleanToggleRow(
+                        label = stringResource(R.string.connections_toggle_local_sideband),
+                        checked = localSideband,
+                        onCheckedChange = { newValue ->
+                            localSideband = newValue
+                            if (newValue) {
                                 rnsHost = "127.0.0.1"
                                 rnsPort = "37428"
                             }
                         },
-                        label = { Text(stringResource(R.string.connections_toggle_local_sideband)) },
                     )
                     if (!localSideband) {
                         Spacer(Modifier.height(4.dp))
@@ -2838,3 +2814,42 @@ private fun friendlyTunnelTypeLabel(t: sh.haven.core.data.db.entities.TunnelConf
         sh.haven.core.data.db.entities.TunnelConfigType.TAILSCALE -> "Tailscale"
         sh.haven.core.data.db.entities.TunnelConfigType.CLOUDFLARE_ACCESS -> "Cloudflare Tunnel"
     }
+
+/**
+ * Boolean toggle row using a Material 3 [Switch]. Used in place of
+ * [FilterChip] for on/off settings — FilterChip's selected/unselected
+ * states are visually subtle (a tonal background shade), so a `Switch`
+ * reads ON/OFF unambiguously. Enum-style chip groups (sync mode,
+ * file-transport selector) keep using FilterChip.
+ *
+ * The whole row is clickable so the tap target isn't limited to the
+ * switch thumb; an optional [description] line renders directly below
+ * the label when the toggle is on.
+ */
+@Composable
+private fun BooleanToggleRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    description: String? = null,
+) {
+    androidx.compose.foundation.layout.Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onCheckedChange(!checked) }
+                .padding(vertical = 4.dp),
+        ) {
+            Text(label, modifier = Modifier.weight(1f))
+            Switch(checked = checked, onCheckedChange = onCheckedChange)
+        }
+        if (checked && description != null) {
+            Text(
+                description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
