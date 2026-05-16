@@ -4651,6 +4651,12 @@ class SftpViewModel @Inject constructor(
     fun startSync(config: SyncConfig) {
         _showSyncDialog.value = false
         viewModelScope.launch {
+            val startedAt = System.currentTimeMillis()
+            // lastError needs to survive past the polling loop so we can log
+            // it even when the job ended with rclone's "errors > 0,
+            // deletes == 0" suppression — `_syncProgress` only carries the
+            // public progress shape so we keep this here.
+            var lastErrorMessage = ""
             try {
                 withContext(Dispatchers.IO) { rcloneClient.resetStats() }
 
@@ -4661,6 +4667,7 @@ class SftpViewModel @Inject constructor(
                     delay(500)
                     val status = withContext(Dispatchers.IO) { rcloneClient.getJobStatus(jobId) }
                     val stats = withContext(Dispatchers.IO) { rcloneClient.getStats() }
+                    if (stats.lastError.isNotEmpty()) lastErrorMessage = stats.lastError
 
                     val eta = if (stats.speed > 0 && stats.totalBytes > stats.bytes) {
                         ((stats.totalBytes - stats.bytes) / stats.speed).toLong()
@@ -4696,6 +4703,16 @@ class SftpViewModel @Inject constructor(
                     val bytes = android.text.format.Formatter.formatFileSize(appContext, final?.totalBytes ?: 0)
                     _dryRunResult.value = "Would transfer $files files ($bytes)"
                 } else if (final?.success == true) {
+                    // The Mirror-deletions-suppressed case (#157): rclone
+                    // reports "success" but skips the entire delete pass
+                    // when any source file errored. Detect with
+                    // mode=SYNC, errors > 0, deletes == 0 *and* there were
+                    // orphans (which we can't know directly, but a sync
+                    // with zero deletes and >0 errors is almost always
+                    // this path) — call it out in both the toast and the
+                    // connection log entry.
+                    val deletionsSuppressed = config.mode == sh.haven.core.rclone.SyncMode.SYNC &&
+                        final.errors > 0 && final.deletes == 0 && final.deletedDirs == 0
                     val parts = buildList {
                         add("${final.transfersCompleted} files transferred")
                         if (final.deletes > 0 || final.deletedDirs > 0) {
@@ -4708,19 +4725,154 @@ class SftpViewModel @Inject constructor(
                             }
                             add(deletedStr)
                         }
+                        if (final.errors > 0) add("${final.errors} errors")
+                        if (deletionsSuppressed) add("deletions skipped — source errors")
                     }
                     _message.value = "Sync complete: ${parts.joinToString(", ")}"
                     refresh()
+                    logSyncToConnectionLog(
+                        config = config,
+                        startedAt = startedAt,
+                        final = final,
+                        lastErrorMessage = lastErrorMessage,
+                        deletionsSuppressed = deletionsSuppressed,
+                        success = true,
+                    )
                 } else {
                     _error.value = "Sync failed: ${final?.errorMessage ?: "unknown error"}"
+                    logSyncToConnectionLog(
+                        config = config,
+                        startedAt = startedAt,
+                        final = final,
+                        lastErrorMessage = lastErrorMessage,
+                        deletionsSuppressed = false,
+                        success = false,
+                    )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Sync failed", e)
                 _syncProgress.value = null
                 rcloneClient.activeSyncJobId = null
                 _error.value = "Sync failed: ${e.message}"
+                logSyncToConnectionLog(
+                    config = config,
+                    startedAt = startedAt,
+                    final = null,
+                    lastErrorMessage = e.message ?: lastErrorMessage,
+                    deletionsSuppressed = false,
+                    success = false,
+                )
             }
         }
+    }
+
+    /**
+     * Persist an audit-log entry summarising the just-finished sync job so
+     * users can review it later under Settings → View connection log. Keyed
+     * by the source profile id when the srcFs's remote name matches a
+     * stored profile (falls back to dst, then to the active rclone
+     * profile). Skips silently if no rclone-typed profile is reachable —
+     * the entry would violate the FK on ConnectionLog.profileId. (#158)
+     */
+    private suspend fun logSyncToConnectionLog(
+        config: SyncConfig,
+        startedAt: Long,
+        final: SyncProgress?,
+        lastErrorMessage: String,
+        deletionsSuppressed: Boolean,
+        success: Boolean,
+    ) {
+        val profileId = resolveSyncProfileId(config) ?: return
+        val durationMs = System.currentTimeMillis() - startedAt
+        val modeLabel = when (config.mode) {
+            sh.haven.core.rclone.SyncMode.COPY -> "Copy"
+            sh.haven.core.rclone.SyncMode.SYNC -> "Mirror"
+            sh.haven.core.rclone.SyncMode.MOVE -> "Move"
+        }
+        val transfers = final?.transfersCompleted ?: 0
+        val deletes = (final?.deletes ?: 0) + (final?.deletedDirs ?: 0)
+        val errors = final?.errors ?: 0
+        val detailsParts = buildList {
+            add("$modeLabel: $transfers transferred")
+            if (deletes > 0) add("$deletes deleted")
+            if (errors > 0) add("$errors errors")
+            if (deletionsSuppressed) add("deletions skipped (source errors)")
+            if (!success && final?.errorMessage != null) add(final.errorMessage)
+        }
+        val verboseLog = buildString {
+            appendLine("Mode:        $modeLabel (${config.mode.rcMethod})")
+            appendLine("Source:      ${config.srcFs}")
+            appendLine("Destination: ${config.dstFs}")
+            if (config.dryRun) appendLine("Dry run:     yes")
+            with(config.filters) {
+                if (includePatterns.isNotEmpty()) appendLine("Include:     ${includePatterns.joinToString(", ")}")
+                if (excludePatterns.isNotEmpty()) appendLine("Exclude:     ${excludePatterns.joinToString(", ")}")
+                minSize?.let { appendLine("Min size:    $it") }
+                maxSize?.let { appendLine("Max size:    $it") }
+                bandwidthLimit?.let { appendLine("Bw limit:    $it") }
+            }
+            appendLine()
+            appendLine("Transfers:   $transfers / ${final?.totalTransfers ?: 0}")
+            appendLine("Bytes:       ${final?.bytes ?: 0} / ${final?.totalBytes ?: 0}")
+            appendLine("Deletes:     ${final?.deletes ?: 0} files, ${final?.deletedDirs ?: 0} dirs")
+            appendLine("Errors:      $errors")
+            if (deletionsSuppressed) {
+                appendLine()
+                appendLine("rclone skipped the delete pass because of source errors.")
+                appendLine("Extras in the destination were not removed. This matches")
+                appendLine("rclone's internal `not deleting files as there were IO errors`")
+                appendLine("behaviour — fix the failing source files and re-run to")
+                appendLine("complete the mirror.")
+            }
+            if (lastErrorMessage.isNotEmpty()) {
+                appendLine()
+                appendLine("Last error:  $lastErrorMessage")
+            }
+        }
+        connectionLogRepository.logEvent(
+            profileId = profileId,
+            status = if (success) ConnectionLog.Status.SYNC_OK else ConnectionLog.Status.SYNC_FAILED,
+            durationMs = durationMs,
+            details = detailsParts.joinToString(", "),
+            verboseLog = verboseLog,
+        )
+    }
+
+    /**
+     * Find a ConnectionProfile to key this sync's log entry to. Walks
+     * srcFs, then dstFs, parsing the rclone-style "remote:" prefix and
+     * matching against [ConnectionProfile.rcloneRemoteName]. Falls back to
+     * the currently active rclone profile if neither side resolves.
+     */
+    private suspend fun resolveSyncProfileId(config: SyncConfig): String? {
+        val remoteNames = listOfNotNull(parseRcloneRemoteName(config.srcFs), parseRcloneRemoteName(config.dstFs))
+        val profiles = repository.getAll()
+        if (remoteNames.isNotEmpty()) {
+            for (remote in remoteNames) {
+                profiles.firstOrNull { it.isRclone && it.rcloneRemoteName == remote }?.let { return it.id }
+            }
+        }
+        // Neither side names a known rclone remote (both are `:local:` or
+        // bare paths, or the remote isn't stored as a profile yet). Fall
+        // back to the currently-browsed profile if it's rclone-typed —
+        // logging an rclone sync under an unrelated SSH/SFTP profile
+        // would clutter that profile's audit history with off-topic
+        // events. Skip if no candidate is found.
+        val active = _activeProfileId.value
+        return active?.let { id -> profiles.firstOrNull { it.id == id && it.isRclone } }?.id
+    }
+
+    /**
+     * Extract the remote name from an rclone fs spec, e.g. "gdrive:Backup"
+     * → "gdrive". Returns null for paths that don't carry a named remote
+     * (the anonymous `:local:` backend, bare paths, etc.) since those have
+     * no matching ConnectionProfile to log against.
+     */
+    private fun parseRcloneRemoteName(fs: String): String? {
+        if (fs.isEmpty() || fs.startsWith(":")) return null
+        val idx = fs.indexOf(':')
+        if (idx <= 0) return null
+        return fs.substring(0, idx)
     }
 
     fun cancelSync() {

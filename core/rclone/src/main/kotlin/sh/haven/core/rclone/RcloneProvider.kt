@@ -58,6 +58,13 @@ data class TransferStats(
     val errors: Int,
     val deletes: Int = 0,
     val deletedDirs: Int = 0,
+    /**
+     * Last per-file error message rclone recorded (empty string when no
+     * error has occurred). Surfaced from `core/stats.lastError` so the
+     * connection log can tell the user *which file* caused a sync
+     * suppression rather than just "1 error" (#158).
+     */
+    val lastError: String = "",
 ) {
     val fraction: Float
         get() = if (totalBytes > 0) (bytes.toFloat() / totalBytes).coerceIn(0f, 1f) else 0f

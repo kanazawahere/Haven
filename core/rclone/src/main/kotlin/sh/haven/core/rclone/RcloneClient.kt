@@ -284,6 +284,7 @@ class RcloneClient @Inject constructor(
             errors = result.optInt("errors", 0),
             deletes = result.optInt("deletes", 0),
             deletedDirs = result.optInt("deletedDirs", 0),
+            lastError = result.optString("lastError", ""),
         )
     }
 

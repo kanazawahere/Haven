@@ -30,6 +30,8 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.RemoveCircle
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.SyncProblem
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -193,6 +195,8 @@ private fun LogItem(
         ConnectionLog.Status.DISCONNECTED -> Icons.Filled.RemoveCircle to Color(0xFF9E9E9E)
         ConnectionLog.Status.FAILED -> Icons.Filled.Error to Color(0xFFF44336)
         ConnectionLog.Status.TIMEOUT -> Icons.Filled.Error to Color(0xFFFF9800)
+        ConnectionLog.Status.SYNC_OK -> Icons.Filled.Sync to Color(0xFF4CAF50)
+        ConnectionLog.Status.SYNC_FAILED -> Icons.Filled.SyncProblem to Color(0xFFF44336)
     }
 
     val timeText = DateUtils.getRelativeTimeSpanString(
@@ -212,7 +216,11 @@ private fun LogItem(
                 Text("${item.profileLabel}${if (item.host.isNotEmpty()) " (${item.host})" else ""}")
             },
             supportingContent = {
-                val statusLabel = item.status.name.lowercase().replaceFirstChar { it.uppercase() }
+                val statusLabel = when (item.status) {
+                    ConnectionLog.Status.SYNC_OK -> "Sync"
+                    ConnectionLog.Status.SYNC_FAILED -> "Sync failed"
+                    else -> item.status.name.lowercase().replaceFirstChar { it.uppercase() }
+                }
                 val line = if (item.details != null) "$statusLabel (${item.details}) - $timeText"
                 else "$statusLabel - $timeText"
                 Text(line)
