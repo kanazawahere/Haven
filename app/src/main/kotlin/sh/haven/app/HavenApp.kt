@@ -25,6 +25,7 @@ class HavenApp : Application(), Configuration.Provider {
     @Inject lateinit var preferencesRepository: UserPreferencesRepository
     @Inject lateinit var workspaceShortcutManager: sh.haven.app.workspace.WorkspaceShortcutManager
     @Inject lateinit var workerFactory: HiltWorkerFactory
+    @Inject lateinit var prootManager: sh.haven.core.local.ProotManager
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -96,17 +97,17 @@ class HavenApp : Application(), Configuration.Provider {
 
     /**
      * Path to the advertised MCP config file inside the extracted
-     * Alpine rootfs. The file is visible as `/root/.config/haven/
+     * rootfs. The file is visible as `/root/.config/haven/
      * mcp-servers.json` from inside PRoot.
      */
     private val prootMcpConfigFile: File
         get() = File(
-            filesDir,
-            "proot/rootfs/alpine/root/.config/haven/mcp-servers.json",
+            prootManager.activeRootfsDir,
+            "root/.config/haven/mcp-servers.json",
         )
 
     private fun advertiseEndpointToProot() {
-        val rootfsDir = File(filesDir, "proot/rootfs/alpine")
+        val rootfsDir = prootManager.activeRootfsDir
         if (!rootfsDir.exists()) return
         val json = mcpServer.mcpServerConfigJson ?: return
         try {

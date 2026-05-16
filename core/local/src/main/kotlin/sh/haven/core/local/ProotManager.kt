@@ -1,7 +1,6 @@
 package sh.haven.core.local
 
 import android.content.Context
-import android.os.Build
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -9,6 +8,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import sh.haven.core.local.proot.Arch
+import sh.haven.core.local.proot.DesktopCatalog
+import sh.haven.core.local.proot.DesktopEnvironmentSpec
+import sh.haven.core.local.proot.Distro
+import sh.haven.core.local.proot.DistroCatalog
+import sh.haven.core.local.proot.LaunchSpec
+import sh.haven.core.local.proot.PackageOps
 import sh.haven.core.security.CredentialEncryption
 import java.io.BufferedInputStream
 import java.io.File
@@ -43,12 +49,54 @@ class ProotManager @Inject constructor(
     private val _state = MutableStateFlow<SetupState>(SetupState.NotInstalled)
     val state: StateFlow<SetupState> = _state.asStateFlow()
 
+    /**
+     * Currently-active distro id. Phase 1 always defaults to
+     * [DistroCatalog.DEFAULT_ID]; Phase 2 makes this user-selectable
+     * and persists the choice in SharedPreferences.
+     */
+    val activeDistroId: String
+        get() = DistroCatalog.DEFAULT_ID
+
+    /** The active [Distro] looked up from [DistroCatalog]. */
+    val activeDistro: Distro
+        get() = DistroCatalog.lookup(activeDistroId)
+            ?: error("Unknown distro id: $activeDistroId")
+
+    /**
+     * Resolve the rootfs directory for a specific distro id.
+     *
+     * For the default Alpine distro, falls back to the legacy
+     * `proot/rootfs/alpine/` path if [migrateLegacyAlpineDir] could
+     * not perform the rename — keeps existing installs working
+     * even when the migration is blocked.
+     */
+    fun rootfsDirFor(distroId: String): File {
+        val expected = File(context.filesDir, "proot/rootfs/$distroId")
+        if (distroId == DistroCatalog.DEFAULT_ID && !expected.exists()) {
+            val legacy = File(context.filesDir, "proot/rootfs/alpine")
+            if (legacy.exists()) return legacy
+        }
+        return expected
+    }
+
+    /** Rootfs directory for the active distro. */
+    val activeRootfsDir: File
+        get() = rootfsDirFor(activeDistroId)
+
+    /**
+     * Back-compat alias for [activeRootfsDir]. Kept for callers
+     * that have not yet migrated to the distro-aware API.
+     */
+    @Deprecated(
+        "Use activeRootfsDir or rootfsDirFor(distroId).",
+        ReplaceWith("activeRootfsDir"),
+    )
     internal val rootfsDir: File
-        get() = File(context.filesDir, "proot/rootfs/alpine")
+        get() = activeRootfsDir
 
     val isRootfsInstalled: Boolean
         get() = java.nio.file.Files.exists(
-            File(rootfsDir, "bin/sh").toPath(),
+            File(activeRootfsDir, "bin/sh").toPath(),
             java.nio.file.LinkOption.NOFOLLOW_LINKS,
         )
 
@@ -66,13 +114,21 @@ class ProotManager @Inject constructor(
         get() = installedDesktops.isNotEmpty()
 
     fun isDesktopInstalled(de: DesktopEnvironment): Boolean =
-        de in installedDesktops && File(rootfsDir, de.verifyBinary).exists()
+        de in installedDesktops && File(activeRootfsDir, de.verifyBinary).exists()
 
     /** Compat alias — true if any DE is installed. */
     val isDesktopInstalled: Boolean
         get() = hasAnyDesktopInstalled
 
+    /**
+     * Legacy desktop-environment enum. Each entry exposes a
+     * stable [id] and a parallel [spec] in [DesktopCatalog] — new
+     * internals route through the spec (see DesktopManager); UI
+     * call-sites still consume the enum until Phase 2 introduces a
+     * distro picker.
+     */
     enum class DesktopEnvironment(
+        val id: String,
         val label: String,
         val packages: String,
         val verifyBinary: String,
@@ -84,6 +140,7 @@ class ProotManager @Inject constructor(
         val hidden: Boolean = false,
     ) {
         OPENBOX(
+            id = "openbox",
             label = "Openbox (VNC)",
             packages = "tigervnc openbox xterm xsetroot font-noto",
             verifyBinary = "usr/bin/openbox",
@@ -91,6 +148,7 @@ class ProotManager @Inject constructor(
             sizeEstimate = "~10MB",
         ),
         XFCE4(
+            id = "xfce4",
             label = "Xfce4 (VNC)",
             packages = "tigervnc xfce4 xfce4-terminal dbus-x11 font-noto",
             verifyBinary = "usr/bin/startxfce4",
@@ -98,6 +156,7 @@ class ProotManager @Inject constructor(
             sizeEstimate = "~100MB",
         ),
         WAYLAND_NATIVE(
+            id = "labwc-native",
             label = "Native Wayland",
             packages = "foot font-noto font-awesome adwaita-icon-theme " +
                 "xkeyboard-config xwayland mesa-dri-gallium mesa-gbm mesa-gl " +
@@ -107,7 +166,16 @@ class ProotManager @Inject constructor(
             sizeEstimate = "~80MB",
             isWayland = true,
             isNative = true,
-        ),
+        );
+
+        /**
+         * Look up the parallel [DesktopEnvironmentSpec] in
+         * [DesktopCatalog]. Each enum [id] is guaranteed to
+         * resolve — the catalog is the source of truth.
+         */
+        val spec: DesktopEnvironmentSpec
+            get() = DesktopCatalog.lookup(id)
+                ?: error("No spec registered for DE id=$id")
     }
 
     enum class DesktopAddon(
@@ -145,7 +213,7 @@ class ProotManager @Inject constructor(
     /** Which add-ons are installed (persisted as a file in the rootfs). */
     val installedAddons: Set<DesktopAddon>
         get() {
-            val marker = File(rootfsDir, "root/.haven-addons")
+            val marker = File(activeRootfsDir, "root/.haven-addons")
             if (!marker.exists()) return emptySet()
             return try {
                 marker.readText().trim().lines().mapNotNull { line ->
@@ -157,7 +225,7 @@ class ProotManager @Inject constructor(
     /** Stored VNC password for desktop viewer (encrypted at rest via Tink/Android Keystore). */
     var storedVncPassword: String?
         get() {
-            val file = File(rootfsDir, "root/.haven-vnc-password")
+            val file = File(activeRootfsDir, "root/.haven-vnc-password")
             if (!file.exists()) return null
             val stored = file.readText().trim().ifEmpty { return null }
             return try {
@@ -168,7 +236,7 @@ class ProotManager @Inject constructor(
             }
         }
         set(value) {
-            val file = File(rootfsDir, "root/.haven-vnc-password")
+            val file = File(activeRootfsDir, "root/.haven-vnc-password")
             if (value != null) {
                 file.writeText(CredentialEncryption.encrypt(context, value))
             } else {
@@ -181,7 +249,7 @@ class ProotManager @Inject constructor(
         get() {
             if (!isRootfsInstalled) return emptySet()
             return DesktopEnvironment.entries.filter { de ->
-                File(rootfsDir, de.verifyBinary).exists()
+                File(activeRootfsDir, de.verifyBinary).exists()
             }.toSet()
         }
 
@@ -200,11 +268,39 @@ class ProotManager @Inject constructor(
     val desktopState: StateFlow<DesktopSetupState> = _desktopState.asStateFlow()
 
     init {
+        migrateLegacyAlpineDir()
         _state.value = if (isReady) SetupState.Ready else SetupState.NotInstalled
     }
 
     /**
-     * Download and extract the Alpine Linux rootfs.
+     * One-shot migration for installs predating issue #162: rename
+     * `proot/rootfs/alpine/ → proot/rootfs/alpine-3.21/` so the
+     * directory layout matches the new distro-id scheme. No-op if
+     * the legacy directory doesn't exist, or if the target already
+     * exists, or if the legacy directory isn't a real rootfs
+     * (bin/sh missing). If the rename fails for any reason the
+     * fallback in [rootfsDirFor] keeps the legacy path usable.
+     */
+    private fun migrateLegacyAlpineDir() {
+        val legacy = File(context.filesDir, "proot/rootfs/alpine")
+        val target = File(context.filesDir, "proot/rootfs/${DistroCatalog.DEFAULT_ID}")
+        if (!legacy.exists() || target.exists()) return
+        val binSh = File(legacy, "bin/sh").toPath()
+        if (!java.nio.file.Files.exists(binSh, java.nio.file.LinkOption.NOFOLLOW_LINKS)) return
+        try {
+            target.parentFile?.mkdirs()
+            if (legacy.renameTo(target)) {
+                Log.d(TAG, "Migrated legacy rootfs: alpine/ → ${DistroCatalog.DEFAULT_ID}/")
+            } else {
+                Log.w(TAG, "Legacy rootfs rename failed; falling back to alpine/ path")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Legacy rootfs migration failed: ${e.message}")
+        }
+    }
+
+    /**
+     * Download and extract the rootfs for the active distro.
      * Safe to call if already installed — returns immediately.
      */
     suspend fun installRootfs() {
@@ -216,20 +312,16 @@ class ProotManager @Inject constructor(
         try {
             _state.value = SetupState.Downloading(0)
 
-            val arch = when {
-                Build.SUPPORTED_ABIS.contains("arm64-v8a") -> "aarch64"
-                Build.SUPPORTED_ABIS.contains("x86_64") -> "x86_64"
-                else -> throw IllegalStateException("Unsupported ABI: ${Build.SUPPORTED_ABIS.toList()}")
-            }
-
-            val expectedSha256 = when (arch) {
-                "aarch64" -> "ead8a4b37867bd19e7417dd078748e2312c0aea364403d96758d63ea8ff261ea"
-                "x86_64" -> "1a694899e406ce55d32334c47ac0b2efb6c06d7e878102d1840892ad44cd5239"
-                else -> throw IllegalStateException("No checksum for arch: $arch")
-            }
-
-            val url = "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/$arch/alpine-minirootfs-3.21.3-$arch.tar.gz"
-            val tarball = File(context.cacheDir, "alpine-minirootfs.tar.gz")
+            val distro = activeDistro
+            val arch = Arch.current()
+                ?: throw IllegalStateException("Unsupported ABI: ${android.os.Build.SUPPORTED_ABIS.toList()}")
+            val source = distro.rootfsSources[arch]
+                ?: throw IllegalStateException(
+                    "${distro.label} has no rootfs for $arch — supported: ${distro.rootfsSources.keys}"
+                )
+            val url = source.url
+            val expectedSha256 = source.sha256
+            val tarball = File(context.cacheDir, "${distro.id}-rootfs.tar.gz")
 
             // Download
             withContext(Dispatchers.IO) {
@@ -278,13 +370,14 @@ class ProotManager @Inject constructor(
 
             // Extract
             _state.value = SetupState.Extracting
+            val targetDir = File(context.filesDir, "proot/rootfs/${distro.id}")
             withContext(Dispatchers.IO) {
-                extractTarGz(tarball, rootfsDir)
+                extractTarGz(tarball, targetDir)
                 tarball.delete()
-                Log.d(TAG, "Rootfs extracted to ${rootfsDir.absolutePath}")
+                Log.d(TAG, "Rootfs extracted to ${targetDir.absolutePath}")
 
                 // Android doesn't have /etc/resolv.conf — write one with public DNS
-                val resolvConf = File(rootfsDir, "etc/resolv.conf")
+                val resolvConf = File(targetDir, "etc/resolv.conf")
                 resolvConf.writeText("nameserver 8.8.8.8\nnameserver 1.1.1.1\n")
                 Log.d(TAG, "Wrote resolv.conf")
 
@@ -294,7 +387,7 @@ class ProotManager @Inject constructor(
                 // is the point of presence, remote machines are the compute"
                 // pattern composes with Haven's SSH primitives. No vendor
                 // CLIs, no cloned repositories, no hardcoded hosts.
-                seedRootHome(rootfsDir)
+                seedRootHome(targetDir)
             }
 
             // Install a minimal baseline of packages so the environment is
@@ -575,9 +668,11 @@ class ProotManager @Inject constructor(
      */
     private suspend fun installBaseline() {
         try {
+            val distro = activeDistro
+            val ops = PackageOps.forFamily(distro.family)
+            val install = ops.installCmd(distro.baselinePackages)
             val (output, code) = runCommandInProot(
-                "apk update >/dev/null 2>&1 && " +
-                    "apk add --no-cache bash curl ca-certificates openssh-client tmux 2>&1 | tail -5",
+                "${ops.updateCmd()} >/dev/null 2>&1 && $install 2>&1 | tail -5",
             )
             if (code == 0) {
                 Log.d(TAG, "Baseline packages installed")
@@ -598,7 +693,7 @@ class ProotManager @Inject constructor(
         val loaderPath = File(context.applicationInfo.nativeLibraryDir, "libproot_loader.so").absolutePath
         val process = ProcessBuilder(
             prootBin, "-0", "--link2symlink",
-            "-r", rootfsDir.absolutePath,
+            "-r", activeRootfsDir.absolutePath,
             "-b", "/dev", "-b", "/proc", "-b", "/sys",
             "-b", "${context.cacheDir.absolutePath}:/tmp",
             "-w", "/root",
@@ -638,18 +733,23 @@ class ProotManager @Inject constructor(
                     "Installing ${de.label} (${de.sizeEstimate} download)..."
                 )
 
+            val distro = activeDistro
+            val ops = PackageOps.forFamily(distro.family)
+            val pkgs = de.spec.packagesPerFamily[distro.family]
+                ?: error("${de.spec.id} has no package list for ${distro.family} — supported: ${de.spec.packagesPerFamily.keys}")
             val (installOutput, installExit) = runCommandInProot(
-                "apk update && apk add ${de.packages}"
+                "${ops.updateCmd()} && ${ops.installCmd(pkgs)}"
             )
-            Log.d(TAG, "apk install exit=$installExit output(last 300)=${installOutput.takeLast(300)}")
+            Log.d(TAG, "${distro.family} install exit=$installExit output(last 300)=${installOutput.takeLast(300)}")
 
-            // Check if key binaries were installed — apk may return exit 1 for
-            // non-fatal trigger errors (gtk icon cache, fontscale, etc.)
-            // For marker-based DEs, check that the output contains "OK:" (apk success)
+            // Check if key binaries were installed — package managers may
+            // return non-zero for non-fatal trigger errors (gtk icon cache,
+            // fontscale, etc.). For marker-based DEs, fall back to the
+            // family-specific success heuristic on stdout.
             val checkInstalled = if (de.verifyBinary.startsWith("root/.haven-")) {
-                installOutput.contains("OK:")
+                ops.installSucceeded(installOutput)
             } else {
-                File(rootfsDir, de.verifyBinary).exists()
+                File(activeRootfsDir, de.verifyBinary).exists()
             }
             if (!checkInstalled) {
                 _desktopState.value = DesktopSetupState.Error(
@@ -659,24 +759,24 @@ class ProotManager @Inject constructor(
             }
 
             // Update marker — append this DE to the installed set
-            File(rootfsDir, "root").mkdirs()
+            File(activeRootfsDir, "root").mkdirs()
             val updated = installedDesktops + de
-            File(rootfsDir, "root/.haven-desktop").writeText(updated.joinToString("\n") { it.name })
+            File(activeRootfsDir, "root/.haven-desktop").writeText(updated.joinToString("\n") { it.name })
             // Create DE-specific marker file for installedDesktops check
             if (de.verifyBinary.startsWith("root/.haven-")) {
-                File(rootfsDir, de.verifyBinary).writeText(de.name)
+                File(activeRootfsDir, de.verifyBinary).writeText(de.name)
             }
             Log.d(TAG, "${de.label} packages installed")
             }
 
-            if (!de.isWayland) {
+            if (de.spec.launch !is LaunchSpec.NativeCompositor) {
                 _desktopState.value = DesktopSetupState.Installing("Configuring VNC...")
 
                 // Write VNC password — use a temp file to avoid leaking
                 // the password in process arguments (visible in /proc)
                 runCommandInProot("mkdir -p /root/.vnc")
                 if (vncPassword.isNotEmpty()) {
-                    val tmpPwd = File(rootfsDir, "root/.vnc/.pwd_tmp")
+                    val tmpPwd = File(activeRootfsDir, "root/.vnc/.pwd_tmp")
                     try {
                         tmpPwd.writeText(vncPassword)
                     } finally { /* deleted below after use */ }
@@ -685,14 +785,14 @@ class ProotManager @Inject constructor(
                     )
                     tmpPwd.delete() // also delete from host side
                     Log.d(TAG, "vncpasswd exit=$pwdExit output=$pwdOut")
-                    val passwdFile = File(rootfsDir, "root/.vnc/passwd")
+                    val passwdFile = File(activeRootfsDir, "root/.vnc/passwd")
                     Log.d(TAG, "passwd file exists=${passwdFile.exists()} size=${passwdFile.length()}")
                     // Store encrypted for the VNC viewer to use on subsequent starts
                     storedVncPassword = vncPassword
                 } else {
                     // No password — remove any existing passwd file so server uses None
-                    File(rootfsDir, "root/.vnc/passwd").delete()
-                    File(rootfsDir, "root/.haven-vnc-password").delete()
+                    File(activeRootfsDir, "root/.vnc/passwd").delete()
+                    File(activeRootfsDir, "root/.haven-vnc-password").delete()
                     Log.d(TAG, "No VNC password set, using SecurityTypes None")
                 }
 
@@ -721,23 +821,24 @@ chmod +x /root/.vnc/xstartup""")
     suspend fun installAddons(addons: Set<DesktopAddon>) {
         if (addons.isEmpty()) {
             // Remove addons marker and configs if user unchecked everything
-            File(rootfsDir, "root/.haven-addons").delete()
+            File(activeRootfsDir, "root/.haven-addons").delete()
             return
         }
 
         try {
             _desktopState.value = DesktopSetupState.Installing("Installing desktop features...")
 
-            val packages = addons.joinToString(" ") { it.packages }
+            val ops = PackageOps.forFamily(activeDistro.family)
+            val packages = addons.flatMap { it.packages.split(" ").filter { p -> p.isNotBlank() } }
             val (installOutput, installExit) = runCommandInProot(
-                "apk update && apk add $packages"
+                "${ops.updateCmd()} && ${ops.installCmd(packages)}"
             )
-            Log.d(TAG, "addon apk install exit=$installExit output(last 300)=${installOutput.takeLast(300)}")
+            Log.d(TAG, "addon install exit=$installExit output(last 300)=${installOutput.takeLast(300)}")
 
             writeDesktopConfigs()
 
             // Write marker
-            File(rootfsDir, "root/.haven-addons")
+            File(activeRootfsDir, "root/.haven-addons")
                 .writeText(addons.joinToString("\n") { it.name })
             Log.d(TAG, "Desktop addons installed: ${addons.map { it.name }}")
 
@@ -755,11 +856,15 @@ chmod +x /root/.vnc/xstartup""")
     suspend fun uninstallDesktop(de: DesktopEnvironment) {
         try {
             _desktopState.value = DesktopSetupState.Installing("Removing ${de.label}...")
-            val (output, exit) = runCommandInProot("apk del ${de.packages}")
-            Log.d(TAG, "apk del ${de.label} exit=$exit output(last 300)=${output.takeLast(300)}")
+            val distro = activeDistro
+            val ops = PackageOps.forFamily(distro.family)
+            val pkgs = de.spec.packagesPerFamily[distro.family]
+                ?: error("${de.spec.id} has no package list for ${distro.family}")
+            val (output, exit) = runCommandInProot(ops.removeCmd(pkgs))
+            Log.d(TAG, "remove ${de.label} exit=$exit output(last 300)=${output.takeLast(300)}")
 
             val remaining = installedDesktops - de
-            val marker = File(rootfsDir, "root/.haven-desktop")
+            val marker = File(activeRootfsDir, "root/.haven-desktop")
             if (remaining.isEmpty()) {
                 marker.delete()
             } else {
@@ -767,7 +872,7 @@ chmod +x /root/.vnc/xstartup""")
             }
             // Remove DE-specific marker file
             if (de.verifyBinary.startsWith("root/.haven-")) {
-                File(rootfsDir, de.verifyBinary).delete()
+                File(activeRootfsDir, de.verifyBinary).delete()
             }
             Log.d(TAG, "${de.label} uninstalled, remaining: ${remaining.map { it.name }}")
             _desktopState.value = DesktopSetupState.Complete
@@ -779,6 +884,7 @@ chmod +x /root/.vnc/xstartup""")
 
     /** Write mobile-optimized config files for waybar, fuzzel, and labwc menu. */
     private fun writeDesktopConfigs() {
+        val rootfsDir = activeRootfsDir
         val root = File(rootfsDir, "root")
 
         // waybar config — Xfce-style panel with quick-launch buttons and system info
@@ -989,7 +1095,7 @@ chmod +x /root/.vnc/xstartup""")
 
     /** Write labwc right-click desktop menu. References apps that may or may not be installed. */
     private fun writeLabwcMenu() {
-        val labwcDir = File(rootfsDir, "root/.config/labwc")
+        val labwcDir = File(activeRootfsDir, "root/.config/labwc")
         labwcDir.mkdirs()
         File(labwcDir, "menu.xml").writeText(
             """
@@ -1011,10 +1117,16 @@ chmod +x /root/.vnc/xstartup""")
     }
 
     /**
-     * Delete the rootfs to free space.
+     * Delete the rootfs to free space. Also cleans up any pre-issue-#162
+     * legacy `alpine/` directory if the migration was skipped.
      */
     fun deleteRootfs() {
-        rootfsDir.deleteRecursively()
+        activeRootfsDir.deleteRecursively()
+        // Belt-and-braces: if the legacy alpine/ dir was never renamed
+        // (rare migration failure path), free it too.
+        if (activeDistroId == DistroCatalog.DEFAULT_ID) {
+            File(context.filesDir, "proot/rootfs/alpine").deleteRecursively()
+        }
         _state.value = SetupState.NotInstalled
     }
 }

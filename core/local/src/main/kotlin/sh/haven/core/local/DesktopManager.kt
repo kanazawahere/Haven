@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import sh.haven.core.local.proot.LaunchSpec
 import sh.haven.core.wayland.WaylandBridge
 import java.io.File
 import javax.inject.Inject
@@ -76,32 +77,34 @@ class DesktopManager @Inject constructor(
             stopDesktop(de)
         }
 
-        if (de.isNative) {
-            if (WaylandBridge.nativeIsRunning()) {
+        when (de.spec.launch) {
+            is LaunchSpec.NativeCompositor -> {
+                if (WaylandBridge.nativeIsRunning()) {
+                    _desktops.update { it + (de to DesktopInstance(
+                        de, 0, 0, DesktopState.ERROR,
+                        errorMessage = "Native compositor already running",
+                    )) }
+                    return
+                }
+                startNativeCompositor(de, shellCommand)
+                return
+            }
+            is LaunchSpec.NestedWayland -> {
+                // Phase 4 — landing alongside Hyprland/niri/Sway support.
                 _desktops.update { it + (de to DesktopInstance(
                     de, 0, 0, DesktopState.ERROR,
-                    errorMessage = "Native compositor already running",
+                    errorMessage = "Nested Wayland compositors land in Phase 4 (issue #162)",
                 )) }
                 return
             }
-            startNativeCompositor(de, shellCommand)
-            return
+            is LaunchSpec.X11Vnc -> {
+                // Falls through to the X11/VNC launch below.
+            }
         }
 
         val display = allocateDisplay()
         val port = 5900 + display
         _desktops.update { it + (de to DesktopInstance(de, display, port, DesktopState.STARTING)) }
-
-        // Start virgl_test_server (needed by Wayland compositors in PRoot for shm/memfd)
-        if (de.isWayland) {
-            val virglBin = File(context.applicationInfo.nativeLibraryDir, "libvirgl_test_server.so")
-            val virglSocket = File(context.cacheDir, ".virgl_test")
-            virglSocket.delete()
-            if (virglBin.canExecute()) {
-                Log.d(TAG, "Starting virgl_test_server for ${de.label}...")
-                WaylandBridge.nativeStartVirglServer(virglBin.absolutePath, virglSocket.absolutePath)
-            }
-        }
 
         try {
             val process = launchX11Desktop(de, display, shellCommand)
@@ -140,7 +143,8 @@ class DesktopManager @Inject constructor(
      */
     fun stopDesktop(de: ProotManager.DesktopEnvironment) {
         val instance = _desktops.value[de] ?: return
-        if (de.isNative) {
+        val isNative = de.spec.launch is LaunchSpec.NativeCompositor
+        if (isNative) {
             if (WaylandBridge.nativeIsRunning()) {
                 WaylandBridge.nativeStop()
             }
@@ -149,7 +153,7 @@ class DesktopManager @Inject constructor(
         }
         processes[de]?.destroyForcibly()
         processes.remove(de)
-        if (!de.isNative) {
+        if (!isNative) {
             killOrphanedXvnc(instance.displayNumber)
             releaseDisplay(instance.displayNumber)
         }
@@ -181,30 +185,26 @@ class DesktopManager @Inject constructor(
         val loaderPath = File(
             context.applicationInfo.nativeLibraryDir, "libproot_loader.so",
         ).absolutePath
-        val rootfsDir = prootManager.rootfsDir
+        val rootfsDir = prootManager.activeRootfsDir
         val rootHome = File(rootfsDir, "root").apply { mkdirs() }
 
-        val shellCmd = if (de.isWayland) {
-            // Wayland-over-VNC (labwc in PRoot) — parameterize port
-            Log.d(TAG, "Starting Wayland-VNC desktop: ${de.label} on port ${5900 + display}")
-            val commands = de.startCommands.replace("5901", (5900 + display).toString())
-            "export HOME=/root; $commands wait"
+        val launch = de.spec.launch as LaunchSpec.X11Vnc
+
+        // Clean lock files for this display
+        File(context.cacheDir, ".X${display}-lock").delete()
+        File(rootHome, ".ICEauthority").apply { if (!exists()) createNewFile() }
+        File(rootHome, ".Xauthority").apply { if (!exists()) createNewFile() }
+
+        val passwdFile = File(rootfsDir, "root/.vnc/passwd")
+        val useAuth = passwdFile.exists() && passwdFile.length() >= 8
+        val securityArg = if (useAuth) {
+            "-SecurityTypes VncAuth -PasswordFile /root/.vnc/passwd"
         } else {
-            // X11: Xvnc + traditional desktop environment
-            // Clean lock files for this display
-            File(context.cacheDir, ".X${display}-lock").delete()
-            File(rootHome, ".ICEauthority").apply { if (!exists()) createNewFile() }
-            File(rootHome, ".Xauthority").apply { if (!exists()) createNewFile() }
+            "-SecurityTypes None"
+        }
+        Log.d(TAG, "Starting Xvnc :$display: useAuth=$useAuth")
 
-            val passwdFile = File(rootfsDir, "root/.vnc/passwd")
-            val useAuth = passwdFile.exists() && passwdFile.length() >= 8
-            val securityArg = if (useAuth) {
-                "-SecurityTypes VncAuth -PasswordFile /root/.vnc/passwd"
-            } else {
-                "-SecurityTypes None"
-            }
-            Log.d(TAG, "Starting Xvnc :$display: useAuth=$useAuth")
-
+        val shellCmd =
             "rm -f /tmp/.X${display}-lock /tmp/.X11-unix/X${display} && " +
                 "Xvnc :${display} -geometry 1280x720 " +
                 "$securityArg " +
@@ -214,9 +214,8 @@ class DesktopManager @Inject constructor(
                 "export DISPLAY=:${display}; " +
                 "export HOME=/root; " +
                 // NO virgl — software rendering for VNC desktops
-                "${de.startCommands} " +
+                "${launch.startCommands} " +
                 "wait"
-        }
 
         val prootArgs = mutableListOf(
             prootBin, "-0", "--link2symlink",
@@ -287,7 +286,7 @@ class DesktopManager @Inject constructor(
             val loaderPathXw = File(
                 context.applicationInfo.nativeLibraryDir, "libproot_loader.so",
             ).absolutePath
-            val rootfsDir = prootManager.rootfsDir
+            val rootfsDir = prootManager.activeRootfsDir
             android.system.Os.setenv("WLR_XWAYLAND", xwaylandWrapper.absolutePath, true)
             android.system.Os.setenv("HAVEN_PROOT_BIN", prootManager.prootBinary ?: "", true)
             android.system.Os.setenv("HAVEN_PROOT_LOADER", loaderPathXw, true)

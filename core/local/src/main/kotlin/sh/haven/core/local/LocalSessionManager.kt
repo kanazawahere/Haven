@@ -154,8 +154,8 @@ class LocalSessionManager @Inject constructor(
         val prootBinary = prootManager.prootBinary
 
         return if (!useAndroidShell && prootBinary != null && prootManager.isRootfsInstalled) {
-            // PRoot with Alpine rootfs
-            val rootfsDir = java.io.File(context.filesDir, "proot/rootfs/alpine")
+            // PRoot with the active distro's rootfs
+            val rootfsDir = prootManager.activeRootfsDir
 
             // Ensure resolv.conf exists (Android doesn't have /etc/resolv.conf)
             val resolvConf = java.io.File(rootfsDir, "etc/resolv.conf")

@@ -146,12 +146,18 @@ class LocalFileBackend(
                 }
             }
         }
-        // PRoot Alpine rootfs — only surfaced when the rootfs has been
+        // PRoot rootfs — only surfaced when the rootfs has been
         // installed. Lands the user in /root (the shell's home dir)
         // rather than the rootfs top, since that's where ~/.profile,
-        // ~/README.md, ~/.ssh/, and ~/.config/haven/ live.
-        val prootHome = File(appContext.filesDir, "proot/rootfs/alpine/root")
-        if (prootHome.exists() && prootHome.canRead()) {
+        // ~/README.md, ~/.ssh/, and ~/.config/haven/ live. The active
+        // distro id is normally `alpine-3.21/`; we also probe the
+        // legacy `alpine/` path so installs predating issue #162 that
+        // skipped the rename migration still show up here.
+        val rootfsRoot = File(appContext.filesDir, "proot/rootfs")
+        val prootHome = sequenceOf("alpine-3.21", "alpine")
+            .map { File(rootfsRoot, "$it/root") }
+            .firstOrNull { it.exists() && it.canRead() }
+        if (prootHome != null) {
             roots.add(
                 SftpEntry(
                     "PRoot (~/)", prootHome.absolutePath, true, 0,
