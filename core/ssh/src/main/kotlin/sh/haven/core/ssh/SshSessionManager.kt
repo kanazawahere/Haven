@@ -527,6 +527,18 @@ class SshSessionManager @Inject constructor(
     }
 
     /**
+     * Monotonic count of bytes appended to a session's agent scrollback
+     * ring over its lifetime. Unlike the ring's [snapshot] size (which
+     * saturates at the ring capacity), this never saturates and never
+     * resets — so it's the right value to capture as a "baseline" if
+     * you want to detect "have new bytes arrived since this point?"
+     * Returns null when the session has no ring (i.e. never had a
+     * terminal channel attached). (#161)
+     */
+    fun agentScrollbackTotalBytes(sessionId: String): Long? =
+        agentScrollback[sessionId]?.totalBytesAppended
+
+    /**
      * Identify the SSH session, if any, carrying a remote port-forward
      * for [bindPort] on the loopback. By convention Haven uses 8730 for
      * the MCP reverse tunnel — i.e. the session running the Claude Code

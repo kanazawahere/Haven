@@ -39,6 +39,18 @@ data class ConsentRequest(
     /** Short human summary of what the tool will do, for the prompt body. */
     val summary: String,
     val requestedAt: Long = System.currentTimeMillis(),
+    /**
+     * If true, the consent sheet renders an additional "Allow for N min"
+     * action alongside Allow/Deny. The ALLOW decision the user gives this
+     * way is memoised against (clientHint, toolName) for that window —
+     * subsequent identical requests within the window resolve
+     * immediately as ALLOW without re-prompting. Used by the
+     * [`queue_self_message`][sh.haven.app.agent.OutOfTurnMessageQueue]
+     * delivery prompt where a power user wants to authorise the agent
+     * to type into the REPL for a short collaborative window without
+     * being interrupted on every queued message.
+     */
+    val offerTimedAllow: Boolean = false,
 )
 
 /**
@@ -88,6 +100,16 @@ class AgentConsentManager @Inject constructor() {
     private val sessionAllowed = mutableSetOf<String>()
 
     /**
+     * Time-windowed memoisation: `memoKey -> expiry epoch millis`. A
+     * user-supplied "Allow for N min" on a [ConsentRequest] with
+     * `offerTimedAllow = true` writes here. [requestConsent] consults
+     * this before queueing a fresh prompt and returns ALLOW
+     * immediately if the entry hasn't expired. Cleared by
+     * [clearMemoised] same as [sessionAllowed].
+     */
+    private val windowedAllows = mutableMapOf<String, Long>()
+
+    /**
      * Clients that the user has elected to bypass per-call prompts for
      * (the "Allow all MCP requests from 'X' until app restart" checkbox
      * on the consent sheet). Process-scoped, never persisted —
@@ -128,6 +150,7 @@ class AgentConsentManager @Inject constructor() {
         summary: String,
         level: ConsentLevel,
         timeoutMs: Long = 60_000,
+        offerTimedAllow: Boolean = false,
     ): ConsentDecision {
         if (level == ConsentLevel.NEVER) return ConsentDecision.ALLOW
 
@@ -148,6 +171,16 @@ class AgentConsentManager @Inject constructor() {
                 if (memoKey in sessionAllowed) return ConsentDecision.ALLOW
             }
         }
+        // Time-windowed memo (set by a previous "Allow for N min"
+        // response). Checked for *all* levels because the timed allow
+        // explicitly outranks the per-call gate within its window.
+        mutex.withLock {
+            val expiry = windowedAllows[memoKey]
+            if (expiry != null) {
+                if (expiry > System.currentTimeMillis()) return ConsentDecision.ALLOW
+                windowedAllows.remove(memoKey) // expired — clean up opportunistically
+            }
+        }
 
         if (!foregroundActive) {
             // Fail closed: nothing can render the prompt right now,
@@ -159,7 +192,13 @@ class AgentConsentManager @Inject constructor() {
 
         val id = nextId.getAndIncrement()
         val deferred = CompletableDeferred<ConsentDecision>()
-        val request = ConsentRequest(id = id, toolName = toolName, clientHint = clientHint, summary = summary)
+        val request = ConsentRequest(
+            id = id,
+            toolName = toolName,
+            clientHint = clientHint,
+            summary = summary,
+            offerTimedAllow = offerTimedAllow,
+        )
 
         mutex.withLock {
             pendingEntries[id] = PendingEntry(deferred, clientHint)
@@ -239,11 +278,24 @@ class AgentConsentManager @Inject constructor() {
         requestId: Long,
         decision: ConsentDecision,
         bypassClient: Boolean = false,
+        allowForMinutes: Int? = null,
     ) {
         mutex.withLock {
             val entry = pendingEntries[requestId] ?: return
             if (decision == ConsentDecision.ALLOW && bypassClient && entry.clientHint != null) {
                 sessionBypassClients.add(entry.clientHint)
+            }
+            if (decision == ConsentDecision.ALLOW && allowForMinutes != null && allowForMinutes > 0) {
+                // Set/refresh the windowed-allow expiry for this
+                // (client, tool) pair. Future requests within the
+                // window short-circuit to ALLOW via [requestConsent]
+                // above without re-prompting.
+                val pendingRequest = _pending.value.firstOrNull { it.id == requestId }
+                val toolName = pendingRequest?.toolName
+                if (toolName != null) {
+                    val key = memoKey(entry.clientHint, toolName)
+                    windowedAllows[key] = System.currentTimeMillis() + allowForMinutes * 60_000L
+                }
             }
             entry.deferred.complete(decision)
         }
@@ -254,6 +306,7 @@ class AgentConsentManager @Inject constructor() {
         mutex.withLock {
             sessionAllowed.clear()
             sessionBypassClients.clear()
+            windowedAllows.clear()
         }
     }
 

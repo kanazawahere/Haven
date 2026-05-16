@@ -57,8 +57,15 @@ internal class ConsentHostViewModel @Inject constructor(
 
     val pending: StateFlow<List<ConsentRequest>> = consentManager.pending
 
-    fun respond(requestId: Long, decision: ConsentDecision, bypassClient: Boolean = false) {
-        viewModelScope.launch { consentManager.respond(requestId, decision, bypassClient) }
+    fun respond(
+        requestId: Long,
+        decision: ConsentDecision,
+        bypassClient: Boolean = false,
+        allowForMinutes: Int? = null,
+    ) {
+        viewModelScope.launch {
+            consentManager.respond(requestId, decision, bypassClient, allowForMinutes)
+        }
     }
 }
 
@@ -103,9 +110,9 @@ internal fun ConsentHost(viewModel: ConsentHostViewModel = hiltViewModel()) {
 
     // Treat any dismissal that isn't an explicit Allow as a Deny so the
     // wheel-stays-with-the-user invariant holds even on edge cases.
-    fun resolve(decision: ConsentDecision) {
+    fun resolve(decision: ConsentDecision, allowForMinutes: Int? = null) {
         val bypass = canOfferBypass && bypassChecked && decision == ConsentDecision.ALLOW
-        viewModel.respond(current.id, decision, bypass)
+        viewModel.respond(current.id, decision, bypass, allowForMinutes)
         scope.launch { sheetState.hide() }
     }
 
@@ -179,6 +186,33 @@ internal fun ConsentHost(viewModel: ConsentHostViewModel = hiltViewModel()) {
                     }
                 }
             }
+            // "Allow for N min" — power-user time-windowed allow. Only
+            // surfaces on requests that opt in (currently the
+            // queue_self_message pre-delivery prompt). Subsequent
+            // identical requests within the window short-circuit to
+            // ALLOW so an agent driving the REPL doesn't trigger a
+            // prompt per character.
+            var allowMinutes by remember(current.id) { mutableStateOf(10) }
+            if (current.offerTimedAllow) {
+                Spacer(Modifier.height(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Auto-allow window:", style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.width(8.dp))
+                    listOf(5, 10, 30).forEach { minutes ->
+                        OutlinedButton(
+                            onClick = { allowMinutes = minutes },
+                            colors = if (allowMinutes == minutes) {
+                                ButtonDefaults.outlinedButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                )
+                            } else ButtonDefaults.outlinedButtonColors(),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        ) { Text("${minutes}m") }
+                        Spacer(Modifier.width(4.dp))
+                    }
+                }
+            }
+
             Spacer(Modifier.height(24.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -186,6 +220,13 @@ internal fun ConsentHost(viewModel: ConsentHostViewModel = hiltViewModel()) {
             ) {
                 OutlinedButton(onClick = { resolve(ConsentDecision.DENY) }) {
                     Text(stringResource(R.string.agent_deny))
+                }
+                if (current.offerTimedAllow) {
+                    OutlinedButton(
+                        onClick = { resolve(ConsentDecision.ALLOW, allowForMinutes = allowMinutes) },
+                    ) {
+                        Text("Allow for ${allowMinutes}m")
+                    }
                 }
                 Button(
                     onClick = { resolve(ConsentDecision.ALLOW) },

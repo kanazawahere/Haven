@@ -273,13 +273,13 @@ internal class McpTools(
         ) { args -> saveSyncProfile(args) },
 
         "queue_self_message" to ToolHandler(
-            description = "Power-user: queue text to be typed into a Claude Code (or other REPL) session running over the SSH session that's carrying the MCP reverse tunnel — i.e. the very session this MCP traffic is flowing through. Haven watches that session's terminal output for a prompt pattern (default: `>\\s*\$` matching Claude Code's REPL prompt), then types the queued text + ENTER as if the user typed it. Lets an agent inject follow-up *user* input from inside its own turn — useful for slash commands like `/mcp reconnect haven` that only fire from user input. Returns immediately with a queueId; delivery happens out-of-turn whenever the next matching prompt appears (or the queue times out). Caveat: within one SSH session, only the *foreground* tmux pane receives the typed text — if multiple Claude REPLs share an SSH session via tmux panes, set sessionId explicitly and make sure the right pane is foreground. Gated by Settings → Agent endpoint → \"Allow agents to queue follow-up user input\" *and* per-call consent (it's a real keystroke-injection capability).",
+            description = "Power-user: queue text to be typed into a Claude Code (or other REPL) session running over the SSH session that's carrying the MCP reverse tunnel — i.e. the very session this MCP traffic is flowing through. Haven watches that session's terminal output for a prompt pattern (default: `❯\\s*\$` matching Claude Code's REPL prompt), then types the queued text + ENTER as if the user typed it. Lets an agent inject follow-up *user* input from inside its own turn — useful for slash commands like `/mcp reconnect haven` that only fire from user input. Returns immediately with a queueId; delivery happens out-of-turn whenever the next matching prompt appears (or the queue times out). Caveat: within one SSH session, only the *foreground* tmux pane receives the typed text — if multiple Claude REPLs share an SSH session via tmux panes, set sessionId explicitly and make sure the right pane is foreground. Gated by Settings → Agent endpoint → \"Allow agents to queue follow-up user input\" *and* per-call consent (it's a real keystroke-injection capability).",
             inputSchema = JSONObject().apply {
                 put("type", "object")
                 put("properties", JSONObject().apply {
                     put("text", JSONObject().apply { put("type", "string"); put("description", "Text to type. ENTER is appended automatically.") })
                     put("sessionId", JSONObject().apply { put("type", "string"); put("description", "SSH session id from list_sessions. Optional — defaults to the session carrying the MCP reverse tunnel on port 8730.") })
-                    put("promptPattern", JSONObject().apply { put("type", "string"); put("description", "Regex to match at the tail of the SSH scrollback that triggers delivery. Default `>\\s*\$` (Claude Code's empty REPL prompt). Multiline-enabled; ANSI escapes are stripped before matching.") })
+                    put("promptPattern", JSONObject().apply { put("type", "string"); put("description", "Regex to match at the tail of the SSH scrollback that triggers delivery. Default `❯\\s*\$` (Claude Code's empty REPL prompt). Multiline-enabled; ANSI escapes are stripped before matching.") })
                     put("timeoutSeconds", JSONObject().apply { put("type", "integer"); put("description", "Give up if the prompt hasn't appeared in this many seconds. Default 60.") })
                 })
                 put("required", JSONArray().put("text"))
@@ -1266,9 +1266,23 @@ internal class McpTools(
         return ToolConsent(level = handler.consentLevel, summary = handler.summarise)
     }
 
+    /**
+     * Per-call context that handlers can read. McpServer sets
+     * [currentClientHint] right before invoking [call]; handlers like
+     * `queue_self_message` consult it to thread the calling MCP
+     * client's name through to the AgentConsentManager pre-delivery
+     * prompt. Volatile because, while the JSON-RPC dispatcher is
+     * sequential per connection, multiple HTTP connections can race —
+     * the worst case is a stale hint, which is benign (the prompt
+     * just shows the wrong client name).
+     */
+    @Volatile
+    private var currentClientHint: String? = null
+
     /** Call a tool by name. Throws [McpError] for bad input. */
-    suspend fun call(name: String, arguments: JSONObject): JSONObject {
+    suspend fun call(name: String, arguments: JSONObject, clientHint: String? = null): JSONObject {
         val handler = tools[name] ?: throw McpError(-32602, "Unknown tool: $name")
+        currentClientHint = clientHint
         return handler.handle(arguments)
     }
 
@@ -1635,6 +1649,7 @@ internal class McpTools(
             text = text,
             promptPattern = promptPattern,
             timeoutSeconds = timeoutSeconds,
+            clientHint = currentClientHint,
         )
         JSONObject().apply {
             put("queueId", queueId)
@@ -3645,7 +3660,12 @@ internal class McpTools(
          * the end of the scrollback, possibly with trailing whitespace).
          * Multiline + ANSI-stripped before matching in [OutOfTurnMessageQueue].
          */
-        internal const val DEFAULT_PROMPT_PATTERN = ">\\s*\$"
+        // Claude Code's REPL prompt is `[38;5;246m❯ ` — a coloured
+        // ❯ (U+276F), *not* the ASCII `>` of a shell prompt. The
+        // OutOfTurnMessageQueue strips ANSI before matching so the
+        // pattern itself only needs to anchor on the glyph + trailing
+        // whitespace.
+        internal const val DEFAULT_PROMPT_PATTERN = "❯\\s*\$"
     }
 }
 

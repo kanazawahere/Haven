@@ -28,6 +28,18 @@ class ScrollbackRing(private val capacity: Int) {
     private var size = 0
 
     /**
+     * Total bytes appended over the lifetime of the ring. Monotonic;
+     * never resets, never saturates (Long is enough for any sensible
+     * session). Used by the agent's out-of-turn message queue to
+     * detect "have new bytes arrived since I enqueued?" — [size]
+     * saturates at [capacity] and so isn't usable for that check
+     * once the ring is full.
+     */
+    @Volatile
+    var totalBytesAppended: Long = 0L
+        private set
+
+    /**
      * Append [length] bytes from [data] starting at [offset]. Wrapping
      * is handled in two `arraycopy`s rather than a per-byte loop so
      * large bursts (e.g. `cat`'ing a file) don't pay a lock-per-byte
@@ -36,6 +48,7 @@ class ScrollbackRing(private val capacity: Int) {
     fun append(data: ByteArray, offset: Int, length: Int) {
         if (length <= 0) return
         synchronized(lock) {
+            totalBytesAppended += length
             // If a single append is larger than capacity, only its tail
             // can possibly survive — fast-path that case directly.
             if (length >= capacity) {

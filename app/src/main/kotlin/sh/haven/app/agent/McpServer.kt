@@ -640,7 +640,7 @@ class McpServer @Inject constructor(
             }
         }
         val content = try {
-            runBlocking { tools.call(name, arguments) }
+            runBlocking { tools.call(name, arguments, lastClientHint) }
         } catch (e: McpError) {
             throw e
         } catch (e: Exception) {
