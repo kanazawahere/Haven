@@ -18,25 +18,27 @@ import javax.inject.Singleton
 /**
  * Generic out-of-turn terminal input queue (#161). The MCP
  * `queue_terminal_input` tool lets an agent inject text into any
- * connected SSH session — including the very session running an
- * interactive REPL the agent is talking through — by watching the
- * session's stdout for a configurable prompt pattern and typing the
- * queued text + a configurable submit key when the pattern appears.
+ * connected SSH session — by watching the session's stdout for a
+ * configurable prompt pattern and typing the queued text plus a
+ * configurable submit key when the pattern appears.
  *
- * Two motivating use cases:
+ * Motivating use cases (peer examples — neither is privileged):
  *
- * 1. **Agent drives its own conversation.** The SSH session carrying
- *    the MCP reverse tunnel hosts the Claude Code (or equivalent)
- *    REPL the agent is currently talking through. Watcher pattern
- *    `❯\s*\$` matches Claude Code's empty prompt; queued text submits
- *    as the next user input — useful for slash commands like
- *    `/mcp reconnect haven` that only fire from user input.
+ * - **Drive an interactive install / script.** A `dpkg --configure`
+ *   or `apt install` prompts `Continue? [y/N]`; agent queues `y`
+ *   against that session id with pattern `\[y/N\]\s*\$`. When the
+ *   next prompt asks for a path, the agent queues `/usr/local`
+ *   against the same session with a different pattern.
  *
- * 2. **Agent drives an unrelated interactive session.** A long-running
- *    install script in another tmux pane prompts `Continue? [y/N]`;
- *    agent queues `y` against that session's id with that pattern,
- *    waits, then queues `/usr/local` against the *next* prompt. Same
- *    mechanism, no Claude Code assumption.
+ * - **Drive a database / REPL.** A `psql` or `python3` shell is
+ *   running in a session; agent queues SQL or Python snippets
+ *   matched against `=\#\s*\$` or `>>>\s*\$` respectively.
+ *
+ * - **Inject input into the agent's own REPL session.** When the
+ *   SSH session carrying the MCP reverse tunnel is the one running
+ *   the agent's REPL (Claude Code or equivalent), queued text
+ *   submits as the user's next input — useful for slash commands
+ *   like `/mcp reconnect haven` that only fire from user input.
  *
  * Safety: pre-delivery consent fires on the phone before any typing
  * happens, with an "Allow for N min" option so a power-user
@@ -44,8 +46,8 @@ import javax.inject.Singleton
  * "Allow all from <client>" bypass that AgentConsentManager already
  * tracks covers this too.
  *
- * Polling-based rather than callback-based — simpler, and the tail of
- * the per-session scrollback ring is cheap to read every 200 ms.
+ * Polling-based rather than callback-based — simpler, and the tail
+ * of the per-session scrollback ring is cheap to read every 200 ms.
  */
 @Singleton
 class TerminalInputQueue @Inject constructor(

@@ -273,14 +273,14 @@ internal class McpTools(
         ) { args -> saveSyncProfile(args) },
 
         "queue_terminal_input" to ToolHandler(
-            description = "Power-user: queue text to be typed into any connected SSH session at the next matching prompt. Haven polls the session's stdout, matches `promptPattern` against the tail (ANSI escapes stripped, regex MULTILINE), then types `text + submitKey` via the session's tty when the pattern appears. Two main use cases: (1) the agent injecting follow-up *user* input into the same Claude Code REPL it's running through — defaults are tuned for this (sessionId=MCP-reverse-tunnel session, promptPattern=`❯\\s*\$`, submitKey=`\\r`); (2) the agent driving an unrelated interactive program in another session — e.g. answering `y` to a `Continue? [y/N]` prompt in an install script. Returns immediately with a queueId; delivery happens out-of-turn whenever the prompt appears (or the queue times out). Caveat: within one SSH session, only the *foreground* tmux pane receives the typed text — for multi-pane setups, pass `sessionId` to the right session and ensure the target pane is foreground. Gated by Settings → Agent endpoint → \"Allow agents to queue terminal input\" *and* per-call consent.",
+            description = "Power-user: queue text to be typed into any connected SSH session at the next matching prompt. Haven polls the session's stdout, matches `promptPattern` against the tail (ANSI escapes stripped, regex MULTILINE), then types `text + submitKey` via the session's tty when the pattern appears. Use cases include responding to interactive prompts in install scripts (`Continue? [y/N]` → `y`, or `Path:` → `/usr/local`), driving REPLs (Python, psql, Claude Code, etc.), and chaining steps where the agent waits for one prompt then types into the next. Defaults are tuned for the common \"drive an interactive shell or REPL\" case; supply explicit `promptPattern` / `submitKey` / `sessionId` when targeting something specific. Returns immediately with a queueId; delivery happens out-of-turn whenever the prompt appears (or the queue times out). Caveat: within one SSH session, only the *foreground* tmux pane receives the typed text — for multi-pane setups, pass `sessionId` to the right session and ensure the target pane is foreground. Gated by Settings → Agent endpoint → \"Allow agents to queue terminal input\" *and* per-call consent (with an \"Allow for N min\" option for collaborative windows).",
             inputSchema = JSONObject().apply {
                 put("type", "object")
                 put("properties", JSONObject().apply {
                     put("text", JSONObject().apply { put("type", "string"); put("description", "Text to type. `submitKey` is appended automatically.") })
-                    put("sessionId", JSONObject().apply { put("type", "string"); put("description", "SSH session id from list_sessions. Optional — defaults to the session carrying the MCP reverse tunnel on port 8730 (the agent's own REPL session in the common case).") })
-                    put("promptPattern", JSONObject().apply { put("type", "string"); put("description", "Regex matched against the tail of the SSH scrollback to trigger delivery. Default `❯\\s*\$` matches Claude Code's REPL prompt. For other programs, supply a pattern that matches their input prompt — e.g. `\\[y/N\\]\\s*\$` or `Password:\\s*\$`. ANSI escapes are stripped before matching; regex is MULTILINE.") })
-                    put("submitKey", JSONObject().apply { put("type", "string"); put("description", "Key bytes sent after the text. Default `\\r` (Enter as seen by TUIs in raw mode like Claude Code, vim, etc.). Use `\\n` for line-buffered programs that read stdin until newline. Use `\"\"` (empty string) to leave the text in the input buffer without submitting.") })
+                    put("sessionId", JSONObject().apply { put("type", "string"); put("description", "SSH session id from list_sessions. Optional — defaults to the SSH session carrying the MCP reverse tunnel on port 8730 (which, in the agent-drives-its-own-conversation case, is the session running the agent's REPL). For unrelated sessions, pass this explicitly.") })
+                    put("promptPattern", JSONObject().apply { put("type", "string"); put("description", "Regex matched against the tail of the SSH scrollback to trigger delivery. Default `[\\\$#%>❯]\\s*\$` matches the trailing prompt glyph of common interactive shells (bash `\$`, root `#`, csh `%`, traditional `>`, fish/Claude Code/starship `❯`) at end-of-line. For specific programs, supply a pattern that matches their input prompt — e.g. `\\[y/N\\]\\s*\$` or `Password:\\s*\$` or `(?:postgres|mydb)=#\\s*\$`. ANSI escapes are stripped before matching; regex is MULTILINE.") })
+                    put("submitKey", JSONObject().apply { put("type", "string"); put("description", "Key bytes sent after the text. Default `\\r` — what TTYs in cooked mode translate to NL, and what programs in raw mode (Claude Code, vim, less, fzf, readline-based shells) read as Enter. Use `\\n` for line-buffered programs reading stdin directly without a tty. Use `\"\"` (empty) to leave the text in the input buffer without submitting (e.g. pre-fill a prompt the user will edit).") })
                     put("timeoutSeconds", JSONObject().apply { put("type", "integer"); put("description", "Give up if the prompt hasn't appeared in this many seconds. Default 60.") })
                 })
                 put("required", JSONArray().put("text"))
@@ -1670,13 +1670,11 @@ internal class McpTools(
             )
         val promptPattern = args.optString("promptPattern").ifEmpty { DEFAULT_PROMPT_PATTERN }
         val timeoutSeconds = args.optInt("timeoutSeconds", 60).coerceIn(1, 600)
-        // submitKey: callers send "\r" for raw-mode TUIs (Claude Code,
-        // vim, less), "\n" for line-buffered programs, or "" to leave
-        // the text unsubmitted. Default "\r" matches the most common
-        // interactive case.
+        // submitKey: see [DEFAULT_SUBMIT_KEY] for the rationale on `\r`
+        // vs `\n` vs `""`. Callers override to fit the target program.
         val submitKey = if (args.has("submitKey") && !args.isNull("submitKey")) {
             args.optString("submitKey")
-        } else "\r"
+        } else DEFAULT_SUBMIT_KEY
         val queueId = terminalInputQueue.enqueue(
             sessionId = sessionId,
             text = text,
@@ -3691,16 +3689,39 @@ internal class McpTools(
         internal const val MCP_REVERSE_TUNNEL_PORT = 8730
 
         /**
-         * Default regex matching Claude Code's REPL prompt (a `>` near
-         * the end of the scrollback, possibly with trailing whitespace).
-         * Multiline + ANSI-stripped before matching in [TerminalInputQueue].
+         * Best-effort fallback regex matching the trailing
+         * prompt glyph of common interactive shells and REPLs
+         * at end-of-line. Covers `$` (bash/sh/zsh user), `#`
+         * (root), `%` (csh), `>` (cmd.exe-style and traditional
+         * minimal), and `❯` (Claude Code, fish, starship).
+         * Multiline + ANSI-stripped before matching in
+         * [TerminalInputQueue]; the watcher's tail-only scope
+         * (last 512 chars of stripped scrollback) keeps the
+         * character class from matching `$` redirects or `>`
+         * in earlier output.
+         *
+         * Callers should supply their own `promptPattern` when
+         * they know what's running on the other end — e.g.
+         * `\[y/N\]\s*$` for an install script,
+         * `Password:\s*$` for a password prompt. The default
+         * exists for the convenience of the "drive an
+         * interactive shell or REPL" case where the exact
+         * prompt isn't pinned in advance.
          */
-        // Claude Code's REPL prompt is `[38;5;246m❯ ` — a coloured
-        // ❯ (U+276F), *not* the ASCII `>` of a shell prompt. The
-        // TerminalInputQueue strips ANSI before matching so the
-        // pattern itself only needs to anchor on the glyph + trailing
-        // whitespace.
-        internal const val DEFAULT_PROMPT_PATTERN = "❯\\s*\$"
+        internal const val DEFAULT_PROMPT_PATTERN = "[\\\$#%>❯]\\s*\$"
+
+        /**
+         * Default key bytes sent after the queued text. `\r` (CR) is
+         * what TTYs in cooked mode translate to NL, and what programs
+         * in raw mode (Claude Code, vim, less, fzf, readline-based
+         * shells) read as the Enter key. Callers can override:
+         * - `\n` (LF) for line-buffered programs reading stdin
+         *   directly without a tty.
+         * - `""` (empty) to leave the text in the input buffer
+         *   without submitting — e.g. pre-filling a prompt the user
+         *   will edit further before pressing Enter themselves.
+         */
+        internal const val DEFAULT_SUBMIT_KEY = "\r"
     }
 }
 
