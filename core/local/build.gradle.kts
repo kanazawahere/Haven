@@ -82,9 +82,16 @@ val buildWayvncShim by tasks.registering(Exec::class) {
     val src = rootProject.file("wayland-android/wayvnc-shim/libhaven_wayvnc_shim.c")
     val assetsDir = file("src/main/assets/wayvnc-shim")
 
-    inputs.file(script)
-    inputs.file(src)
+    // The release.yml `test` job intentionally skips the wayland-android
+    // submodule (its freedesktop chain intermittently 5xxs and breaks
+    // unrelated test runs). Tolerate the source files being absent
+    // there — they'll be present in the `build` job that does a
+    // recursive init, and on F-Droid (which always inits submodules).
+    // `inputs.files()` (plural) accepts missing entries; `onlyIf`
+    // skips the Exec entirely when there's nothing to compile.
+    inputs.files(script, src)
     outputs.dir(assetsDir)
+    onlyIf { script.exists() && src.exists() }
 
     workingDir = rootProject.file("wayland-android")
     commandLine("bash", "build-wayvnc-shim.sh")
