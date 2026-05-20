@@ -30,6 +30,34 @@ private const val TAG = "ProotManager"
 private const val PREF_ACTIVE_DISTRO_ID = "active_distro_id"
 
 /**
+ * Delete [root] and everything under it, even when in-proot package
+ * scripts left directories read-only.
+ *
+ * Plain [File.deleteRecursively] can't unlink a file whose parent
+ * directory lacks the write bit — e.g. Arch's `ca-certificates`
+ * /`update-ca-trust` makes `etc/ca-certificates/extracted/cadir/`
+ * mode 0555. That trapped a broken rootfs forever and broke the next
+ * install (#174). So restore owner rwx on every directory first;
+ * removing a file needs write on its *parent* dir, not on the file.
+ *
+ * `walkTopDown()` does not follow symlinks, so we never chmod or
+ * descend through links pointing outside the rootfs; the delete pass
+ * unlinks symlinks without following them.
+ */
+internal fun forceDeleteRecursively(root: File): Boolean {
+    if (!root.exists()) return true
+    root.walkTopDown()
+        .onEnter { dir ->
+            dir.setReadable(true, false)
+            dir.setExecutable(true, false)
+            dir.setWritable(true, false)
+            true
+        }
+        .forEach { /* side effect is the onEnter chmod; files need no chmod to unlink */ }
+    return root.deleteRecursively()
+}
+
+/**
  * Manages the PRoot binary and Alpine Linux rootfs.
  *
  * PRoot is bundled as libproot.so in jniLibs (extracted to nativeLibraryDir
@@ -1876,11 +1904,13 @@ chmod +x /root/.vnc/xstartup""")
      * legacy `alpine/` directory if the migration was skipped.
      */
     fun deleteRootfs() {
-        activeRootfsDir.deleteRecursively()
+        if (!forceDeleteRecursively(activeRootfsDir)) {
+            Log.w(TAG, "deleteRootfs: could not fully remove ${activeRootfsDir.absolutePath}")
+        }
         // Belt-and-braces: if the legacy alpine/ dir was never renamed
         // (rare migration failure path), free it too.
         if (activeDistroId == DistroCatalog.DEFAULT_ID) {
-            File(context.filesDir, "proot/rootfs/alpine").deleteRecursively()
+            forceDeleteRecursively(File(context.filesDir, "proot/rootfs/alpine"))
         }
         _state.value = SetupState.NotInstalled
     }
@@ -1894,12 +1924,14 @@ chmod +x /root/.vnc/xstartup""")
      */
     fun deleteDistro(distroId: String) {
         val dir = rootfsDirFor(distroId)
-        dir.deleteRecursively()
+        if (!forceDeleteRecursively(dir)) {
+            Log.w(TAG, "deleteDistro: could not fully remove ${dir.absolutePath}")
+        }
         // Belt-and-braces: nuke the legacy alpine/ path if we were
         // asked to delete the default distro and it still exists
         // there too (one-off migration edge case).
         if (distroId == DistroCatalog.DEFAULT_ID) {
-            File(context.filesDir, "proot/rootfs/alpine").deleteRecursively()
+            forceDeleteRecursively(File(context.filesDir, "proot/rootfs/alpine"))
         }
         if (activeDistroId == distroId) {
             reconcileActiveDistro()
