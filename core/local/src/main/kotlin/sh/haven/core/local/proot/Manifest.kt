@@ -160,6 +160,18 @@ data class DesktopEnvironmentSpec(
      * output declaration to render.
      */
     val configSeed: Map<String, String> = emptyMap(),
+    /**
+     * Substrings that identify a superseded Haven-seeded [configSeed]
+     * that should be migrated to the current default at launch, even
+     * though [configSeed] is otherwise written write-if-absent. Lets a
+     * config fix (e.g. swapping a crashing autostart) reach existing
+     * installs without clobbering genuinely user-edited configs: the
+     * launch-time migration only overwrites a config that still contains
+     * one of these markers. Match a string unique to the broken default
+     * (e.g. the exact autostart line), not something a tweaked config
+     * would keep.
+     */
+    val legacyConfigMarkers: List<String> = emptyList(),
 ) {
     fun compatibilityOn(family: PackageFamily): Compatibility =
         compatibility[family] ?: Compatibility.Stable
@@ -531,10 +543,10 @@ object DesktopCatalog {
         id = "sway",
         label = "Sway (nested Wayland)",
         packagesPerFamily = mapOf(
-            PackageFamily.APK to listOf("sway", "wayvnc", "foot", "fuzzel", "xkeyboard-config", "font-noto"),
-            PackageFamily.APT to listOf("sway", "wayvnc", "foot", "fuzzel", "fonts-noto-core"),
-            PackageFamily.PACMAN to listOf("sway", "wayvnc", "foot", "fuzzel", "noto-fonts"),
-            PackageFamily.XBPS to listOf("sway", "wayvnc", "foot", "fuzzel", "noto-fonts-ttf"),
+            PackageFamily.APK to listOf("sway", "swaybg", "wayvnc", "foot", "fuzzel", "xkeyboard-config", "font-noto"),
+            PackageFamily.APT to listOf("sway", "swaybg", "wayvnc", "foot", "fuzzel", "fonts-noto-core"),
+            PackageFamily.PACMAN to listOf("sway", "swaybg", "wayvnc", "foot", "fuzzel", "noto-fonts"),
+            PackageFamily.XBPS to listOf("sway", "swaybg", "wayvnc", "foot", "fuzzel", "noto-fonts-ttf"),
         ),
         verifyBinary = "usr/bin/sway",
         launch = LaunchSpec.NestedWayland(compositorCmd = "sway"),
@@ -567,6 +579,10 @@ object DesktopCatalog {
                 output HEADLESS-1 scale 1
                 output HEADLESS-1 enable
                 output HEADLESS-1 dpms on
+                # Solid background so an app-less session reads as a real
+                # desktop, not the undrawn grey the headless output shows
+                # otherwise. Needs swaybg (in the package set).
+                output HEADLESS-1 bg #1d2027 solid_color
 
                 input * {
                     xkb_layout "us"
@@ -577,14 +593,19 @@ object DesktopCatalog {
                 bindsym ${'$'}mod+d exec fuzzel
                 bindsym ${'$'}mod+Shift+e exit
 
-                # Auto-launch the fuzzel app picker so a fresh VNC
-                # connection lands on something the user can interact
-                # with — wayvnc-only sessions are otherwise blank.
-                # fuzzel exits after the user picks (or presses Esc),
-                # leaving sway itself in place; mod+d re-opens it.
-                exec sleep 1 && fuzzel
+                # Auto-launch a terminal so a fresh VNC connection lands on
+                # something usable. We previously auto-launched fuzzel here,
+                # but fuzzel 1.8.x segfaults after font load on the headless
+                # wlroots/pixman output, leaving an empty grey screen (#162).
+                # foot is robust on this path; the fuzzel picker stays on
+                # ${'$'}mod+d for users who want it.
+                exec sleep 1 && foot
             """.trimIndent(),
         ),
+        // Migrate existing installs off the crashing fuzzel autostart at
+        // launch — their write-if-absent config would otherwise stay
+        // frozen on the broken default (#162).
+        legacyConfigMarkers = listOf("exec sleep 1 && fuzzel"),
     )
 
     val HYPRLAND = DesktopEnvironmentSpec(

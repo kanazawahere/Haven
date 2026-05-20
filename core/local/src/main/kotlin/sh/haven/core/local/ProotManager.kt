@@ -1463,6 +1463,36 @@ chmod +x /root/.vnc/xstartup""")
      * Uninstall a desktop environment from the PRoot rootfs.
      * Removes packages and updates the marker file.
      */
+    /**
+     * Re-seed a DE's [configSeed] files when the on-disk copy is missing
+     * OR still carries a superseded Haven default (matched by
+     * [DesktopEnvironmentSpec.legacyConfigMarkers]). Called at launch so
+     * a config fix reaches existing installs whose write-if-absent config
+     * would otherwise stay frozen — without clobbering user edits, since
+     * a config that no longer contains a legacy marker is left alone.
+     * No-op for DEs with an empty configSeed.
+     */
+    fun migrateDesktopConfigs(de: DesktopEnvironment) {
+        for ((relPath, content) in de.spec.configSeed) {
+            val target = File(activeRootfsDir, relPath)
+            val existing = if (target.exists()) {
+                runCatching { target.readText() }.getOrNull()
+            } else null
+            if (existing == content) continue
+            val migrate = existing != null &&
+                de.spec.legacyConfigMarkers.any { existing.contains(it) }
+            if (existing == null || migrate) {
+                target.parentFile?.mkdirs()
+                target.writeText(content)
+                Log.d(
+                    TAG,
+                    "[de-config ${de.spec.id}] ${if (migrate) "migrated" else "seeded"} " +
+                        "$relPath (${content.length} bytes)",
+                )
+            }
+        }
+    }
+
     suspend fun uninstallDesktop(de: DesktopEnvironment) {
         try {
             _desktopState.value = DesktopSetupState.Installing("Removing ${de.label}...")

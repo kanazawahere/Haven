@@ -145,6 +145,12 @@ class DesktopManager @Inject constructor(
                 // through the same code, then call launchNestedWayland().
                 // Fall through to the shared X11/Nested branch below; the
                 // per-DE process spawner is dispatched on launch type.
+                //
+                // Migrate a superseded Haven config first (e.g. the
+                // fuzzel→foot autostart swap, #162) so existing installs
+                // with a frozen write-if-absent config pick up the fix on
+                // the next start rather than only on a fresh install.
+                prootManager.migrateDesktopConfigs(de)
             }
             is LaunchSpec.X11Vnc -> {
                 // Falls through to the X11/VNC launch below.
