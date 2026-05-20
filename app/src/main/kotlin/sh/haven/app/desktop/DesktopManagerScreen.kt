@@ -1,7 +1,9 @@
 package sh.haven.app.desktop
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -203,61 +205,65 @@ private fun DesktopManagerSection(
                         expanded = distroMenuOpen,
                         onDismissRequest = { distroMenuOpen = false },
                     ) {
+                        // Installed distros are NOT rendered as DropdownMenuItem:
+                        // its trailingIcon slot is sized for a single decorative
+                        // icon, and nesting interactive IconButtons there made the
+                        // shell/delete buttons unhittable on non-first rows
+                        // (GlassHaven/Haven#168 — confirmed dead on the 2nd row).
+                        // A plain Row with three sibling tap targets (switch /
+                        // open-shell / delete), each a full 48dp IconButton or a
+                        // weighted clickable label, hit-tests reliably.
                         installedDistros.forEach { distro ->
-                            DropdownMenuItem(
-                                text = { Text(distro.label) },
-                                onClick = {
-                                    onSwitchDistro(distro.id)
-                                    distroMenuOpen = false
-                                },
-                                trailingIcon = {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        if (distro.id == activeDistroId) {
-                                            Icon(
-                                                Icons.Filled.Check,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(20.dp),
-                                            )
-                                            Spacer(Modifier.width(4.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight()
+                                        .clickable {
+                                            onSwitchDistro(distro.id)
+                                            distroMenuOpen = false
                                         }
-                                        // Restored entry-point for the
-                                        // proot shell that used to live
-                                        // on the Connections topbar
-                                        // (removed in v5.38.0 when the
-                                        // Desktop tab was promoted —
-                                        // GlassHaven/Haven#168). One tap
-                                        // switches the active distro and
-                                        // opens a local-shell tab in the
-                                        // Terminal screen.
-                                        IconButton(
-                                            onClick = {
-                                                distroMenuOpen = false
-                                                onOpenShellForDistro(distro.id)
-                                            },
-                                            modifier = Modifier.size(32.dp),
-                                        ) {
-                                            Icon(
-                                                Icons.Filled.Terminal,
-                                                contentDescription = "Open shell in ${distro.label}",
-                                                modifier = Modifier.size(18.dp),
-                                            )
-                                        }
-                                        IconButton(
-                                            onClick = {
-                                                distroMenuOpen = false
-                                                onDeleteDistro(distro)
-                                            },
-                                            modifier = Modifier.size(32.dp),
-                                        ) {
-                                            Icon(
-                                                Icons.Filled.Delete,
-                                                contentDescription = "Delete ${distro.label}",
-                                                modifier = Modifier.size(18.dp),
-                                            )
-                                        }
+                                        .padding(horizontal = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    if (distro.id == activeDistroId) {
+                                        Icon(
+                                            Icons.Filled.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                        Spacer(Modifier.width(8.dp))
                                     }
-                                },
-                            )
+                                    Text(distro.label)
+                                }
+                                // Open a proot shell in this distro (#168). Switches
+                                // the active distro and opens a local-shell tab.
+                                IconButton(onClick = {
+                                    distroMenuOpen = false
+                                    onOpenShellForDistro(distro.id)
+                                }) {
+                                    Icon(
+                                        Icons.Filled.Terminal,
+                                        contentDescription = "Open shell in ${distro.label}",
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
+                                IconButton(onClick = {
+                                    distroMenuOpen = false
+                                    onDeleteDistro(distro)
+                                }) {
+                                    Icon(
+                                        Icons.Filled.Delete,
+                                        contentDescription = "Delete ${distro.label}",
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
+                            }
                         }
                         if (availableDistros.isNotEmpty() && installedDistros.isNotEmpty()) {
                             HorizontalDivider()
