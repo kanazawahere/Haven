@@ -1634,34 +1634,34 @@ chmod +x /root/.vnc/xstartup""")
             |        "clock"
             |    ],
             |    "custom/apps": {
-            |        "format": "\uF0C9  Apps",
+            |        "format": "Apps",
             |        "on-click": "fuzzel"
             |    },
             |    "custom/terminal": {
-            |        "format": "\uF120  Terminal",
+            |        "format": "Terminal",
             |        "on-click": "xfce4-terminal || foot"
             |    },
             |    "custom/files": {
-            |        "format": "\uF07B  Files",
+            |        "format": "Files",
             |        "on-click": "thunar || foot -e ls"
             |    },
             |    "custom/editor": {
-            |        "format": "\uF044  Edit",
+            |        "format": "Edit",
             |        "on-click": "mousepad"
             |    },
             |    "cpu": {
-            |        "format": "\uF2DB {usage}%",
+            |        "format": "CPU {usage}%",
             |        "interval": 5,
             |        "tooltip": true
             |    },
             |    "memory": {
-            |        "format": "\uF538 {percentage}%",
+            |        "format": "RAM {percentage}%",
             |        "interval": 5,
             |        "tooltip-format": "{used:0.1f}G / {total:0.1f}G"
             |    },
             |    "clock": {
-            |        "format": "\uF017 {:%H:%M}",
-            |        "format-alt": "\uF073 {:%a %d %b %H:%M}",
+            |        "format": "{:%H:%M}",
+            |        "format-alt": "{:%a %d %b %H:%M}",
             |        "tooltip-format": "<tt>{calendar}</tt>"
             |    }
             |}
@@ -1670,7 +1670,7 @@ chmod +x /root/.vnc/xstartup""")
         File(root, ".config/waybar/style.css").writeText(
             """
             |* {
-            |    font-family: "Font Awesome 6 Free", "Font Awesome 5 Free", "FontAwesome", "Noto Sans", sans-serif;
+            |    font-family: "Noto Sans", sans-serif;
             |    font-size: 13px;
             |    min-height: 0;
             |}
