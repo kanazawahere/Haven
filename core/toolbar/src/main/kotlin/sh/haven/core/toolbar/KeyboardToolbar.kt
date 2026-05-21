@@ -381,6 +381,19 @@ private fun AlignedToolbarContent(
     val (row1Left, row1Right) = splitAroundNav(layout.row1)
     val (row2Left, row2Right) = splitAroundNav(layout.row2)
 
+    // Pin the leading icon keys to a fixed 2-column grid so the Attach
+    // (row 1) and Voice/secure-keyboard (row 2) icons always stack at
+    // column 2 — col 1 holds the keyboard toggle (row 1) / VNC-desktop
+    // (row 2), col 2 holds Attach / Voice. Placeholders keep the columns
+    // aligned even when one leading icon is absent (e.g. no VNC on a
+    // plain SSH profile), which previously slid Voice under column 1.
+    fun ToolbarItem.isKey(k: ToolbarKey) = this is ToolbarItem.BuiltIn && this.key == k
+    val r1Keyboard = row1Left.firstOrNull { it.isKey(ToolbarKey.KEYBOARD) }
+    val r1Attach = row1Left.firstOrNull { it.isKey(ToolbarKey.ATTACH) }
+    val r1Rest = row1Left.filterNot { it.isKey(ToolbarKey.KEYBOARD) || it.isKey(ToolbarKey.ATTACH) }
+    val r2Voice = row2Left.firstOrNull { it.isKey(ToolbarKey.VOICE_KEYBOARD) }
+    val r2Rest = row2Left.filterNot { it.isKey(ToolbarKey.VOICE_KEYBOARD) }
+
     // Collect which nav keys are present across all rows
     val presentNavKeys = layout.rows.flatten()
         .filterIsInstance<ToolbarItem.BuiltIn>()
@@ -408,13 +421,27 @@ private fun AlignedToolbarContent(
         // Left keys column — uses IntrinsicSize.Max so both rows have equal width
         Column(modifier = Modifier.width(IntrinsicSize.Max)) {
             KeyRow(Modifier.fillMaxWidth()) {
-                for (item in row1Left) {
+                // Col 1: keyboard toggle (or placeholder to hold the column).
+                if (r1Keyboard != null) {
+                    RenderItem(r1Keyboard, focusRequester, ctrlActive, altActive,
+                        shiftActive, imeVisible, view)
+                } else {
+                    Spacer(Modifier.size(32.dp))
+                }
+                // Col 2: Attach (pinned).
+                if (r1Attach != null) {
+                    RenderItem(r1Attach, focusRequester, ctrlActive, altActive,
+                        shiftActive, imeVisible, view)
+                } else {
+                    Spacer(Modifier.size(32.dp))
+                }
+                for (item in r1Rest) {
                     RenderItem(item, focusRequester, ctrlActive, altActive,
                         shiftActive, imeVisible, view)
                 }
             }
             KeyRow(Modifier.fillMaxWidth()) {
-                // VNC Desktop icon at start of row 2
+                // Col 1: VNC Desktop icon (or placeholder so Voice stays at col 2).
                 if (onVncTap != null) {
                     if (vncLoading) {
                         androidx.compose.foundation.layout.Box(
@@ -429,8 +456,17 @@ private fun AlignedToolbarContent(
                     } else {
                         ToolbarIconButton(Icons.Filled.DesktopWindows, stringResource(R.string.toolbar_vnc_desktop), onVncTap)
                     }
+                } else {
+                    Spacer(Modifier.size(32.dp))
                 }
-                for (item in row2Left) {
+                // Col 2: Voice / secure-keyboard toggle (pinned, stacks under Attach).
+                if (r2Voice != null) {
+                    RenderItem(r2Voice, focusRequester, ctrlActive, altActive,
+                        shiftActive, imeVisible, view)
+                } else {
+                    Spacer(Modifier.size(32.dp))
+                }
+                for (item in r2Rest) {
                     RenderItem(item, focusRequester, ctrlActive, altActive,
                         shiftActive, imeVisible, view)
                 }
