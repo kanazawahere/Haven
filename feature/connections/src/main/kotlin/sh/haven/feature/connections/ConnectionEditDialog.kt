@@ -335,8 +335,10 @@ fun ConnectionEditDialog(
     // expanded; the rest start folded. rememberSaveable so toggles survive
     // rotation.
     var secConnectionExpanded by rememberSaveable { mutableStateOf(false) }
-    var secTerminalExpanded by rememberSaveable { mutableStateOf(true) }
-    var secAuthExpanded by rememberSaveable { mutableStateOf(true) }
+    var secTerminalExpanded by rememberSaveable { mutableStateOf(false) }
+    var secAuthExpanded by rememberSaveable { mutableStateOf(false) }
+    var secReliabilityExpanded by rememberSaveable { mutableStateOf(false) }
+    var secEmbeddedVncExpanded by rememberSaveable { mutableStateOf(false) }
     var portKnockDelayMs by rememberSaveable {
         mutableStateOf((existing?.portKnockDelayMs ?: 100).toString())
     }
@@ -350,6 +352,366 @@ fun ConnectionEditDialog(
         modifier = Modifier.fillMaxWidth(0.92f),
         title = { Text(title) },
         text = {
+        // #166/dialog-tidy: routing + port-knock content as reusable
+        // closures so SSH renders them inside Connection / Authentication
+        // while VNC/RDP/SMB keep them as their own sections below.
+        val routingBody: @Composable () -> Unit = {
+                    var proxyExpanded by remember { mutableStateOf(false) }
+                    val selectedTunnel = tunnelConfigs.firstOrNull { it.id == tunnelConfigId }
+                    val noneDirectLabel = stringResource(R.string.connections_dropdown_none_direct)
+                    val tunnelDropdownLabel = selectedTunnel?.let {
+                        stringResource(R.string.connections_tunnel_dropdown_label, it.label)
+                    }
+                    val cfTunnelLabel = stringResource(R.string.connections_dropdown_cloudflare_tunnel)
+                    val selectedLabel = when {
+                        useCloudflareTunnel -> cfTunnelLabel
+                        tunnelDropdownLabel != null -> tunnelDropdownLabel
+                        proxyType != null -> proxyType!!
+                        else -> noneDirectLabel
+                    }
+                    ExposedDropdownMenuBox(
+                        expanded = proxyExpanded,
+                        onExpandedChange = { proxyExpanded = it },
+                    ) {
+                        OutlinedTextField(
+                            value = selectedLabel,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(R.string.connections_field_route_through)) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = proxyExpanded) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                        )
+                        ExposedDropdownMenu(
+                            expanded = proxyExpanded,
+                            onDismissRequest = { proxyExpanded = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.connections_dropdown_none_direct)) },
+                                onClick = {
+                                    proxyType = null
+                                    proxyHost = ""
+                                    tunnelConfigId = null
+                                    useCloudflareTunnel = false
+                                    proxyExpanded = false
+                                },
+                            )
+                            // Cloudflare Tunnel transport (GH #154) — the SSH
+                            // profile owns a hidden TunnelConfig row, so only
+                            // SSH-family profiles can opt in here. The form
+                            // below shares the SSH `host` field as the
+                            // tunnel hostname rather than duplicating it.
+                            if (connectionType == "SSH") {
+                                DropdownMenuItem(
+                                    text = { Text(cfTunnelLabel) },
+                                    onClick = {
+                                        useCloudflareTunnel = true
+                                        proxyType = null
+                                        proxyHost = ""
+                                        tunnelConfigId = null
+                                        proxyExpanded = false
+                                    },
+                                )
+                            }
+                            listOf("SOCKS5", "SOCKS4", "HTTP").forEach { kind ->
+                                DropdownMenuItem(
+                                    text = { Text(kind) },
+                                    onClick = {
+                                        proxyType = kind
+                                        tunnelConfigId = null
+                                        useCloudflareTunnel = false
+                                        if (kind == "HTTP" && proxyPort == "1080") {
+                                            proxyPort = "8080"
+                                        } else if (kind != "HTTP" && proxyPort == "8080") {
+                                            proxyPort = "1080"
+                                        }
+                                        proxyExpanded = false
+                                    },
+                                )
+                            }
+                            if (tunnelConfigs.isNotEmpty()) {
+                                HorizontalDivider()
+                                tunnelConfigs.forEach { tunnel ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Column {
+                                                Text(stringResource(R.string.connections_tunnel_dropdown_label, tunnel.label))
+                                                Text(
+                                                    runCatching {
+                                                        friendlyTunnelTypeLabel(
+                                                            sh.haven.core.data.db.entities.TunnelConfigType.fromStorage(tunnel.type),
+                                                        )
+                                                    }.getOrDefault(tunnel.type),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            tunnelConfigId = tunnel.id
+                                            proxyType = null
+                                            proxyHost = ""
+                                            useCloudflareTunnel = false
+                                            proxyExpanded = false
+                                        },
+                                    )
+                                }
+                            }
+                            if (onManageTunnels != null) {
+                                // Quick-add for WireGuard (the only standalone
+                                // backend with a usable add path right now)
+                                // plus a manage-everything link. Cloudflare
+                                // Tunnel used to live here too but is now an
+                                // inline transport on the SSH profile itself
+                                // (GH #154) — picking it from the route-through
+                                // list above is the new path. Tailscale's add
+                                // path is disabled in the Tunnels screen
+                                // pending the tsnet bridge.
+                                HorizontalDivider()
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            "+ New WireGuard tunnel",
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                    },
+                                    onClick = {
+                                        proxyExpanded = false
+                                        onManageTunnels(sh.haven.core.data.db.entities.TunnelConfigType.WIREGUARD)
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(R.string.connections_action_manage_tunnels),
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                    },
+                                    onClick = {
+                                        proxyExpanded = false
+                                        onManageTunnels(null)
+                                    },
+                                )
+                            }
+                        }
+                    }
+
+                    // Inline Cloudflare Tunnel transport fields (GH #154).
+                    // Shown when the route-through dropdown picks
+                    // "Cloudflare Tunnel". The SSH `host` field above
+                    // doubles as the tunnel hostname; the form here only
+                    // adds the optional Access-auth bits, jump destination,
+                    // and a Test connection button. JWT capture happens
+                    // via the existing in-app WebView contract.
+                    if (useCloudflareTunnel && connectionType == "SSH") {
+                        Spacer(Modifier.height(8.dp))
+                        val tunnelViewModel: TunnelViewModel = hiltViewModel()
+                        val cfTestResult by tunnelViewModel.cfTestResult.collectAsState()
+                        val cfLoginLauncher = rememberLauncherForActivityResult(
+                            contract = CloudflareAccessLoginContract(),
+                        ) { result ->
+                            when (result) {
+                                is CloudflareAccessLoginContract.Result.Success -> {
+                                    cfJwt = result.jwt
+                                    cfExpiresAt = result.expiresAtSeconds
+                                }
+                                is CloudflareAccessLoginContract.Result.Failed,
+                                CloudflareAccessLoginContract.Result.Cancelled -> Unit
+                            }
+                        }
+                        Text(
+                            stringResource(R.string.connections_helper_cloudflare_routing),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        CloudflareInlineFields(
+                            hostname = host,
+                            // Hostname comes from the SSH `host` field —
+                            // changes there flow through automatically.
+                            onHostnameChange = { /* no-op; SSH host owns it */ },
+                            teamDomain = cfTeamDomain,
+                            onTeamDomainChange = { cfTeamDomain = it },
+                            jwt = cfJwt,
+                            jwtExpiresAt = cfExpiresAt,
+                            jumpDestination = cfJumpDestination,
+                            onJumpDestinationChange = { cfJumpDestination = it },
+                            onSignInClick = {
+                                val h = host.trim()
+                                if (h.isNotEmpty()) {
+                                    cfLoginLauncher.launch(
+                                        CloudflareAccessLoginContract.Input(
+                                            hostname = h,
+                                            teamDomain = cfTeamDomain.trim(),
+                                        ),
+                                    )
+                                }
+                            },
+                            advancedOpen = cfAdvancedOpen,
+                            onAdvancedToggle = { cfAdvancedOpen = !cfAdvancedOpen },
+                            onJwtPaste = { pasted, expiresAt ->
+                                cfJwt = pasted
+                                cfExpiresAt = expiresAt
+                            },
+                            testResult = cfTestResult,
+                            onTestClick = {
+                                tunnelViewModel.testCloudflareAccess(
+                                    host.trim(),
+                                    cfJwt.trim(),
+                                    cfJumpDestination.trim(),
+                                )
+                            },
+                            showHostname = false,
+                            showIntroBlurb = false,
+                        )
+                    }
+
+                    if (proxyType != null) {
+                        Spacer(Modifier.height(4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = proxyHost,
+                                onValueChange = { proxyHost = it },
+                                label = { Text(stringResource(R.string.connections_field_proxy_host)) },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
+                            )
+                            OutlinedTextField(
+                                value = proxyPort,
+                                onValueChange = { proxyPort = it.filter { c -> c.isDigit() } },
+                                label = { Text(stringResource(R.string.connections_field_port)) },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.width(80.dp),
+                            )
+                        }
+                        if (host.endsWith(".onion") && proxyType == "SOCKS5") {
+                            Text(
+                                "Tor .onion address detected — hostname will be resolved through the SOCKS5 proxy",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        } else if (host.endsWith(".onion") && proxyType != "SOCKS5") {
+                            Text(
+                                ".onion addresses require a SOCKS5 proxy (e.g. Orbot on localhost:9050)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
+
+                        // Visual chain indicator for proxy
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        ) {
+                            Icon(Icons.Filled.PhoneAndroid, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.width(4.dp))
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(4.dp))
+                            Text("$proxyType", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(4.dp))
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(4.dp))
+                            Icon(Icons.Filled.Storage, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else if (host.endsWith(".onion")) {
+                        Text(
+                            ".onion addresses require a SOCKS5 proxy (e.g. Orbot on localhost:9050)",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+        }
+        val portKnockBody: @Composable () -> Unit = {
+                    val parsedKnock = KnockSequence.parse(
+                        portKnockSequence,
+                        portKnockDelayMs.toIntOrNull() ?: KnockSequence.DEFAULT_DELAY_MS,
+                    )
+                    val knockError = parsedKnock.exceptionOrNull()?.message
+                    OutlinedTextField(
+                        value = portKnockSequence,
+                        onValueChange = { portKnockSequence = it },
+                        label = { Text(stringResource(R.string.connections_field_port_knock_sequence)) },
+                        placeholder = { Text(stringResource(R.string.connections_hint_port_knock_sequence)) },
+                        isError = knockError != null,
+                        supportingText = {
+                            if (knockError != null) {
+                                Text(knockError, color = MaterialTheme.colorScheme.error)
+                            } else if (portKnockSequence.isNotBlank()) {
+                                Text(stringResource(R.string.connections_helper_port_knock_active))
+                            } else {
+                                Text(stringResource(R.string.connections_helper_port_knock_blank))
+                            }
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (portKnockSequence.isNotBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        OutlinedTextField(
+                            value = portKnockDelayMs,
+                            onValueChange = { v ->
+                                portKnockDelayMs = v.filter { c -> c.isDigit() }.take(5)
+                            },
+                            label = { Text(stringResource(R.string.connections_field_port_knock_delay)) },
+                            placeholder = { Text("100") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.width(200.dp),
+                        )
+                        if (onTestKnock != null) {
+                            val scope = rememberCoroutineScope()
+                            var testRunning by remember { mutableStateOf(false) }
+                            var testResult by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
+                            Spacer(Modifier.height(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                TextButton(
+                                    enabled = !testRunning && knockError == null && host.isNotBlank(),
+                                    onClick = {
+                                        testRunning = true
+                                        testResult = null
+                                        scope.launch {
+                                            val r = onTestKnock(
+                                                host,
+                                                portKnockSequence,
+                                                portKnockDelayMs.toIntOrNull()
+                                                    ?: KnockSequence.DEFAULT_DELAY_MS,
+                                            )
+                                            testResult = r
+                                            testRunning = false
+                                        }
+                                    },
+                                ) {
+                                    if (testRunning) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(14.dp),
+                                            strokeWidth = 2.dp,
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(stringResource(R.string.connections_button_test_knock_running))
+                                    } else {
+                                        Text(stringResource(R.string.connections_button_test_knock))
+                                    }
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                testResult?.let { (ok, msg) ->
+                                    Text(
+                                        msg,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (ok) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            }
+                        }
+                    }
+        }
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 ConnectionSection(stringResource(R.string.connections_section_general))
                 // Transport selector. LOCAL is back in the list (was briefly
@@ -1424,6 +1786,8 @@ fun ConnectionEditDialog(
                     }
 
 
+                    ConnectionSection(stringResource(R.string.connections_section_routing))
+                    routingBody()
                     }
                     CollapsibleSection(stringResource(R.string.connections_section_terminal), secTerminalExpanded, { secTerminalExpanded = !secTerminalExpanded }) {
                     // Session manager
@@ -1560,57 +1924,6 @@ fun ConnectionEditDialog(
                         )
                     }
 
-                    // Tunnel-only mode (#150 Phase B). When on, connect
-                    // brings up the SSH transport and registers port
-                    // forwards but does NOT open a terminal — the
-                    // session lives in the background just for its
-                    // forwards. Pair with the Reconnect controls below
-                    // (max attempts = 0 = unlimited) for autossh-style
-                    // keepalive of the forwards.
-                    Spacer(Modifier.height(8.dp))
-                    BooleanToggleRow(
-                        label = stringResource(R.string.connections_toggle_tunnel_only),
-                        checked = tunnelOnly,
-                        onCheckedChange = { tunnelOnly = it },
-                        description = stringResource(R.string.connections_helper_tunnel_only),
-                    )
-
-                    // Reconnect controls (#150 Phase A). Defaults preserve
-                    // current behaviour: auto-reconnect on transport drop,
-                    // 5 attempts, plus reconnect on network change. Users
-                    // who run noisy auth (the loop spammed during a wrong-
-                    // password phase) or who want indefinite retry on a
-                    // tunnel-only profile holding port forwards alive get
-                    // the knobs here.
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        stringResource(R.string.connections_section_reconnect),
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    BooleanToggleRow(
-                        label = stringResource(R.string.connections_toggle_auto_reconnect),
-                        checked = autoReconnect,
-                        onCheckedChange = { autoReconnect = it },
-                    )
-                    if (autoReconnect) {
-                        Spacer(Modifier.height(4.dp))
-                        OutlinedTextField(
-                            value = reconnectMaxAttempts,
-                            onValueChange = { v -> reconnectMaxAttempts = v.filter { c -> c.isDigit() }.take(4) },
-                            label = { Text(stringResource(R.string.connections_field_reconnect_max_attempts)) },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    BooleanToggleRow(
-                        label = stringResource(R.string.connections_toggle_reconnect_on_network_change),
-                        checked = reconnectOnNetworkChange,
-                        onCheckedChange = { reconnectOnNetworkChange = it },
-                    )
-
                     // File transport picker — Auto / SFTP / SCP (legacy)
                     Spacer(Modifier.height(8.dp))
                     Text(
@@ -1665,20 +1978,6 @@ fun ConnectionEditDialog(
                         onCheckedChange = { disableAltScreen = it },
                         description = stringResource(R.string.connections_helper_disable_alt_screen),
                     )
-
-                    // MCP reverse tunnel — only meaningful for plain SSH
-                    // (mosh/ET can't carry an SSH -R forward). Backed by a
-                    // port-forward rule reconciled on save, not a profile
-                    // field.
-                    if (selectedTransport == "SSH") {
-                        Spacer(Modifier.height(4.dp))
-                        BooleanToggleRow(
-                            label = stringResource(R.string.connections_toggle_mcp_tunnel),
-                            checked = mcpReverseTunnel,
-                            onCheckedChange = { mcpReverseTunnel = it },
-                            description = stringResource(R.string.connections_helper_mcp_tunnel),
-                        )
-                    }
 
                     // Per-profile terminal colour scheme (#144). Null on the
                     // profile means "inherit the global setting"; setting a
@@ -1801,9 +2100,63 @@ fun ConnectionEditDialog(
                     // "Save for this connection" ticked). Without this block
                     // the only way to edit was to delete and recreate the
                     // profile — #104.
+                    ConnectionSection(stringResource(R.string.connections_section_port_knock))
+                    portKnockBody()
                     }
+
+                    CollapsibleSection("Reliability & MCP", secReliabilityExpanded, { secReliabilityExpanded = !secReliabilityExpanded }) {
+                        // Tunnel-only mode (#150): bring up the SSH transport +
+                        // port forwards without opening a terminal. Pair with
+                        // unlimited reconnect for autossh-style keepalive.
+                        BooleanToggleRow(
+                            label = stringResource(R.string.connections_toggle_tunnel_only),
+                            checked = tunnelOnly,
+                            onCheckedChange = { tunnelOnly = it },
+                            description = stringResource(R.string.connections_helper_tunnel_only),
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            stringResource(R.string.connections_section_reconnect),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        BooleanToggleRow(
+                            label = stringResource(R.string.connections_toggle_auto_reconnect),
+                            checked = autoReconnect,
+                            onCheckedChange = { autoReconnect = it },
+                        )
+                        if (autoReconnect) {
+                            Spacer(Modifier.height(4.dp))
+                            OutlinedTextField(
+                                value = reconnectMaxAttempts,
+                                onValueChange = { v -> reconnectMaxAttempts = v.filter { c -> c.isDigit() }.take(4) },
+                                label = { Text(stringResource(R.string.connections_field_reconnect_max_attempts)) },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        BooleanToggleRow(
+                            label = stringResource(R.string.connections_toggle_reconnect_on_network_change),
+                            checked = reconnectOnNetworkChange,
+                            onCheckedChange = { reconnectOnNetworkChange = it },
+                        )
+                        // MCP reverse tunnel — only meaningful for plain SSH
+                        // (mosh/ET can't carry an SSH -R forward).
+                        if (selectedTransport == "SSH") {
+                            Spacer(Modifier.height(8.dp))
+                            BooleanToggleRow(
+                                label = stringResource(R.string.connections_toggle_mcp_tunnel),
+                                checked = mcpReverseTunnel,
+                                onCheckedChange = { mcpReverseTunnel = it },
+                                description = stringResource(R.string.connections_helper_mcp_tunnel),
+                            )
+                        }
+                    }
+
                     if (vncSettingsStored) {
-                        ConnectionSection(stringResource(R.string.connections_section_embedded_vnc))
+                        CollapsibleSection(stringResource(R.string.connections_section_embedded_vnc), secEmbeddedVncExpanded, { secEmbeddedVncExpanded = !secEmbeddedVncExpanded }) {
                         OutlinedTextField(
                             value = vncSavedPort,
                             onValueChange = { vncSavedPort = it.filter { c -> c.isDigit() } },
@@ -1883,6 +2236,7 @@ fun ConnectionEditDialog(
                         Spacer(Modifier.height(4.dp))
                         TextButton(onClick = { vncSettingsStored = false }) {
                             Text(stringResource(R.string.connections_action_clear_vnc))
+                        }
                         }
                     }
 
@@ -2038,6 +2392,18 @@ fun ConnectionEditDialog(
                     )
                 }
 
+                // Port knocking. Visible for any profile with a remote
+                // TCP host — skipped for LOCAL (no host), RCLONE (its own
+                // protocol), and RETICULUM (mesh, not TCP).
+                if (connectionType in setOf("VNC", "RDP", "SMB")) {
+                    ConnectionSection(stringResource(R.string.connections_section_routing))
+                    routingBody()
+                }
+                if (connectionType in setOf("VNC", "RDP", "SMB")) {
+                    ConnectionSection(stringResource(R.string.connections_section_port_knock))
+                    portKnockBody()
+                }
+
                 // Route through — shared picker for SOCKS / HTTP proxy and
                 // WireGuard / Tailscale tunnel. Was SSH-only until #149;
                 // VNC, RDP, and SMB now also honour profile.tunnelConfigId
@@ -2047,369 +2413,7 @@ fun ConnectionEditDialog(
                 // clears proxy fields; picking any proxy clears
                 // tunnelConfigId. The connect path enforces tunnel >
                 // jump > proxy precedence.
-                if (connectionType in setOf("SSH", "VNC", "RDP", "SMB")) {
-                    ConnectionSection(stringResource(R.string.connections_section_routing))
-                    var proxyExpanded by remember { mutableStateOf(false) }
-                    val selectedTunnel = tunnelConfigs.firstOrNull { it.id == tunnelConfigId }
-                    val noneDirectLabel = stringResource(R.string.connections_dropdown_none_direct)
-                    val tunnelDropdownLabel = selectedTunnel?.let {
-                        stringResource(R.string.connections_tunnel_dropdown_label, it.label)
-                    }
-                    val cfTunnelLabel = stringResource(R.string.connections_dropdown_cloudflare_tunnel)
-                    val selectedLabel = when {
-                        useCloudflareTunnel -> cfTunnelLabel
-                        tunnelDropdownLabel != null -> tunnelDropdownLabel
-                        proxyType != null -> proxyType!!
-                        else -> noneDirectLabel
-                    }
-                    ExposedDropdownMenuBox(
-                        expanded = proxyExpanded,
-                        onExpandedChange = { proxyExpanded = it },
-                    ) {
-                        OutlinedTextField(
-                            value = selectedLabel,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text(stringResource(R.string.connections_field_route_through)) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = proxyExpanded) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
-                        )
-                        ExposedDropdownMenu(
-                            expanded = proxyExpanded,
-                            onDismissRequest = { proxyExpanded = false },
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.connections_dropdown_none_direct)) },
-                                onClick = {
-                                    proxyType = null
-                                    proxyHost = ""
-                                    tunnelConfigId = null
-                                    useCloudflareTunnel = false
-                                    proxyExpanded = false
-                                },
-                            )
-                            // Cloudflare Tunnel transport (GH #154) — the SSH
-                            // profile owns a hidden TunnelConfig row, so only
-                            // SSH-family profiles can opt in here. The form
-                            // below shares the SSH `host` field as the
-                            // tunnel hostname rather than duplicating it.
-                            if (connectionType == "SSH") {
-                                DropdownMenuItem(
-                                    text = { Text(cfTunnelLabel) },
-                                    onClick = {
-                                        useCloudflareTunnel = true
-                                        proxyType = null
-                                        proxyHost = ""
-                                        tunnelConfigId = null
-                                        proxyExpanded = false
-                                    },
-                                )
-                            }
-                            listOf("SOCKS5", "SOCKS4", "HTTP").forEach { kind ->
-                                DropdownMenuItem(
-                                    text = { Text(kind) },
-                                    onClick = {
-                                        proxyType = kind
-                                        tunnelConfigId = null
-                                        useCloudflareTunnel = false
-                                        if (kind == "HTTP" && proxyPort == "1080") {
-                                            proxyPort = "8080"
-                                        } else if (kind != "HTTP" && proxyPort == "8080") {
-                                            proxyPort = "1080"
-                                        }
-                                        proxyExpanded = false
-                                    },
-                                )
-                            }
-                            if (tunnelConfigs.isNotEmpty()) {
-                                HorizontalDivider()
-                                tunnelConfigs.forEach { tunnel ->
-                                    DropdownMenuItem(
-                                        text = {
-                                            Column {
-                                                Text(stringResource(R.string.connections_tunnel_dropdown_label, tunnel.label))
-                                                Text(
-                                                    runCatching {
-                                                        friendlyTunnelTypeLabel(
-                                                            sh.haven.core.data.db.entities.TunnelConfigType.fromStorage(tunnel.type),
-                                                        )
-                                                    }.getOrDefault(tunnel.type),
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                )
-                                            }
-                                        },
-                                        onClick = {
-                                            tunnelConfigId = tunnel.id
-                                            proxyType = null
-                                            proxyHost = ""
-                                            useCloudflareTunnel = false
-                                            proxyExpanded = false
-                                        },
-                                    )
-                                }
-                            }
-                            if (onManageTunnels != null) {
-                                // Quick-add for WireGuard (the only standalone
-                                // backend with a usable add path right now)
-                                // plus a manage-everything link. Cloudflare
-                                // Tunnel used to live here too but is now an
-                                // inline transport on the SSH profile itself
-                                // (GH #154) — picking it from the route-through
-                                // list above is the new path. Tailscale's add
-                                // path is disabled in the Tunnels screen
-                                // pending the tsnet bridge.
-                                HorizontalDivider()
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            "+ New WireGuard tunnel",
-                                            color = MaterialTheme.colorScheme.primary,
-                                        )
-                                    },
-                                    onClick = {
-                                        proxyExpanded = false
-                                        onManageTunnels(sh.haven.core.data.db.entities.TunnelConfigType.WIREGUARD)
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            stringResource(R.string.connections_action_manage_tunnels),
-                                            color = MaterialTheme.colorScheme.primary,
-                                        )
-                                    },
-                                    onClick = {
-                                        proxyExpanded = false
-                                        onManageTunnels(null)
-                                    },
-                                )
-                            }
-                        }
-                    }
 
-                    // Inline Cloudflare Tunnel transport fields (GH #154).
-                    // Shown when the route-through dropdown picks
-                    // "Cloudflare Tunnel". The SSH `host` field above
-                    // doubles as the tunnel hostname; the form here only
-                    // adds the optional Access-auth bits, jump destination,
-                    // and a Test connection button. JWT capture happens
-                    // via the existing in-app WebView contract.
-                    if (useCloudflareTunnel && connectionType == "SSH") {
-                        Spacer(Modifier.height(8.dp))
-                        val tunnelViewModel: TunnelViewModel = hiltViewModel()
-                        val cfTestResult by tunnelViewModel.cfTestResult.collectAsState()
-                        val cfLoginLauncher = rememberLauncherForActivityResult(
-                            contract = CloudflareAccessLoginContract(),
-                        ) { result ->
-                            when (result) {
-                                is CloudflareAccessLoginContract.Result.Success -> {
-                                    cfJwt = result.jwt
-                                    cfExpiresAt = result.expiresAtSeconds
-                                }
-                                is CloudflareAccessLoginContract.Result.Failed,
-                                CloudflareAccessLoginContract.Result.Cancelled -> Unit
-                            }
-                        }
-                        Text(
-                            stringResource(R.string.connections_helper_cloudflare_routing),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        CloudflareInlineFields(
-                            hostname = host,
-                            // Hostname comes from the SSH `host` field —
-                            // changes there flow through automatically.
-                            onHostnameChange = { /* no-op; SSH host owns it */ },
-                            teamDomain = cfTeamDomain,
-                            onTeamDomainChange = { cfTeamDomain = it },
-                            jwt = cfJwt,
-                            jwtExpiresAt = cfExpiresAt,
-                            jumpDestination = cfJumpDestination,
-                            onJumpDestinationChange = { cfJumpDestination = it },
-                            onSignInClick = {
-                                val h = host.trim()
-                                if (h.isNotEmpty()) {
-                                    cfLoginLauncher.launch(
-                                        CloudflareAccessLoginContract.Input(
-                                            hostname = h,
-                                            teamDomain = cfTeamDomain.trim(),
-                                        ),
-                                    )
-                                }
-                            },
-                            advancedOpen = cfAdvancedOpen,
-                            onAdvancedToggle = { cfAdvancedOpen = !cfAdvancedOpen },
-                            onJwtPaste = { pasted, expiresAt ->
-                                cfJwt = pasted
-                                cfExpiresAt = expiresAt
-                            },
-                            testResult = cfTestResult,
-                            onTestClick = {
-                                tunnelViewModel.testCloudflareAccess(
-                                    host.trim(),
-                                    cfJwt.trim(),
-                                    cfJumpDestination.trim(),
-                                )
-                            },
-                            showHostname = false,
-                            showIntroBlurb = false,
-                        )
-                    }
-
-                    if (proxyType != null) {
-                        Spacer(Modifier.height(4.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(
-                                value = proxyHost,
-                                onValueChange = { proxyHost = it },
-                                label = { Text(stringResource(R.string.connections_field_proxy_host)) },
-                                singleLine = true,
-                                modifier = Modifier.weight(1f),
-                            )
-                            OutlinedTextField(
-                                value = proxyPort,
-                                onValueChange = { proxyPort = it.filter { c -> c.isDigit() } },
-                                label = { Text(stringResource(R.string.connections_field_port)) },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.width(80.dp),
-                            )
-                        }
-                        if (host.endsWith(".onion") && proxyType == "SOCKS5") {
-                            Text(
-                                "Tor .onion address detected — hostname will be resolved through the SOCKS5 proxy",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(top = 4.dp),
-                            )
-                        } else if (host.endsWith(".onion") && proxyType != "SOCKS5") {
-                            Text(
-                                ".onion addresses require a SOCKS5 proxy (e.g. Orbot on localhost:9050)",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(top = 4.dp),
-                            )
-                        }
-
-                        // Visual chain indicator for proxy
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 4.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                        ) {
-                            Icon(Icons.Filled.PhoneAndroid, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(Modifier.width(4.dp))
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                            Spacer(Modifier.width(4.dp))
-                            Text("$proxyType", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                            Spacer(Modifier.width(4.dp))
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                            Spacer(Modifier.width(4.dp))
-                            Icon(Icons.Filled.Storage, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    } else if (host.endsWith(".onion")) {
-                        Text(
-                            ".onion addresses require a SOCKS5 proxy (e.g. Orbot on localhost:9050)",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
-                    }
-                }
-
-                // Port knocking. Visible for any profile with a remote
-                // TCP host — skipped for LOCAL (no host), RCLONE (its own
-                // protocol), and RETICULUM (mesh, not TCP).
-                if (connectionType !in setOf("LOCAL", "RCLONE", "RETICULUM")) {
-                    ConnectionSection(stringResource(R.string.connections_section_port_knock))
-                    val parsedKnock = KnockSequence.parse(
-                        portKnockSequence,
-                        portKnockDelayMs.toIntOrNull() ?: KnockSequence.DEFAULT_DELAY_MS,
-                    )
-                    val knockError = parsedKnock.exceptionOrNull()?.message
-                    OutlinedTextField(
-                        value = portKnockSequence,
-                        onValueChange = { portKnockSequence = it },
-                        label = { Text(stringResource(R.string.connections_field_port_knock_sequence)) },
-                        placeholder = { Text(stringResource(R.string.connections_hint_port_knock_sequence)) },
-                        isError = knockError != null,
-                        supportingText = {
-                            if (knockError != null) {
-                                Text(knockError, color = MaterialTheme.colorScheme.error)
-                            } else if (portKnockSequence.isNotBlank()) {
-                                Text(stringResource(R.string.connections_helper_port_knock_active))
-                            } else {
-                                Text(stringResource(R.string.connections_helper_port_knock_blank))
-                            }
-                        },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    if (portKnockSequence.isNotBlank()) {
-                        Spacer(Modifier.height(4.dp))
-                        OutlinedTextField(
-                            value = portKnockDelayMs,
-                            onValueChange = { v ->
-                                portKnockDelayMs = v.filter { c -> c.isDigit() }.take(5)
-                            },
-                            label = { Text(stringResource(R.string.connections_field_port_knock_delay)) },
-                            placeholder = { Text("100") },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.width(200.dp),
-                        )
-                        if (onTestKnock != null) {
-                            val scope = rememberCoroutineScope()
-                            var testRunning by remember { mutableStateOf(false) }
-                            var testResult by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
-                            Spacer(Modifier.height(4.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                TextButton(
-                                    enabled = !testRunning && knockError == null && host.isNotBlank(),
-                                    onClick = {
-                                        testRunning = true
-                                        testResult = null
-                                        scope.launch {
-                                            val r = onTestKnock(
-                                                host,
-                                                portKnockSequence,
-                                                portKnockDelayMs.toIntOrNull()
-                                                    ?: KnockSequence.DEFAULT_DELAY_MS,
-                                            )
-                                            testResult = r
-                                            testRunning = false
-                                        }
-                                    },
-                                ) {
-                                    if (testRunning) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(14.dp),
-                                            strokeWidth = 2.dp,
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(stringResource(R.string.connections_button_test_knock_running))
-                                    } else {
-                                        Text(stringResource(R.string.connections_button_test_knock))
-                                    }
-                                }
-                                Spacer(Modifier.width(8.dp))
-                                testResult?.let { (ok, msg) ->
-                                    Text(
-                                        msg,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (ok) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.error,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
             }
         },
         confirmButton = {
