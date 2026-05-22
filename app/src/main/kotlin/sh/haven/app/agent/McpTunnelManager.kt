@@ -266,6 +266,7 @@ class McpTunnelManager @Inject constructor(
                     targetHost = "127.0.0.1",
                     targetPort = mcpPort,
                     critical = true,
+                    selfHealOnBindFailure = true,
                 ),
             )
             // Multiplex any running guest MCP servers (e.g. a KiCad MCP) onto
@@ -285,6 +286,7 @@ class McpTunnelManager @Inject constructor(
                             targetHost = "127.0.0.1",
                             targetPort = p,
                             critical = false,
+                            selfHealOnBindFailure = true,
                         ),
                     )
                 }

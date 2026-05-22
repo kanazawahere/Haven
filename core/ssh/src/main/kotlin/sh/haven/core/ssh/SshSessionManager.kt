@@ -56,6 +56,18 @@ class SshSessionManager @Inject constructor(
          * "CONNECTED" session. Mirrors OpenSSH `ExitOnForwardFailure`.
          */
         val critical: Boolean = false,
+        /**
+         * When true, a REMOTE (`-R`) bind failure triggers a one-shot
+         * self-heal: over the (already-connected) SSH session, kill a stale
+         * `sshd` process still holding this listen port on the endpoint host,
+         * then retry the bind once. Used only for Haven's own dedicated
+         * reverse-tunnel ports (the MCP `-R` + multiplexed guest MCP ports),
+         * where the holder can only be a stale instance of our own forward —
+         * automating the manual `kill` that previously un-wedged the tunnel
+         * after an app restart / WiFi roam. Never set on arbitrary user
+         * forwards.
+         */
+        val selfHealOnBindFailure: Boolean = false,
     )
 
     enum class PortForwardType { LOCAL, REMOTE, DYNAMIC }
@@ -942,9 +954,7 @@ class SshSessionManager @Inject constructor(
                         Log.d(TAG, "Port forward activated: L ${rule.bindAddress}:$actualPort -> ${rule.targetHost}:${rule.targetPort}")
                     }
                     PortForwardType.REMOTE -> {
-                        session.client.setPortForwardingR(
-                            rule.bindAddress, rule.bindPort, rule.targetHost, rule.targetPort,
-                        )
+                        bindRemoteWithSelfHeal(session.client, rule)
                         activated.add(rule)
                         Log.d(TAG, "Port forward activated: R ${rule.bindAddress}:${rule.bindPort} -> ${rule.targetHost}:${rule.targetPort}")
                     }
@@ -966,7 +976,76 @@ class SshSessionManager @Inject constructor(
             val existing = map[sessionId] ?: return@update map
             map + (sessionId to existing.copy(activeForwards = existing.activeForwards + activated))
         }
+        // After a clean (re)connect of a self-healing reverse tunnel, record
+        // this connection's endpoint sshd PID so a future instance can kill
+        // this session if it lingers stale and blocks the rebind.
+        if (!criticalFailed && rules.any { it.selfHealOnBindFailure && it.type == PortForwardType.REMOTE }) {
+            recordTunnelSshPid(session.client)
+        }
         return !criticalFailed
+    }
+
+    /**
+     * Bind a REMOTE (`-R`) forward, with one-shot self-heal for
+     * [PortForwardInfo.selfHealOnBindFailure] forwards: if the bind throws
+     * (typically "Address already in use" from a stale `sshd` holding the
+     * port after an app restart / roam), free the stale holder over the
+     * already-connected session and retry once. A second failure propagates
+     * to the caller (which sets `criticalFailed` as before).
+     */
+    private fun bindRemoteWithSelfHeal(client: SshClient, rule: PortForwardInfo) {
+        try {
+            client.setPortForwardingR(rule.bindAddress, rule.bindPort, rule.targetHost, rule.targetPort)
+        } catch (e: Exception) {
+            if (!rule.selfHealOnBindFailure) throw e
+            Log.w(TAG, "R ${rule.bindPort} bind failed (${e.message}) — self-healing stale forward on endpoint")
+            if (!freeStaleReverseForward(client, rule.bindPort)) throw e
+            try {
+                Thread.sleep(600)
+            } catch (_: InterruptedException) {}
+            client.setPortForwardingR(rule.bindAddress, rule.bindPort, rule.targetHost, rule.targetPort)
+            Log.i(TAG, "R ${rule.bindPort} self-heal succeeded — rebound after freeing stale holder")
+        }
+    }
+
+    /**
+     * Over the connected [client], kill the STALE prior tunnel's `sshd`
+     * session that is still holding the reverse-forward port on the endpoint,
+     * so a fresh `-R` bind can succeed. Uses the PID recorded by
+     * [recordTunnelSshPid] on the previous successful connect — because
+     * `ss -p` without root cannot attribute the listen socket to a PID (sshd
+     * hardens its processes, `dumpable=0`, so `/proc/<pid>/fd` is root-only).
+     * Surgical + root-free: kills only a live `sshd-session` PID (comm check
+     * guards against PID reuse) that is NOT the current connection's own
+     * session (`$PPID`). Returns true iff it killed the recorded holder.
+     */
+    private fun freeStaleReverseForward(client: SshClient, port: Int): Boolean {
+        val cmd =
+            "F=\"\$HOME/.haven-mcp-tunnel.pid\"; old=\$(cat \"\$F\" 2>/dev/null); " +
+                "if [ -n \"\$old\" ] && [ \"\$old\" != \"\$PPID\" ] && grep -qa sshd \"/proc/\$old/comm\" 2>/dev/null; then " +
+                "kill \"\$old\" 2>/dev/null && echo HEALED || echo KILLFAIL; " +
+                "else echo NOHOLDER; fi"
+        return try {
+            val r = runBlocking { client.execCommand(cmd) }
+            Log.i(TAG, "self-heal on :$port -> ${r.stdout.trim().ifEmpty { r.stderr.trim() }}")
+            r.stdout.contains("HEALED")
+        } catch (e: Exception) {
+            Log.w(TAG, "self-heal exec on :$port failed: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Record THIS connection's endpoint-side `sshd-session` PID (`$PPID` of an
+     * exec) to `~/.haven-mcp-tunnel.pid` after a successful self-heal forward
+     * bind, so a later instance whose bind is blocked by this (now stale)
+     * session can find + kill it (see [freeStaleReverseForward]). Best-effort.
+     */
+    private fun recordTunnelSshPid(client: SshClient) {
+        try {
+            runBlocking { client.execCommand("echo \"\$PPID\" > \"\$HOME/.haven-mcp-tunnel.pid\" 2>/dev/null") }
+        } catch (_: Exception) {
+        }
     }
 
     /**
