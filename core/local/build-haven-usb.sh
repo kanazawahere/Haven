@@ -3,8 +3,9 @@
 # into core/local's assets dir for APK packaging.
 #
 # Artifacts:
-#   haven-usb-probe   — Slice-2 reachability gate (standalone executable)
-#   (Slice 3 adds libhaven_usb.so — the LD_PRELOAD/DllMap shim — here too.)
+#   haven-usb-probe   — Slice-2 reachability gate (standalone, static)
+#   libhaven_usb.so   — Slice-3 LD_PRELOAD/DllMap hidraw shim (shared)
+#   haven-hidraw-test — Slice-3 verification harness (dynamic, for LD_PRELOAD)
 #
 # Why the GNU cross toolchain (not the NDK / bionic): these run inside the proot
 # rootfs (Arch/Alpine/Debian/Void), which links against glibc or musl, not
@@ -40,7 +41,20 @@ build_one() {
     "$cc" -O2 -D_FORTIFY_SOURCE=0 -Wall -Wextra -static \
         -o "$out_dir/haven-usb-probe" "$SRC_DIR/haven-usb-probe.c"
     command -v "$strip" >/dev/null && "$strip" "$out_dir/haven-usb-probe" || true
-    ls -la "$out_dir/haven-usb-probe"
+
+    echo "=== libhaven_usb.so for $abi ==="
+    # Shared, fortify off (loads under both glibc and musl). Links pthread + dl.
+    "$cc" -shared -fPIC -O2 -D_FORTIFY_SOURCE=0 -Wall -Wextra \
+        -o "$out_dir/libhaven_usb.so" "$SRC_DIR/libhaven_usb.c" -lpthread -ldl
+    command -v "$strip" >/dev/null && "$strip" "$out_dir/libhaven_usb.so" || true
+
+    echo "=== haven-hidraw-test for $abi ==="
+    # DYNAMIC (no -static) so LD_PRELOAD can interpose its libc calls.
+    "$cc" -O2 -D_FORTIFY_SOURCE=0 -Wall -Wextra \
+        -o "$out_dir/haven-hidraw-test" "$SRC_DIR/haven-hidraw-test.c"
+    command -v "$strip" >/dev/null && "$strip" "$out_dir/haven-hidraw-test" || true
+
+    ls -la "$out_dir"
 }
 
 if [ $# -eq 0 ]; then

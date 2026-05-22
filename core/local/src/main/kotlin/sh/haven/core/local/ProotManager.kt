@@ -1642,32 +1642,42 @@ chmod +x /root/.vnc/xstartup""")
     }
 
     /**
-     * Stage the haven-usb guest artifacts into the active rootfs: the Slice-2
-     * reachability probe at `/usr/local/bin/haven-usb-probe` (Slice 3 adds the
-     * `libhaven_usb.so` shim). Re-copies on every call so an app update refreshes
-     * them. Returns the absolute in-guest path of the probe, or null if no asset
+     * Stage the haven-usb guest artifacts into the active rootfs:
+     *  - `/usr/local/bin/haven-usb-probe`        (Slice-2 reachability probe)
+     *  - `/usr/local/lib/haven/libhaven_usb.so`  (Slice-3 LD_PRELOAD/DllMap shim)
+     *  - `/usr/local/bin/haven-hidraw-test`      (Slice-3 verification harness)
+     *
+     * Re-copies on every call so an app update refreshes them. Returns the
+     * in-guest path of the probe (the Slice-2 entry point), or null if no asset
      * exists for this ABI. World-readable + executable so the fake-root guest
-     * process can run it.
+     * process can run them.
      */
     fun stageHavenUsbArtifacts(): String? {
         val abi = android.os.Build.SUPPORTED_ABIS.firstOrNull { it == "arm64-v8a" || it == "x86_64" }
             ?: run { Log.w(TAG, "[haven-usb] no artifact for ABI ${android.os.Build.SUPPORTED_ABIS.toList()}"); return null }
-        val probeAsset = "haven-usb/$abi/haven-usb-probe"
-        val probeTarget = File(activeRootfsDir, "usr/local/bin/haven-usb-probe")
-        probeTarget.parentFile?.mkdirs()
-        return try {
-            context.assets.open(probeAsset).use { input ->
-                probeTarget.outputStream().use { output -> input.copyTo(output) }
+
+        fun copy(assetRel: String, target: File, executable: Boolean): Boolean = try {
+            target.parentFile?.mkdirs()
+            context.assets.open("haven-usb/$abi/$assetRel").use { input ->
+                target.outputStream().use { output -> input.copyTo(output) }
             }
-            probeTarget.setReadable(true, false)
-            probeTarget.setExecutable(true, false)
-            Log.d(TAG, "[haven-usb] staged probe from $probeAsset (${probeTarget.length()} bytes)")
-            "/usr/local/bin/haven-usb-probe"
+            target.setReadable(true, false)
+            if (executable) target.setExecutable(true, false)
+            Log.d(TAG, "[haven-usb] staged $assetRel (${target.length()} bytes)")
+            true
         } catch (e: Exception) {
-            Log.w(TAG, "[haven-usb] failed to stage probe: ${e.message}")
-            null
+            Log.w(TAG, "[haven-usb] failed to stage $assetRel: ${e.message}")
+            false
         }
+
+        val probeOk = copy("haven-usb-probe", File(activeRootfsDir, "usr/local/bin/haven-usb-probe"), true)
+        copy("libhaven_usb.so", File(activeRootfsDir, "usr/local/lib/haven/libhaven_usb.so"), false)
+        copy("haven-hidraw-test", File(activeRootfsDir, "usr/local/bin/haven-hidraw-test"), true)
+        return if (probeOk) "/usr/local/bin/haven-usb-probe" else null
     }
+
+    /** Absolute in-guest path of the LD_PRELOAD/DllMap shim staged by [stageHavenUsbArtifacts]. */
+    val havenUsbShimGuestPath: String get() = "/usr/local/lib/haven/libhaven_usb.so"
 
     fun migrateDesktopConfigs(de: DesktopEnvironment) {
         // Refresh the shim on every start so an app update's newer shim

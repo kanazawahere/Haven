@@ -103,12 +103,14 @@ val buildWayvncShim by tasks.registering(Exec::class) {
 // skips heavy native sources); onlyIf tolerates that.
 val buildHavenUsb by tasks.registering(Exec::class) {
     val script = file("build-haven-usb.sh")
-    val src = file("src/main/cpp/haven-usb/haven-usb-probe.c")
+    val srcDir = file("src/main/cpp/haven-usb")
+    val probeSrc = file("src/main/cpp/haven-usb/haven-usb-probe.c")
     val assetsDir = file("src/main/assets/haven-usb")
 
-    inputs.files(script, src)
+    inputs.files(script).withPropertyName("script")
+    inputs.dir(srcDir).withPropertyName("sources")
     outputs.dir(assetsDir)
-    onlyIf { script.exists() && src.exists() }
+    onlyIf { script.exists() && probeSrc.exists() }
 
     workingDir = projectDir
     commandLine("bash", "build-haven-usb.sh")

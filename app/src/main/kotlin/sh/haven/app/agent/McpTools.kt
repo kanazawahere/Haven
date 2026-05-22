@@ -4145,13 +4145,19 @@ internal class McpTools(
         }
         val socketName = usbProxyServer.start(deviceName)
         val probePath = localSessionManager.prootManager.stageHavenUsbArtifacts()
+        val shimPath = localSessionManager.prootManager.havenUsbShimGuestPath
         JSONObject().apply {
             put("device", usbDeviceJson(info))
             put("socketName", socketName)
             put("socketNamespace", "abstract")
             put("probePath", probePath ?: JSONObject.NULL)
             if (probePath != null) put("probeCommand", probePath)
-            put("note", "Proxy bound on abstract socket \\0$socketName. Run probeCommand via run_in_proot to confirm the guest can reach it.")
+            put("shimPath", shimPath)
+            // For a native HID app, prepend this so its /dev/hidraw* opens are
+            // routed to the brokered device (no real node, no root).
+            put("ldPreloadWrapper", "LD_PRELOAD=$shimPath")
+            put("hidrawTestCommand", "LD_PRELOAD=$shimPath /usr/local/bin/haven-hidraw-test /dev/hidraw0")
+            put("note", "Proxy bound on abstract socket \\0$socketName. Run probeCommand to confirm reachability; run hidrawTestCommand via run_in_proot to exercise the hidraw shim against the device.")
         }
     }
 
