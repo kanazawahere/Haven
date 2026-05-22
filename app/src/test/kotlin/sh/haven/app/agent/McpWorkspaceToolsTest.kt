@@ -85,6 +85,8 @@ class McpWorkspaceToolsTest {
             terminalInputQueue = mockk<TerminalInputQueue>(relaxed = true),
             prootInstallLogRepository = mockk<sh.haven.core.data.repository.ProotInstallLogRepository>(relaxed = true),
             sshKeyRepository = mockk<sh.haven.core.data.repository.SshKeyRepository>(relaxed = true),
+            totpSecretRepository = mockk<sh.haven.core.data.repository.TotpSecretRepository>(relaxed = true),
+            desktopSessionRegistry = mockk<sh.haven.core.data.desktop.DesktopSessionRegistry>(relaxed = true),
         )
         // All workspace verbs go through tools/call which is gated by
         // the dispatch-time pairing check. Initialize first so the

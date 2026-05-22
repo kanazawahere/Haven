@@ -76,6 +76,8 @@ class McpToolsConsentTest {
             terminalInputQueue = mockk<TerminalInputQueue>(relaxed = true),
             prootInstallLogRepository = mockk<sh.haven.core.data.repository.ProotInstallLogRepository>(relaxed = true),
             sshKeyRepository = mockk<sh.haven.core.data.repository.SshKeyRepository>(relaxed = true),
+            totpSecretRepository = mockk<sh.haven.core.data.repository.TotpSecretRepository>(relaxed = true),
+            desktopSessionRegistry = mockk<sh.haven.core.data.desktop.DesktopSessionRegistry>(relaxed = true),
         )
     }
 
@@ -122,6 +124,11 @@ class McpToolsConsentTest {
             // gate it once per (client, tool) so the user grants the
             // bundle and isn't re-prompted per-item underneath.
             "compose_workspace",
+            // send_terminal_input types into a live terminal; gated once per
+            // (client, tool) so an agent isn't re-prompted on every keystroke
+            // batch. Shipped behaviour since the queue_terminal_input split;
+            // this assertion was masked while the suite didn't compile.
+            "send_terminal_input",
         )) {
             val c = tools.consentFor(name)
                 ?: error("$name not registered")
@@ -144,7 +151,6 @@ class McpToolsConsentTest {
             // still EVERY_CALL.
             "upload_file_to_sftp",
             "delete_sftp_file",
-            "send_terminal_input",
             "convert_file",
             "set_terminal_font_from_url",
             "install_apk_from_url",
