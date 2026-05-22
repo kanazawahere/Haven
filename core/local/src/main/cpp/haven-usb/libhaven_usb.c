@@ -28,6 +28,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <sys/eventfd.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -79,6 +80,23 @@ static int (*real_poll)(struct pollfd *, nfds_t, int);
 static int g_debug = 0;
 #define DBG(...) do { if (g_debug) { fprintf(stderr, "haven-usb: " __VA_ARGS__); fflush(stderr); } } while (0)
 
+/* Resolve a real libc symbol. RTLD_NEXT works when we're LD_PRELOADed (Slice 3,
+ * loaded first). Under Mono DllMap (Slice 4) the shim is dlopen'd late, so
+ * RTLD_NEXT can't see libc (it only searches libraries loaded AFTER us) — fall
+ * back to an explicit libc handle. RTLD_DEFAULT is avoided: it would resolve
+ * back to our own interposer and recurse. */
+static void *g_libc = NULL;
+static void *resolve_real(const char *name) {
+    void *p = dlsym(RTLD_NEXT, name);
+    if (p) return p;
+    if (!g_libc) {
+        g_libc = dlopen("libc.so.6", RTLD_NOW | RTLD_NOLOAD);   /* glibc, already loaded */
+        if (!g_libc) g_libc = dlopen("libc.so.6", RTLD_NOW);
+        if (!g_libc) g_libc = dlopen("libc.so", RTLD_NOW);      /* musl / fallback */
+    }
+    return g_libc ? dlsym(g_libc, name) : NULL;
+}
+
 static void init_reals(void) {
     static int done = 0;
     if (done) return;
@@ -86,15 +104,15 @@ static void init_reals(void) {
     /* Free-slot sentinel is -1, but the static table is zero-initialized
      * (fd 0 = a valid fd). Mark every slot free before first use. */
     for (int i = 0; i < MAX_MANAGED; i++) g_managed[i].fd = -1;
-    real_open = dlsym(RTLD_NEXT, "open");
-    real_open64 = dlsym(RTLD_NEXT, "open64");
-    real_openat = dlsym(RTLD_NEXT, "openat");
-    real_openat64 = dlsym(RTLD_NEXT, "openat64");
-    real_read = dlsym(RTLD_NEXT, "read");
-    real_write = dlsym(RTLD_NEXT, "write");
-    real_close = dlsym(RTLD_NEXT, "close");
-    real_ioctl = dlsym(RTLD_NEXT, "ioctl");
-    real_poll = dlsym(RTLD_NEXT, "poll");
+    real_open = resolve_real("open");
+    real_open64 = resolve_real("open64");
+    real_openat = resolve_real("openat");
+    real_openat64 = resolve_real("openat64");
+    real_read = resolve_real("read");
+    real_write = resolve_real("write");
+    real_close = resolve_real("close");
+    real_ioctl = resolve_real("ioctl");
+    real_poll = resolve_real("poll");
     done = 1;
 }
 
@@ -253,6 +271,140 @@ static int open_managed(void) {
     pthread_mutex_unlock(&g_lock);
     return fd;
 }
+
+/* ===================================================================== */
+/* libudev fakes (Slice 4) — DllMap'd from libudev.so.0/.1 for Mono apps  */
+/* (HidSharp). We synthesise a single hidraw device backed by the proxy:  */
+/* enumeration returns it, sysattr returns its VID/PID/strings, and the   */
+/* hotplug monitor is a non-crashing fd that never fires. The devnode is  */
+/* /dev/hidraw0, which the DllMap'd libc open() above routes to the proxy. */
+/* ===================================================================== */
+
+/* Cached device identity, fetched once over the proxy. */
+static struct {
+    int probed;            /* attempted a fetch */
+    int present;           /* a device answered */
+    char idVendor[8];      /* "268b" */
+    char idProduct[8];     /* "0433" */
+    char manufacturer[128];
+    char product[128];
+    char serial[128];
+} g_dev;
+
+/* Decode a USB string descriptor (UTF-16LE after a 2-byte header) into ASCII. */
+static void decode_usb_string(const uint8_t *d, uint32_t n, char *out, size_t outsz) {
+    out[0] = '\0';
+    if (n < 2 || d[1] != 0x03) return;
+    size_t j = 0;
+    for (uint32_t i = 2; i + 1 < n && j + 1 < outsz; i += 2) {
+        uint16_t c = d[i] | (d[i + 1] << 8);
+        out[j++] = (c >= 0x20 && c < 0x7f) ? (char)c : '?';
+    }
+    out[j] = '\0';
+}
+
+/* Connect to the proxy, read the device descriptor for VID/PID + string
+ * indices, then fetch the string descriptors. Best-effort: strings may stay
+ * empty. Sets g_dev.present iff a device answered. Idempotent. */
+static void ensure_dev_info(void) {
+    if (g_dev.probed) return;
+    g_dev.probed = 1;
+    init_reals();
+    int fd = proxy_connect();
+    if (fd < 0) { DBG("udev: no proxy/device\n"); return; }
+
+    uint8_t *desc = NULL; uint32_t desc_len = 0;
+    if (proxy_get_descriptors(fd, &desc, &desc_len) <= 0 || !desc || desc_len < 18) {
+        free(desc); real_close(fd); DBG("udev: GET_DESCRIPTORS failed\n"); return;
+    }
+    uint16_t vid = desc[8] | (desc[9] << 8);
+    uint16_t pid = desc[10] | (desc[11] << 8);
+    uint8_t iMan = desc[14], iProd = desc[15], iSer = desc[16];
+    free(desc);
+    snprintf(g_dev.idVendor, sizeof(g_dev.idVendor), "%04x", vid);
+    snprintf(g_dev.idProduct, sizeof(g_dev.idProduct), "%04x", pid);
+    g_dev.present = 1;
+
+    struct { uint8_t idx; char *out; size_t sz; } strs[] = {
+        { iMan, g_dev.manufacturer, sizeof(g_dev.manufacturer) },
+        { iProd, g_dev.product, sizeof(g_dev.product) },
+        { iSer, g_dev.serial, sizeof(g_dev.serial) },
+    };
+    for (size_t k = 0; k < 3; k++) {
+        if (strs[k].idx == 0) continue;
+        uint8_t *s = NULL; uint32_t sl = 0;
+        int rc = proxy_control(fd, 0x80, 0x06, (0x03 << 8) | strs[k].idx, 0x0409, 255, &s, &sl);
+        if (rc > 0 && s) decode_usb_string(s, sl, strs[k].out, strs[k].sz);
+        free(s);
+    }
+    DBG("udev: device %s:%s manuf='%s' prod='%s' serial='%s'\n",
+        g_dev.idVendor, g_dev.idProduct, g_dev.manufacturer, g_dev.product, g_dev.serial);
+
+    uint8_t op = OP_CLOSE;
+    proxy_request(fd, &op, 1, NULL, NULL);
+    real_close(fd);
+}
+
+/* Opaque handles — distinct non-null sentinels HidSharp passes back to us. */
+static int g_udev_obj, g_enum_obj, g_hid_dev, g_usb_dev, g_list_entry, g_monitor;
+static int g_monitor_fd = -1;
+
+void *udev_new(void) { ensure_dev_info(); return &g_udev_obj; }
+void *udev_ref(void *u) { return u; }
+void *udev_unref(void *u) { (void)u; return NULL; }
+
+void *udev_enumerate_new(void *u) { (void)u; return &g_enum_obj; }
+void *udev_enumerate_ref(void *e) { return e; }
+void *udev_enumerate_unref(void *e) { (void)e; return NULL; }
+int udev_enumerate_add_match_subsystem(void *e, const char *s) { (void)e; (void)s; return 0; }
+int udev_enumerate_add_match_parent(void *e, void *p) { (void)e; (void)p; return 0; }
+int udev_enumerate_scan_devices(void *e) { (void)e; return 0; }
+void *udev_enumerate_get_list_entry(void *e) {
+    (void)e; ensure_dev_info();
+    return g_dev.present ? &g_list_entry : NULL;   /* exactly one device, or none */
+}
+void *udev_list_entry_get_next(void *le) { (void)le; return NULL; }   /* single entry */
+const char *udev_list_entry_get_name(void *le) { (void)le; return "/sys/class/hidraw/hidraw0"; }
+
+void *udev_device_new_from_syspath(void *u, const char *p) { (void)u; (void)p; return &g_hid_dev; }
+void *udev_device_new_from_subsystem_sysname(void *u, const char *s, const char *n) {
+    (void)u; (void)s; (void)n; return &g_hid_dev;
+}
+void *udev_device_ref(void *d) { return d; }
+void *udev_device_unref(void *d) { (void)d; return NULL; }
+const char *udev_device_get_devnode(void *d) { (void)d; return "/dev/hidraw0"; }
+const char *udev_device_get_syspath(void *d) { (void)d; return "/sys/class/hidraw/hidraw0"; }
+int udev_device_get_is_initialized(void *d) { (void)d; return 1; }
+void *udev_device_get_parent(void *d) { (void)d; return &g_usb_dev; }
+void *udev_device_get_parent_with_subsystem_devtype(void *d, const char *s, const char *t) {
+    (void)d; (void)s; (void)t; return &g_usb_dev;
+}
+const char *udev_device_get_sysattr_value(void *d, const char *attr) {
+    (void)d; ensure_dev_info();
+    if (!attr) return NULL;
+    if (!strcmp(attr, "idVendor")) return g_dev.idVendor[0] ? g_dev.idVendor : NULL;
+    if (!strcmp(attr, "idProduct")) return g_dev.idProduct[0] ? g_dev.idProduct : NULL;
+    if (!strcmp(attr, "manufacturer")) return g_dev.manufacturer[0] ? g_dev.manufacturer : NULL;
+    if (!strcmp(attr, "product")) return g_dev.product[0] ? g_dev.product : NULL;
+    if (!strcmp(attr, "serial")) return g_dev.serial[0] ? g_dev.serial : NULL;
+    return NULL;
+}
+
+void *udev_monitor_new_from_netlink(void *u, const char *name) {
+    (void)u; (void)name;
+    /* A real, never-readable fd so HidSharp's monitor thread blocks harmlessly
+     * instead of throwing (the udev_monitor_new_from_netlink failure that
+     * killed EScribe's GUI). eventfd with no writes never polls readable. */
+    if (g_monitor_fd < 0) g_monitor_fd = eventfd(0, EFD_CLOEXEC);
+    return &g_monitor;
+}
+int udev_monitor_filter_add_match_subsystem_devtype(void *m, const char *s, const char *t) {
+    (void)m; (void)s; (void)t; return 0;
+}
+int udev_monitor_enable_receiving(void *m) { (void)m; return 0; }
+int udev_monitor_get_fd(void *m) { (void)m; return g_monitor_fd; }
+void *udev_monitor_receive_device(void *m) { (void)m; return NULL; }
+void *udev_monitor_unref(void *m) { (void)m; return NULL; }
 
 /* ---- interposers --------------------------------------------------------- */
 static int open_common(const char *path) {
