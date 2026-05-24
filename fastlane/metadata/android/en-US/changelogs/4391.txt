@@ -1,0 +1,6 @@
+Wrapped-URL handling + MCP guest-service fixes
+
+- Copying or tapping a URL that an app wrapped across lines with a hanging indent (Claude Code, git, tmux) now captures the whole URL instead of truncating at the line break.
+- Guest MCP services (e.g. KiCad/EDA servers) now stop cleanly: stopping no longer orphans the guest process or leaves its port held, so a restart binds again.
+- Inline file preview now renders .kicad_pcb boards.
+- More resilient MCP reverse tunnel: a wedged -R forward is detected and reconnected.
