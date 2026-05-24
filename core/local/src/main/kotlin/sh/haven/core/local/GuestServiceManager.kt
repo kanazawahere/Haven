@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.update
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -199,14 +200,30 @@ class GuestServiceManager @Inject constructor(
         }
     }
 
-    /** Stop a running service (best-effort). Children die via proot --kill-on-exit. */
+    /**
+     * Stop a running service. Sends SIGTERM first ([Process.destroy]) so proot forwards it to
+     * the (exec'd) root tracee and reaps the child tree via `--kill-on-exit`; `destroyForcibly()`
+     * (SIGKILL) is only a last resort. A bare SIGKILL to proot can't be caught, so its child
+     * reaping never runs — the guest process orphans, keeps holding the port, and serves stale
+     * code after a restart.
+     */
     fun stop(id: String) {
         val inst = _services.value[id]
         // Mark STOPPED first so the reader thread treats the exit as expected.
         if (inst != null) {
             _services.update { it + (id to inst.copy(state = ServiceState.STOPPED)) }
         }
-        processes.remove(id)?.destroyForcibly()
+        val proc = processes.remove(id) ?: return
+        proc.destroy()
+        val exited = try {
+            proc.waitFor(3, TimeUnit.SECONDS)
+        } catch (_: InterruptedException) {
+            false
+        }
+        if (!exited) {
+            Log.w(TAG, "guest service $id didn't exit on SIGTERM — forcing")
+            proc.destroyForcibly()
+        }
     }
 
     /** Re-launch every registered service flagged autostart (called on app start). */

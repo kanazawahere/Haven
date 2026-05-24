@@ -5925,7 +5925,10 @@ internal class McpTools(
             }
             "kicad_pcb" -> {
                 needed = listOf("rsvg-convert")
-                renderCmd = "d=\$(mktemp -d) && kicad-cli pcb export svg -o \$d/pcb.svg $q && " +
+                // KiCad 10 made --layers mandatory for `pcb export svg`; a sensible default
+                // set (copper + silkscreen + fab + outline) renders a recognisable board.
+                renderCmd = "d=\$(mktemp -d) && kicad-cli pcb export svg " +
+                    "--layers F.Cu,B.Cu,F.SilkS,B.SilkS,F.Fab,Edge.Cuts -o \$d/pcb.svg $q && " +
                     "rsvg-convert -w $maxWidth \$d/pcb.svg -o $outGuest"
             }
             else -> throw McpError(
