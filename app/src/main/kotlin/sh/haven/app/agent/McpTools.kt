@@ -1871,7 +1871,7 @@ internal class McpTools(
         ) { args -> setProfileRouting(args) },
 
         "create_connection" to ToolHandler(
-            description = "Create a saved connection profile. Supports connectionType=SSH, SMB, VNC, RDP. SSH-family fields: username (required), password (optional, stored), keyId (optional — references list_ssh_keys), useMosh (turn an SSH profile into a Mosh profile). SMB: smbShare (required), username + password, smbDomain. VNC: vncUsername, vncPassword, vncPort. RDP: rdpUsername (required), rdpPassword, rdpDomain, rdpPort. The new profile id is returned for follow-up calls (set_profile_routing, connect_profile). For Reticulum / rclone / local create the profile in the UI — those paths need OAuth / destination-hash flows the agent can't drive.",
+            description = "Create a saved connection profile. Supports connectionType=SSH, SMB, VNC, RDP. SSH-family fields: username (required), password (optional, stored), keyId (optional — references list_ssh_keys), useMosh (turn an SSH profile into a Mosh profile). SMB: smbShare (required), username + password, smbDomain. VNC: vncUsername, vncPassword, vncPort, and vncSshForward + vncSshProfileId to tunnel VNC through a saved SSH profile. RDP: rdpUsername (required), rdpPassword, rdpDomain, rdpPort. The new profile id is returned for follow-up calls (set_profile_routing, connect_profile). For Reticulum / rclone / local create the profile in the UI — those paths need OAuth / destination-hash flows the agent can't drive.",
             inputSchema = JSONObject().apply {
                 put("type", "object")
                 put("properties", JSONObject().apply {
@@ -1885,6 +1885,8 @@ internal class McpTools(
                     put("smbDomain", JSONObject().apply { put("type", "string"); put("description", "AD/workgroup domain (SMB). Optional.") })
                     put("vncUsername", JSONObject().apply { put("type", "string"); put("description", "Username for VeNCrypt VNC.") })
                     put("vncPassword", JSONObject().apply { put("type", "string"); put("description", "VNC password.") })
+                    put("vncSshForward", JSONObject().apply { put("type", "boolean"); put("description", "VNC only: tunnel the VNC connection through a saved SSH profile (set vncSshProfileId). The VNC target is reached at 127.0.0.1:<port> from the SSH server. Default false.") })
+                    put("vncSshProfileId", JSONObject().apply { put("type", "string"); put("description", "VNC only: id of the SSH profile (from list_connections) to tunnel through when vncSshForward is true.") })
                     put("rdpUsername", JSONObject().apply { put("type", "string"); put("description", "Windows username (RDP). Required when connectionType=RDP.") })
                     put("rdpPassword", JSONObject().apply { put("type", "string"); put("description", "Windows password (RDP).") })
                     put("rdpDomain", JSONObject().apply { put("type", "string"); put("description", "AD domain (RDP). Optional.") })
@@ -4937,20 +4939,33 @@ internal class McpTools(
                     portKnockDelayMs = knockDelay,
                 )
             }
-            "VNC" -> ConnectionProfile(
-                label = label,
-                host = host,
-                port = port,
-                username = "",
-                connectionType = "VNC",
-                vncPort = port,
-                vncUsername = args.optString("vncUsername").ifBlank { null },
-                vncPassword = args.optString("vncPassword").ifBlank { null },
-                vncSshForward = false,
-                tunnelConfigId = tunnelConfigId,
-                portKnockSequence = knockSequence,
-                portKnockDelayMs = knockDelay,
-            )
+            "VNC" -> {
+                // VNC-over-SSH-tunnel: forward the VNC connection through a
+                // saved SSH profile (vncSshProfileId). Validate the referenced
+                // profile exists so a typo fails at create time, not connect.
+                val vncSshForward = args.optBoolean("vncSshForward", false)
+                val vncSshProfileId = args.optString("vncSshProfileId").ifBlank { null }
+                if (vncSshForward && vncSshProfileId != null &&
+                    connectionRepository.getById(vncSshProfileId) == null
+                ) {
+                    throw IllegalArgumentException("vncSshProfileId $vncSshProfileId not found")
+                }
+                ConnectionProfile(
+                    label = label,
+                    host = host,
+                    port = port,
+                    username = "",
+                    connectionType = "VNC",
+                    vncPort = port,
+                    vncUsername = args.optString("vncUsername").ifBlank { null },
+                    vncPassword = args.optString("vncPassword").ifBlank { null },
+                    vncSshForward = vncSshForward,
+                    vncSshProfileId = vncSshProfileId,
+                    tunnelConfigId = tunnelConfigId,
+                    portKnockSequence = knockSequence,
+                    portKnockDelayMs = knockDelay,
+                )
+            }
             "RDP" -> {
                 val rdpUser = args.optString("rdpUsername").ifBlank {
                     throw IllegalArgumentException("rdpUsername required for RDP")
