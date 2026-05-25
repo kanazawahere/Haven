@@ -622,6 +622,19 @@ class ConnectionsViewModel @Inject constructor(
         _newSessionProfileId.value = null
     }
 
+    /**
+     * Consume just the desktop (VNC/RDP) navigation events. Collected at the
+     * always-composed nav-host level so a desktop tab is created the instant the
+     * connect emits, independent of which screen is on-screen — fixes Retry /
+     * MCP connect_profile failing to open a tab when the Connections screen
+     * isn't composed (#121). Separate from [onNavigated] so it doesn't clobber a
+     * concurrent terminal/SMB navigation owned by the Connections screen.
+     */
+    fun onDesktopNavigated() {
+        _navigateToVnc.value = null
+        _navigateToRdp.value = null
+    }
+
     /** Open a new terminal session on an already-connected profile. */
     fun openNewSession(profileId: String) {
         _newSessionProfileId.value = profileId

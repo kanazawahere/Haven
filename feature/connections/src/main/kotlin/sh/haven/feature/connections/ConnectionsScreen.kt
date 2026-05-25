@@ -149,8 +149,9 @@ private val PROFILE_COLORS = listOf(
 fun ConnectionsScreen(
     onNavigateToTerminal: (profileId: String) -> Unit = {},
     onNavigateToNewSession: (profileId: String) -> Unit = {},
-    onNavigateToVnc: (host: String, port: Int, password: String?, username: String?, sshForward: Boolean, sshSessionId: String?, profileId: String?, colorDepth: String) -> Unit = { _, _, _, _, _, _, _, _ -> },
-    onNavigateToRdp: (host: String, port: Int, username: String, password: String, domain: String, sshForward: Boolean, sshProfileId: String?, sshSessionId: String?, profileId: String?, useNla: Boolean, colorDepth: Int) -> Unit = { _, _, _, _, _, _, _, _, _, _, _ -> },
+    // VNC/RDP desktop navigation is collected at the nav-host level
+    // (HavenNavHost), not here — so a tab opens regardless of which screen is
+    // composed (fixes Retry / connect_profile reliability, #121).
     onNavigateToSmb: (profileId: String) -> Unit = {},
     onNavigateToRclone: (profileId: String) -> Unit = {},
     onNavigateToWayland: () -> Unit = {},
@@ -205,8 +206,6 @@ fun ConnectionsScreen(
     val error by viewModel.error.collectAsState()
     val warning by viewModel.warning.collectAsState()
     val navigateToTerminal by viewModel.navigateToTerminal.collectAsState()
-    val navigateToVnc by viewModel.navigateToVnc.collectAsState()
-    val navigateToRdp by viewModel.navigateToRdp.collectAsState()
     val navigateToSmb by viewModel.navigateToSmb.collectAsState()
     val navigateToRclone by viewModel.navigateToRclone.collectAsState()
     val navigateToWayland by viewModel.navigateToWayland.collectAsState()
@@ -239,24 +238,10 @@ fun ConnectionsScreen(
         }
     }
 
-    LaunchedEffect(navigateToVnc) {
-        navigateToVnc?.let { nav ->
-            onNavigateToVnc(nav.host, nav.port, nav.password, nav.username, nav.sshForward, nav.sshSessionId, nav.profileId, nav.colorDepth)
-            viewModel.onNavigated()
-        }
-    }
-
     LaunchedEffect(navigateToWayland) {
         if (navigateToWayland) {
             onNavigateToWayland()
             viewModel.consumeNavigateToWayland()
-        }
-    }
-
-    LaunchedEffect(navigateToRdp) {
-        navigateToRdp?.let { nav ->
-            onNavigateToRdp(nav.host, nav.port, nav.username, nav.password, nav.domain, nav.sshForward, nav.sshProfileId, nav.sshSessionId, nav.profileId, nav.useNla, nav.colorDepth)
-            viewModel.onNavigated()
         }
     }
 

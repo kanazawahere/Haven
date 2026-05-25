@@ -67,6 +67,7 @@ import androidx.activity.compose.LocalActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import sh.haven.app.desktop.DesktopViewModel
 import sh.haven.feature.connections.ConnectionsScreen
+import sh.haven.feature.connections.ConnectionsViewModel
 import sh.haven.feature.keys.KeysScreen
 import sh.haven.feature.settings.SettingsScreen
 import androidx.compose.ui.unit.dp
@@ -180,6 +181,41 @@ fun HavenNavHost(
     val pagerState = rememberPagerState { screens.size }
     fun pageOf(screen: Screen): Int = screens.indexOf(screen).coerceAtLeast(0)
     val coroutineScope = rememberCoroutineScope()
+
+    // Desktop (VNC/RDP) navigation is collected HERE, at the always-composed
+    // nav-host level, rather than inside ConnectionsScreen — so a desktop tab is
+    // created the instant the connect emits, no matter which screen is on-screen.
+    // This is what makes the lost-connection Retry button and the MCP
+    // connect_profile tool reliably open the desktop even when the Connections
+    // screen isn't composed (it isn't, from the Desktop tab). (#121)
+    val connectionsViewModel: ConnectionsViewModel = hiltViewModel()
+    val navigateToVncEvent by connectionsViewModel.navigateToVnc.collectAsState()
+    val navigateToRdpEvent by connectionsViewModel.navigateToRdp.collectAsState()
+    LaunchedEffect(navigateToVncEvent) {
+        navigateToVncEvent?.let { nav ->
+            desktopViewModel.addVncSession(
+                nav.host, nav.port, nav.password, nav.username,
+                sshForward = nav.sshForward,
+                sshSessionId = nav.sshSessionId,
+                profileId = nav.profileId,
+                colorDepth = nav.colorDepth,
+            )
+            connectionsViewModel.onDesktopNavigated()
+            pagerState.animateScrollToPage(pageOf(Screen.Desktop))
+        }
+    }
+    LaunchedEffect(navigateToRdpEvent) {
+        navigateToRdpEvent?.let { nav ->
+            desktopViewModel.addRdpSession(
+                nav.host, nav.port, nav.username, nav.password, nav.domain,
+                nav.sshForward, nav.sshSessionId, nav.sshProfileId, nav.profileId,
+                useNla = nav.useNla,
+                colorDepth = nav.colorDepth,
+            )
+            connectionsViewModel.onDesktopNavigated()
+            pagerState.animateScrollToPage(pageOf(Screen.Desktop))
+        }
+    }
 
     // Debug navigation: scroll pager when DebugReceiver (debug builds only) emits a route
     LaunchedEffect(Unit) {
@@ -377,29 +413,9 @@ fun HavenNavHost(
                             pagerState.animateScrollToPage(pageOf(Screen.Terminal))
                         }
                     },
-                    onNavigateToVnc = { host, port, password, username, sshForward, sshSessionId, profileId, colorDepth ->
-                        desktopViewModel.addVncSession(
-                            host, port, password, username,
-                            sshForward = sshForward,
-                            sshSessionId = sshSessionId,
-                            profileId = profileId,
-                            colorDepth = colorDepth,
-                        )
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(pageOf(Screen.Desktop))
-                        }
-                    },
-                    onNavigateToRdp = { host, port, username, password, domain, sshForward, sshProfileId, sshSessionId, profileId, useNla, colorDepth ->
-                        desktopViewModel.addRdpSession(
-                            host, port, username, password, domain,
-                            sshForward, sshSessionId, sshProfileId, profileId,
-                            useNla = useNla,
-                            colorDepth = colorDepth,
-                        )
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(pageOf(Screen.Desktop))
-                        }
-                    },
+                    // VNC/RDP navigation is handled by the always-composed
+                    // collector above (HavenNavHost), not via these callbacks —
+                    // see the navigateToVnc/navigateToRdp LaunchedEffects (#121).
                     onNavigateToSmb = { profileId ->
                         pendingSmbProfileId = profileId
                         coroutineScope.launch {
