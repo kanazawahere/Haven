@@ -1,0 +1,5 @@
+VNC/RDP/SMB over SSH tunnel: fixes and a new auth option.
+
+- Fixed a password re-prompt loop when opening a desktop over an SSH tunnel with no saved jump-host password — it now connects on the first try and no longer leaves an orphaned SSH session if you cancel (#121).
+- New per-connection "Use password only" toggle (Authentication section): forces password authentication and ignores saved SSH keys for that connection, so password-only servers are reachable even when you have keys saved.
+- The same option is available when creating connections over the agent/MCP API.
