@@ -2512,7 +2512,23 @@ internal class McpTools(
                     put("errors", stats.errors)
                     put("deletes", stats.deletes)
                     put("deletedDirs", stats.deletedDirs)
+                    if (stats.lastError.isNotEmpty()) put("lastError", stats.lastError)
                 })
+                // Per-file errors with their object names — the diagnostic that
+                // core/stats.lastError can't give (#157).
+                if (stats.errors > 0) {
+                    val failed = rcloneClient.getErroredTransfers()
+                    if (failed.isNotEmpty()) {
+                        put("failedFiles", org.json.JSONArray().apply {
+                            failed.forEach { f ->
+                                put(JSONObject().apply {
+                                    put("name", f.name)
+                                    put("error", f.error)
+                                })
+                            }
+                        })
+                    }
+                }
             }
         } catch (e: Exception) {
             throw McpError(-32603, "Failed to get rclone sync status: ${e.message}")

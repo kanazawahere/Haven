@@ -288,6 +288,38 @@ class RcloneClient @Inject constructor(
         )
     }
 
+    /**
+     * Per-file errors from rclone's completed-transfer list (`core/transferred`).
+     * `core/stats.lastError` is only rclone's bare error string — the object name
+     * lives in rclone's log line, never in the stats fields — so a failed sync's
+     * connection-log entry couldn't name the offending file. Each `transferred`
+     * entry carries both `name` and `error`, so this recovers `<file>: <error>`
+     * for the audit log (#157).
+     *
+     * Read without a stats group, matching [getStats]/[resetStats] which also act
+     * on the global accounting that async jobs aggregate into. Returns only the
+     * entries that actually errored; empty on any RPC failure.
+     */
+    fun getErroredTransfers(): List<TransferError> {
+        if (!initialized) return emptyList()
+        return try {
+            val arr = rpc("core/transferred").optJSONArray("transferred")
+                ?: return emptyList()
+            buildList {
+                for (i in 0 until arr.length()) {
+                    val o = arr.optJSONObject(i) ?: continue
+                    val err = o.optString("error", "")
+                    if (err.isNotEmpty()) {
+                        add(TransferError(name = o.optString("name", ""), error = err))
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "core/transferred failed: ${e.message}")
+            emptyList()
+        }
+    }
+
     // ── Sync operations ──────────────────────────────────────────────
 
     /** Active sync job ID, stored here (singleton) so it survives ViewModel recreation. */

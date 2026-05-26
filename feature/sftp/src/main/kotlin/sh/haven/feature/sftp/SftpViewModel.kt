@@ -4782,6 +4782,12 @@ class SftpViewModel @Inject constructor(
                 }
 
                 val final = _syncProgress.value
+                // Recover the per-file errors (with their paths) before the
+                // next sync's resetStats() clears them — lastErrorMessage only
+                // has rclone's bare message, not the offending file name (#157).
+                val erroredFiles = if ((final?.errors ?: 0) > 0) {
+                    withContext(Dispatchers.IO) { rcloneClient.getErroredTransfers() }
+                } else emptyList()
                 _syncProgress.value = null
                 rcloneClient.activeSyncJobId = null
 
@@ -4822,6 +4828,7 @@ class SftpViewModel @Inject constructor(
                         startedAt = startedAt,
                         final = final,
                         lastErrorMessage = lastErrorMessage,
+                        erroredFiles = erroredFiles,
                         deletionsSuppressed = deletionsSuppressed,
                         success = true,
                     )
@@ -4832,6 +4839,7 @@ class SftpViewModel @Inject constructor(
                         startedAt = startedAt,
                         final = final,
                         lastErrorMessage = lastErrorMessage,
+                        erroredFiles = erroredFiles,
                         deletionsSuppressed = false,
                         success = false,
                     )
@@ -4866,6 +4874,7 @@ class SftpViewModel @Inject constructor(
         startedAt: Long,
         final: SyncProgress?,
         lastErrorMessage: String,
+        erroredFiles: List<sh.haven.core.rclone.TransferError> = emptyList(),
         deletionsSuppressed: Boolean,
         success: Boolean,
     ) {
@@ -4884,6 +4893,9 @@ class SftpViewModel @Inject constructor(
             if (deletes > 0) add("$deletes deleted")
             if (errors > 0) add("$errors errors")
             if (deletionsSuppressed) add("deletions skipped (source errors)")
+            // Name the first offending file in the collapsed summary so the
+            // user sees *what* failed without expanding the entry (#157).
+            erroredFiles.firstOrNull()?.let { add("first failed: ${it.name}") }
             if (!success && final?.errorMessage != null) add(final.errorMessage)
         }
         val verboseLog = buildString {
@@ -4910,6 +4922,12 @@ class SftpViewModel @Inject constructor(
                 appendLine("rclone's internal `not deleting files as there were IO errors`")
                 appendLine("behaviour — fix the failing source files and re-run to")
                 appendLine("complete the mirror.")
+            }
+            if (erroredFiles.isNotEmpty()) {
+                appendLine()
+                appendLine("Failed files (${erroredFiles.size}):")
+                erroredFiles.take(50).forEach { appendLine("  ${it.name}: ${it.error}") }
+                if (erroredFiles.size > 50) appendLine("  … and ${erroredFiles.size - 50} more")
             }
             if (lastErrorMessage.isNotEmpty()) {
                 appendLine()

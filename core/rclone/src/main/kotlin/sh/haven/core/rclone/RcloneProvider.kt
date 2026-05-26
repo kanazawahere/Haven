@@ -70,6 +70,17 @@ data class TransferStats(
         get() = if (totalBytes > 0) (bytes.toFloat() / totalBytes).coerceIn(0f, 1f) else 0f
 }
 
+/**
+ * A single completed transfer that rclone recorded as failed, read from the
+ * `core/transferred` rc call. Unlike [TransferStats.lastError] (rclone's bare
+ * error string with no path), each entry carries the object [name], so the
+ * connection log can name the offending file (#157).
+ */
+data class TransferError(
+    val name: String,
+    val error: String,
+)
+
 /** State returned by config/create during interactive configuration. */
 data class ConfigState(
     val state: String,
