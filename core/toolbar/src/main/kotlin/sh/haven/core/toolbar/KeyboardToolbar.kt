@@ -428,9 +428,13 @@ private fun AlignedToolbarContent(
         // pills, no misaligned rows (#184 follow-up).
         @Composable
         fun KeyCell(content: (@Composable () -> Unit)?) {
+            // propagateMinConstraints stretches the key to the column width
+            // (the wider of the two stacked keys), so both keys sharing a column
+            // are the same width — not just centred in it (#184 follow-up).
             Box(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
                 contentAlignment = Alignment.Center,
+                propagateMinConstraints = true,
             ) {
                 if (content != null) content() else Spacer(Modifier.size(32.dp))
             }
@@ -444,6 +448,27 @@ private fun AlignedToolbarContent(
         }
         fun itemRenderer(item: ToolbarItem?): (@Composable () -> Unit)? = item?.let {
             { RenderItem(it, focusRequester, ctrlActive, altActive, shiftActive, imeVisible, view) }
+        }
+        // Nav (cursor) keys rendered through the same column grid as the rest,
+        // so the cursor block lines up vertically with the other rows instead of
+        // sitting in its own fixed-cell grid. Arrows/keys dispatch via
+        // onDispatchKey so libvterm applies DECCKM (vim/mutt). (#184 follow-up)
+        fun navRenderer(key: ToolbarKey): (@Composable () -> Unit)? {
+            if (key !in presentNavKeys) return null
+            return {
+                val cb = LocalToolbarCallbacks.current
+                when (key) {
+                    ToolbarKey.ARROW_LEFT -> ToolbarArrowButton("←") { cb.onDispatchKey(0, VTERM_KEY_LEFT) }
+                    ToolbarKey.ARROW_UP -> ToolbarArrowButton("↑") { cb.onDispatchKey(0, VTERM_KEY_UP) }
+                    ToolbarKey.ARROW_DOWN -> ToolbarArrowButton("↓") { cb.onDispatchKey(0, VTERM_KEY_DOWN) }
+                    ToolbarKey.ARROW_RIGHT -> ToolbarArrowButton("→") { cb.onDispatchKey(0, VTERM_KEY_RIGHT) }
+                    ToolbarKey.HOME -> ToolbarTextButton("Home") { cb.onDispatchKey(0, VTERM_KEY_HOME) }
+                    ToolbarKey.END -> ToolbarTextButton("End") { cb.onDispatchKey(0, VTERM_KEY_END) }
+                    ToolbarKey.PGUP -> ToolbarTextButton("PgUp") { cb.onDispatchKey(0, VTERM_KEY_PAGEUP) }
+                    ToolbarKey.PGDN -> ToolbarTextButton("PgDn") { cb.onDispatchKey(0, VTERM_KEY_PAGEDOWN) }
+                    else -> {}
+                }
+            }
         }
 
         // Col 0: keyboard toggle (top) / VNC-desktop icon (bottom).
@@ -477,48 +502,20 @@ private fun AlignedToolbarContent(
             KeyColumn(top = itemRenderer(r1Rest.getOrNull(i)), bottom = itemRenderer(r2Rest.getOrNull(i)))
         }
 
-        // Nav block grid — fixed-width cells ensure vertical alignment
-        Column {
-            KeyRow {
-                for (key in NAV_GRID_TOP) {
-                    if (key != null && key in presentNavKeys) {
-                        NavBuiltInKey(key, shiftActive)
-                    } else {
-                        NavCell {}
-                    }
-                }
-            }
-            KeyRow {
-                for (key in NAV_GRID_BOTTOM) {
-                    if (key != null && key in presentNavKeys) {
-                        NavBuiltInKey(key, shiftActive)
-                    } else {
-                        NavCell {}
-                    }
-                }
+        // Nav (cursor) block — same KeyColumn grid as the keys above, so the two
+        // cursor rows line up with the rest. Columns: Home/←, ↑/↓, End/→, PgUp/PgDn.
+        for (i in NAV_GRID_TOP.indices) {
+            val topKey = NAV_GRID_TOP[i]
+            val bottomKey = NAV_GRID_BOTTOM[i]
+            if (topKey in presentNavKeys || bottomKey in presentNavKeys) {
+                KeyColumn(top = navRenderer(topKey), bottom = navRenderer(bottomKey))
             }
         }
-
-        // Right keys (symbols) — typically only on row 2
-        if (row1Right.isNotEmpty() || row2Right.isNotEmpty()) {
-            Column {
-                if (row1Right.isNotEmpty()) {
-                    KeyRow {
-                        for (item in row1Right) {
-                            RenderItem(item, focusRequester, ctrlActive, altActive,
-                                shiftActive, imeVisible, view)
-                        }
-                    }
-                } else {
-                    Spacer(Modifier.height(34.dp))
-                }
-                KeyRow {
-                    for (item in row2Right) {
-                        RenderItem(item, focusRequester, ctrlActive, altActive,
-                            shiftActive, imeVisible, view)
-                    }
-                }
-            }
+        // Right keys (symbols) — same column grid, so they align with the rest
+        // even when present only on row 2.
+        val rightColumns = maxOf(row1Right.size, row2Right.size)
+        for (i in 0 until rightColumns) {
+            KeyColumn(top = itemRenderer(row1Right.getOrNull(i)), bottom = itemRenderer(row2Right.getOrNull(i)))
         }
         Column(modifier = Modifier.align(Alignment.Bottom)) {
             AddKeyButton()
