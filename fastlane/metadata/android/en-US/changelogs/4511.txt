@@ -1,0 +1,3 @@
+Cloud sync error logs now name the file that failed.
+
+- When a folder sync (Copy/Mirror/Move) reports errors, the connection log now lists each failed file with its path and rclone's error, and the summary names the first one — so you can see *which* file tripped a Mirror's skipped delete pass, not just "1 error".
