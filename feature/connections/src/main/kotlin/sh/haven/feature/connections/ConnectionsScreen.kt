@@ -289,7 +289,11 @@ fun ConnectionsScreen(
 
     LaunchedEffect(error) {
         error?.let {
-            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_LONG).show()
+            // One message, one surface: a snackbar (dismissible, Material).
+            // Previously also fired a Toast, which double-bubbled every error
+            // — e.g. the "Shell closed — session manager installed?" hint
+            // showed twice on close (#182). Connection errors navigate to /
+            // surface on this screen, so the snackbar host is visible.
             snackbarHostState.showSnackbar(
                 message = it,
                 duration = androidx.compose.material3.SnackbarDuration.Long,
@@ -299,11 +303,10 @@ fun ConnectionsScreen(
     }
 
     // Non-fatal warnings (e.g. agent-forwarding enabled but all stored
-    // keys are encrypted). Rendered as a snackbar + toast like errors so
-    // they're discoverable, but the connection itself still proceeds.
+    // keys are encrypted). Surfaced as a snackbar (single surface, like
+    // errors — see #182), but the connection itself still proceeds.
     LaunchedEffect(warning) {
         warning?.let {
-            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_LONG).show()
             snackbarHostState.showSnackbar(
                 message = it,
                 duration = androidx.compose.material3.SnackbarDuration.Long,
