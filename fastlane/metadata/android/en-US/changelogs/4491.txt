@@ -1,0 +1,3 @@
+Files: fix "Stream folder playlist".
+
+- Long-clicking a folder and choosing "Stream folder playlist" now streams the media inside that folder. It previously streamed media from the current directory (the folder's parent) instead.
