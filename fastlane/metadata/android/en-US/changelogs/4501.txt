@@ -1,0 +1,7 @@
+App windows: run several at once, edit, and background to an edge icon.
+
+- Launch multiple application windows in their own cages at the same time. Opening a new one tucks the current one to a draggable edge icon; tap the icon to bring it back.
+- Each window's close button now tears down only that window, leaving the others running.
+- Background a window (tap outside it, or the minimize icon) to keep it running while you do something else; the icon shows a live preview.
+- Edit a saved app window's label and command from Desktop settings.
+- The window controls (minimize, picture-in-picture, close) are now icons in the viewer's own toolbar instead of a separate button row.
