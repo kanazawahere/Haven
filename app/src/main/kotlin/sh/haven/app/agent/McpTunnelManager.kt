@@ -242,6 +242,62 @@ class McpTunnelManager @Inject constructor(
         }
     }
 
+    /**
+     * Expose the device's adbd (already listening on `127.0.0.1:[port]`) to the
+     * MCP-tunnel endpoint as a **non-critical** REMOTE forward
+     * (`127.0.0.1:[port]` on the endpoint ← phone `127.0.0.1:[port]`). The
+     * phone-side hop is loopback, which the kernel never routes through a system
+     * VpnService tun — so adb stays reachable even with a VPN active. Additive
+     * and idempotent, mirroring [refreshForwards]; the caller persists the port
+     * (UserPreferencesRepository.mcpAdbExposedPort) so [establish] re-arms it on
+     * a full tunnel rebuild.
+     *
+     * Returns true if the forward is now bound on a live tunnel session; false
+     * if the tunnel isn't currently up (the pref re-arm will bind it later) or
+     * the bind failed.
+     */
+    fun exposeAdbPort(port: Int): Boolean = synchronized(lock) {
+        val sid = sessionId ?: return false
+        val s = sshSessionManager.getSession(sid) ?: return false
+        if (s.status != SshSessionManager.SessionState.Status.CONNECTED) return false
+        val alreadyBound = s.activeForwards.any {
+            it.type == SshSessionManager.PortForwardType.REMOTE && it.bindPort == port
+        }
+        if (alreadyBound) return true
+        val ok = sshSessionManager.applyPortForwards(sid, listOf(adbForwardInfo(port)))
+        if (ok) {
+            Log.i(TAG, "Exposed adb over MCP tunnel: -R $port")
+        } else {
+            Log.w(TAG, "adb -R $port failed to bind on MCP tunnel")
+        }
+        ok
+    }
+
+    /**
+     * Tear down the adb reverse forward applied by [exposeAdbPort]: release the
+     * endpoint bind and drop it from the session's activeForwards so a later
+     * reconnect doesn't re-add it. No-op if the tunnel isn't up.
+     */
+    fun unexposeAdbPort(port: Int) {
+        synchronized(lock) {
+            val sid = sessionId ?: return
+            sshSessionManager.getSession(sid) ?: return
+            sshSessionManager.removePortForward(sid, adbForwardInfo(port))
+            Log.i(TAG, "Removed adb forward from MCP tunnel: -R $port")
+        }
+    }
+
+    private fun adbForwardInfo(port: Int) = SshSessionManager.PortForwardInfo(
+        ruleId = ADB_FORWARD_RULE_ID,
+        type = SshSessionManager.PortForwardType.REMOTE,
+        bindAddress = "127.0.0.1",
+        bindPort = port,
+        targetHost = "127.0.0.1",
+        targetPort = port,
+        critical = false,
+        selfHealOnBindFailure = true,
+    )
+
     private fun stopLocked() {
         job?.cancel()
         job = null
@@ -372,6 +428,15 @@ class McpTunnelManager @Inject constructor(
                         ),
                     )
                 }
+            // Re-arm a previously exposed adb port (expose_adb) as a
+            // non-critical forward, so adb-over-the-tunnel survives a full
+            // tunnel rebuild (app restart / re-enable), not just the in-memory
+            // activeForwards re-apply that a network-blip reconnect does.
+            preferencesRepository.mcpAdbExposedPort.first()?.let { adbPort ->
+                if (adbPort != mcpPort && forwards.none { it.bindPort == adbPort }) {
+                    forwards.add(adbForwardInfo(adbPort))
+                }
+            }
             if (!sshSessionManager.applyPortForwards(sid, forwards)) {
                 Log.w(TAG, "MCP -R $mcpPort failed to bind on ${profile.label} (stale bind?) — retrying")
                 cleanup(sid)
@@ -462,6 +527,7 @@ class McpTunnelManager @Inject constructor(
     }
 
     private companion object {
+        const val ADB_FORWARD_RULE_ID = "adb-reverse"
         const val INITIAL_RETRY_MS = 2_000L
         const val MAX_RETRY_MS = 30_000L
         const val HEALTH_CHECK_MS = 15_000L

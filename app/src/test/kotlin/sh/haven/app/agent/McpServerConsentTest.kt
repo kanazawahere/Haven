@@ -99,6 +99,7 @@ class McpServerConsentTest {
             desktopSessionRegistry = mockk<sh.haven.core.data.desktop.DesktopSessionRegistry>(relaxed = true),
             usbBroker = mockk<sh.haven.core.usb.UsbBroker>(relaxed = true),
             presentationManager = sh.haven.core.data.agent.AgentPresentationManager(),
+            mcpTunnelManager = mockk(relaxed = true),
         )
         return server to auditRecorder
     }
@@ -470,6 +471,7 @@ class McpServerConsentTest {
             desktopSessionRegistry = mockk<sh.haven.core.data.desktop.DesktopSessionRegistry>(relaxed = true),
             usbBroker = mockk<sh.haven.core.usb.UsbBroker>(relaxed = true),
             presentationManager = sh.haven.core.data.agent.AgentPresentationManager(),
+            mcpTunnelManager = mockk(relaxed = true),
         )
 
         val responseFuture = java.util.concurrent.CompletableFuture.supplyAsync {

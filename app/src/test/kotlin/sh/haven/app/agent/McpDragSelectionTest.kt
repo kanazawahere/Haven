@@ -129,6 +129,7 @@ class McpDragSelectionTest {
             desktopSessionRegistry = mockk<sh.haven.core.data.desktop.DesktopSessionRegistry>(relaxed = true),
             usbBroker = mockk<sh.haven.core.usb.UsbBroker>(relaxed = true),
             presentationManager = sh.haven.core.data.agent.AgentPresentationManager(),
+            mcpTunnelManager = mockk(relaxed = true),
         )
     }
 

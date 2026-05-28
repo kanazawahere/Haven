@@ -90,6 +90,7 @@ class McpWorkspaceToolsTest {
             desktopSessionRegistry = mockk<sh.haven.core.data.desktop.DesktopSessionRegistry>(relaxed = true),
             usbBroker = mockk<sh.haven.core.usb.UsbBroker>(relaxed = true),
             presentationManager = sh.haven.core.data.agent.AgentPresentationManager(),
+            mcpTunnelManager = mockk(relaxed = true),
         )
         // All workspace verbs go through tools/call which is gated by
         // the dispatch-time pairing check. Initialize first so the

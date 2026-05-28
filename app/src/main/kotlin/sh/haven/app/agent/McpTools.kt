@@ -86,6 +86,7 @@ internal class McpTools(
     private val desktopSessionRegistry: sh.haven.core.data.desktop.DesktopSessionRegistry,
     private val usbBroker: sh.haven.core.usb.UsbBroker,
     private val presentationManager: sh.haven.core.data.agent.AgentPresentationManager,
+    private val mcpTunnelManager: McpTunnelManager,
     /**
      * The MCP HTTP server's live bound port. Evaluated lazily so the
      * reverse-tunnel auto-detect follows an 8731+ fallback instead of a
@@ -1057,6 +1058,28 @@ internal class McpTools(
             consentLevel = ConsentLevel.EVERY_CALL,
             summarise = { _ -> "Enable Wireless debugging on this device?" },
         ) { _ -> enableWirelessAdb() },
+
+        "expose_adb" to ToolHandler(
+            description = "Make the device's adb reachable from the workstation over 4G even with a system VPN active. Enables classic adb-over-TCP on a loopback port (default 5555) via Shizuku — no per-host pairing — then reverse-forwards 127.0.0.1:<port> over the existing MCP tunnel. Because the only phone-side hop is loopback (which Android never routes through a VpnService), adb stays reachable through any VPN. On the workstation: `adb connect localhost:<port>`. Requires Shizuku running + granted. Use install_apk_from_url/_from_backend for installs that don't need a full adb connection. Tear down with unexpose_adb.",
+            inputSchema = JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("port", JSONObject().apply {
+                        put("type", "integer")
+                        put("description", "Loopback adb-over-TCP port to expose (default 5555).")
+                    })
+                })
+            },
+            consentLevel = ConsentLevel.EVERY_CALL,
+            summarise = { _ -> "Expose full adb device control to the workstation over the MCP tunnel?" },
+        ) { args -> exposeAdb(args) },
+
+        "unexpose_adb" to ToolHandler(
+            description = "Tear down expose_adb: remove the adb reverse forward from the MCP tunnel and disable adb-over-TCP on the device (returns adbd to USB-only). Safe to call even if adb wasn't exposed.",
+            inputSchema = emptyObjectSchema(),
+            consentLevel = ConsentLevel.ONCE_PER_SESSION,
+            summarise = { _ -> "Disable adb exposure on this device?" },
+        ) { _ -> unexposeAdb() },
 
         // --- USB broker (Layer-B: re-expose the phone's USB devices) ---
         // The phone is the only thing that can open a USB device on a
@@ -4326,6 +4349,103 @@ internal class McpTools(
         }
     }
 
+    /**
+     * Expose the device's adb to the workstation over the MCP tunnel, VPN-proof.
+     * Enables classic adb-over-TCP on [DEFAULT_ADB_PORT] (or the requested port)
+     * via Shizuku, persists the port so the forward is re-armed across tunnel
+     * rebuilds, then binds the reverse forward onto the live tunnel session. The
+     * phone-side hop is loopback, so it bypasses any system VpnService.
+     */
+    private suspend fun exposeAdb(args: JSONObject): JSONObject = withContext(Dispatchers.IO) {
+        val port = if (args.has("port")) args.getInt("port") else DEFAULT_ADB_PORT
+        if (port < 1024 || port > 65535) {
+            throw McpError(-32602, "port must be between 1024 and 65535")
+        }
+        enableAdbTcpipViaShizuku(port)
+        preferencesRepository.setMcpAdbExposedPort(port)
+        val bound = mcpTunnelManager.exposeAdbPort(port)
+        JSONObject().apply {
+            put("method", "tcpip")
+            put("adbPort", port)
+            put("activated", bound)
+            put("connect", "adb connect localhost:$port")
+            put(
+                "note",
+                if (bound) {
+                    "adbd exposed on the MCP tunnel endpoint (127.0.0.1:$port). On the " +
+                        "workstation run: adb connect localhost:$port — the loopback hop " +
+                        "bypasses any system VPN. Verify with `adb devices`."
+                } else {
+                    "adb enabled and armed, but the MCP tunnel is not up right now — the " +
+                        "forward binds automatically once the tunnel connects, then: " +
+                        "adb connect localhost:$port."
+                },
+            )
+        }
+    }
+
+    /**
+     * Reverse of [exposeAdb]: drop the reverse forward, clear the persisted port,
+     * and return adbd to USB-only. Best-effort on the Shizuku step so the more
+     * important security action (removing the forward) always completes.
+     */
+    private suspend fun unexposeAdb(): JSONObject = withContext(Dispatchers.IO) {
+        val port = preferencesRepository.mcpAdbExposedPort.first() ?: DEFAULT_ADB_PORT
+        mcpTunnelManager.unexposeAdbPort(port)
+        preferencesRepository.setMcpAdbExposedPort(null)
+        disableAdbTcpipViaShizuku()
+        JSONObject().apply {
+            put("disabled", true)
+            put("adbPort", port)
+            put("note", "Removed the adb reverse forward and disabled adb-over-TCP on the device.")
+        }
+    }
+
+    /**
+     * Enable classic adb-over-TCP on `127.0.0.1:[port]` (and every interface)
+     * via Shizuku: set `service.adb.tcp.port` then bounce adbd to pick it up.
+     * Unlike Android-11 wireless debugging this needs no per-host pairing and
+     * uses a fixed port. `service.adb.tcp.port` is volatile (cleared on reboot),
+     * so the exposure is per-boot and re-armed by re-running the tool.
+     *
+     * Throws [McpError] if Shizuku is unavailable/unpermitted, or if the prop
+     * didn't take / adbd couldn't be restarted (e.g. SELinux denies `ctl.restart`
+     * to the shell uid and `stop/start adbd` is also denied — then Shizuku must
+     * be in root mode).
+     */
+    private fun enableAdbTcpipViaShizuku(port: Int) {
+        val cmd = "setprop service.adb.tcp.port $port && " +
+            "(setprop ctl.restart adbd 2>/dev/null || (stop adbd; start adbd)) && " +
+            "echo ADBTCP port=\$(getprop service.adb.tcp.port)"
+        val result = try {
+            WaylandSocketHelper.execAsShizuku(cmd)
+        } catch (e: IllegalStateException) {
+            throw McpError(
+                -32603,
+                "${e.message}. Install Shizuku from https://shizuku.rikka.app and grant " +
+                    "Haven permission, then retry.",
+            )
+        } catch (e: Exception) {
+            throw McpError(-32603, "Shizuku exec failed: ${e.message}")
+        }
+        val readBack = Regex("port=(\\d+)").find(result.output)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        if (result.exitCode != 0 || readBack != port) {
+            throw McpError(
+                -32603,
+                "Could not enable adb-over-TCP on :$port (exit=${result.exitCode}, " +
+                    "service.adb.tcp.port=$readBack). Output: ${result.output.trim()}. " +
+                    "If adbd restart is blocked, ensure Shizuku is running in root mode.",
+            )
+        }
+    }
+
+    /** Disable adb-over-TCP (return adbd to USB-only). Best-effort. */
+    private fun disableAdbTcpipViaShizuku() {
+        val cmd = "setprop service.adb.tcp.port -1 && " +
+            "(setprop ctl.restart adbd 2>/dev/null || (stop adbd; start adbd))"
+        runCatching { WaylandSocketHelper.execAsShizuku(cmd) }
+    }
+
     // ---- USB broker tools (Slice 1) --------------------------------------
 
     /** Short device label for consent prompts: "Evolv DNA 100C (9999:0001)" or just the vid:pid. */
@@ -5521,6 +5641,13 @@ internal class McpTools(
          * with `feature/connections`'s MCP_REVERSE_TUNNEL_PORT (`#161`).
          */
         internal const val MCP_REVERSE_TUNNEL_PORT = 8730
+
+        /**
+         * Default loopback port for classic `adb tcpip` exposed via
+         * [exposeAdb]. 5555 is the conventional adb-over-TCP port and needs no
+         * per-host pairing (unlike Android-11 wireless debugging).
+         */
+        private const val DEFAULT_ADB_PORT = 5555
 
         /**
          * Upper bound on a [presentMedia] payload (8 MiB). present_media

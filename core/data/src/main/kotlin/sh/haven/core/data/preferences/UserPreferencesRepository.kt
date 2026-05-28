@@ -105,6 +105,11 @@ class UserPreferencesRepository @Inject constructor(
     // reachable on-device or via a manual `adb forward`. See
     // McpTunnelManager.
     private val mcpTunnelEndpointProfileIdKey = stringPreferencesKey("mcp_tunnel_endpoint_profile_id")
+    // adb-over-TCP loopback port currently exposed through the MCP reverse
+    // tunnel (expose_adb), or absent if adb is not exposed. Persisted so the
+    // adb -R forward is re-armed on a full tunnel rebuild, not just an
+    // in-memory reconnect. See McpTunnelManager.exposeAdbPort.
+    private val mcpAdbExposedPortKey = intPreferencesKey("mcp_adb_exposed_port")
     // When on, the MCP server also binds a listener on whichever WireGuard
     // tunnel is currently up (stable netstack address, reachable by WG peers
     // across roams — no reverse forward). Off by default: a WG-reachable
@@ -496,6 +501,25 @@ class UserPreferencesRepository @Inject constructor(
                 prefs.remove(mcpTunnelEndpointProfileIdKey)
             } else {
                 prefs[mcpTunnelEndpointProfileIdKey] = profileId
+            }
+        }
+    }
+
+    /**
+     * Loopback adb-over-TCP port exposed through the MCP reverse tunnel, or
+     * null when adb is not exposed. Set by the `expose_adb` MCP tool; read by
+     * [McpTunnelManager] to re-arm the `-R` forward across tunnel rebuilds.
+     */
+    val mcpAdbExposedPort: Flow<Int?> = dataStore.data.map { prefs ->
+        prefs[mcpAdbExposedPortKey]
+    }
+
+    suspend fun setMcpAdbExposedPort(port: Int?) {
+        dataStore.edit { prefs ->
+            if (port == null) {
+                prefs.remove(mcpAdbExposedPortKey)
+            } else {
+                prefs[mcpAdbExposedPortKey] = port
             }
         }
     }
