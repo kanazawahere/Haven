@@ -179,28 +179,30 @@ class McpTunnelManager @Inject constructor(
      *    [INITIAL_RETRY_MS] instead of waiting out an in-flight 30 s
      *    [SshSessionManager] reconnect backoff while the user is right there.
      */
-    fun kickNow() = synchronized(lock) {
-        val sid = sessionId ?: return
-        val port = currentPort
-        if (port <= 0) return
-        val session = sshSessionManager.getSession(sid) ?: return
-        if (session.status == SshSessionManager.SessionState.Status.CONNECTED) {
-            val client = session.client
-            scope.launch {
-                val dead = !client.isConnected || probeForward(client, port) == Probe.DEAD
-                if (dead) {
-                    Log.i(TAG, "kickNow: MCP tunnel not healthy — forcing reconnect")
-                    sshSessionManager.updateStatus(
-                        sid, SshSessionManager.SessionState.Status.DISCONNECTED,
-                    )
-                    sshSessionManager.requestReconnect(sid)
+    fun kickNow() {
+        synchronized(lock) {
+            val sid = sessionId ?: return
+            val port = currentPort
+            if (port <= 0) return
+            val session = sshSessionManager.getSession(sid) ?: return
+            if (session.status == SshSessionManager.SessionState.Status.CONNECTED) {
+                val client = session.client
+                scope.launch {
+                    val dead = !client.isConnected || probeForward(client, port) == Probe.DEAD
+                    if (dead) {
+                        Log.i(TAG, "kickNow: MCP tunnel not healthy — forcing reconnect")
+                        sshSessionManager.updateStatus(
+                            sid, SshSessionManager.SessionState.Status.DISCONNECTED,
+                        )
+                        sshSessionManager.requestReconnect(sid)
+                    }
                 }
+            } else {
+                Log.i(TAG, "kickNow: MCP tunnel ${session.status} — restarting with fresh backoff")
+                stopLocked()
+                currentPort = port
+                launchTunnel(port)
             }
-        } else {
-            Log.i(TAG, "kickNow: MCP tunnel ${session.status} — restarting with fresh backoff")
-            stopLocked()
-            currentPort = port
-            launchTunnel(port)
         }
     }
 

@@ -24,7 +24,7 @@ class TerminalViewModelTest {
 
     @Before
     fun setUp() {
-        sessionManager = SshSessionManager(mockk(relaxed = true))
+        sessionManager = SshSessionManager(mockk(relaxed = true), mockk(relaxed = true))
         reticulumSessionManager = mockk<ReticulumSessionManager>(relaxed = true) {
             every { sessions } returns MutableStateFlow(emptyMap())
         }
