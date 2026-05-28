@@ -37,6 +37,15 @@ class SshConnectionService : Service() {
     @Inject
     lateinit var networkMonitor: NetworkMonitor
 
+    /**
+     * Transports the standard SSH recovery paths skip (e.g. the headless MCP
+     * reverse tunnel). Kicked on the same two triggers as the SSH sessions —
+     * return-to-foreground and network-available — so they don't wait out their
+     * own (Doze-deferrable) watchdog timers.
+     */
+    @Inject
+    lateinit var reviveHooks: Set<@JvmSuppressWildcards ForegroundReviveHook>
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /**
@@ -51,6 +60,9 @@ class SshConnectionService : Service() {
     private val foregroundObserver = object : DefaultLifecycleObserver {
         override fun onStart(owner: LifecycleOwner) {
             serviceScope.launch { sessionManager.probeAndReconnectStale() }
+            // probeAndReconnectStale skips headless transports (the MCP tunnel);
+            // give them their own immediate kick rather than the deferrable watchdog.
+            reviveHooks.forEach { it.reviveNow() }
         }
     }
 
@@ -82,6 +94,10 @@ class SshConnectionService : Service() {
                     if (event is NetworkMonitor.Event.Available) {
                         Log.d("SshConnectionService", "Network available — requesting reconnect for disconnected sessions")
                         sessionManager.requestReconnectAll()
+                        // requestReconnectAll only acts on already-DISCONNECTED/ERROR
+                        // sessions; a roamed headless tunnel may still read stale
+                        // CONNECTED, so kick it explicitly to revive/probe now.
+                        reviveHooks.forEach { it.reviveNow() }
                     }
                 }
         }

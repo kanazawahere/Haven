@@ -7,6 +7,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoSet
 import sh.haven.core.ssh.ForegroundKeepAlive
+import sh.haven.core.ssh.ForegroundReviveHook
 import sh.haven.core.ssh.ForegroundSessionInfo
 import sh.haven.core.ssh.ForegroundSessionParticipant
 
@@ -73,5 +74,19 @@ object McpForegroundParticipantModule {
     fun mcpKeepAlive(server: Lazy<McpServer>): ForegroundKeepAlive =
         object : ForegroundKeepAlive {
             override val isActive: Boolean get() = server.get().isRunning
+        }
+
+    /**
+     * Revive hook so the headless MCP reverse tunnel gets an immediate kick on
+     * return-to-foreground / network-available — the standard SSH recovery paths
+     * skip it, leaving it on its own (Doze-deferrable) watchdog otherwise.
+     * Lazy to keep symmetry with the providers above and avoid pulling the
+     * tunnel manager into graph construction.
+     */
+    @Provides
+    @IntoSet
+    fun mcpRevive(tunnel: Lazy<McpTunnelManager>): ForegroundReviveHook =
+        object : ForegroundReviveHook {
+            override fun reviveNow() = tunnel.get().kickNow()
         }
 }

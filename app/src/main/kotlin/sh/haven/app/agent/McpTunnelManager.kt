@@ -83,6 +83,10 @@ class McpTunnelManager @Inject constructor(
         if (job?.isActive == true && currentPort == mcpPort) return
         stopLocked()
         currentPort = mcpPort
+        launchTunnel(mcpPort)
+    }
+
+    private fun launchTunnel(mcpPort: Int) {
         job = scope.launch {
             // Connect phase: retry with backoff until the tunnel + critical
             // forward are up (or the config is unusable).
@@ -155,6 +159,48 @@ class McpTunnelManager @Inject constructor(
                     else -> { /* CONNECTING / RECONNECTING — in progress */ }
                 }
             }
+        }
+    }
+
+    /**
+     * Proactively revive the tunnel **now**, without waiting for the
+     * [HEALTH_CHECK_MS] watchdog tick (a coroutine `delay` that Doze can defer
+     * well past 15 s). Called by `SshConnectionService` on return-to-foreground
+     * and on network-available — the two moments the standard SSH recovery paths
+     * fire but which skip this headless session. Cheap + non-blocking: the
+     * CONNECTED probe and any reconnect run on [scope].
+     *
+     *  - tunnel not started / no endpoint configured → no-op.
+     *  - CONNECTED → one immediate end-to-end probe; force a reconnect only if
+     *    the forward is actually wedged/dead (the watchdog would otherwise take
+     *    up to [PROBE_FAIL_THRESHOLD] ticks to notice).
+     *  - any other state (CONNECTING / RECONNECTING / DISCONNECTED / ERROR) →
+     *    restart the establish job so the connect-retry backoff resets to
+     *    [INITIAL_RETRY_MS] instead of waiting out an in-flight 30 s
+     *    [SshSessionManager] reconnect backoff while the user is right there.
+     */
+    fun kickNow() = synchronized(lock) {
+        val sid = sessionId ?: return
+        val port = currentPort
+        if (port <= 0) return
+        val session = sshSessionManager.getSession(sid) ?: return
+        if (session.status == SshSessionManager.SessionState.Status.CONNECTED) {
+            val client = session.client
+            scope.launch {
+                val dead = !client.isConnected || probeForward(client, port) == Probe.DEAD
+                if (dead) {
+                    Log.i(TAG, "kickNow: MCP tunnel not healthy — forcing reconnect")
+                    sshSessionManager.updateStatus(
+                        sid, SshSessionManager.SessionState.Status.DISCONNECTED,
+                    )
+                    sshSessionManager.requestReconnect(sid)
+                }
+            }
+        } else {
+            Log.i(TAG, "kickNow: MCP tunnel ${session.status} — restarting with fresh backoff")
+            stopLocked()
+            currentPort = port
+            launchTunnel(port)
         }
     }
 
