@@ -27,6 +27,14 @@ class TerminalSession(
     @Volatile private var onDataReceived: (ByteArray, Int, Int) -> Unit,
     private val onDisconnected: ((cleanExit: Boolean) -> Unit)? = null,
     pendingCommands: List<String> = emptyList(),
+    /**
+     * Optional reconnect-lifecycle breadcrumb sink. Emits short human-readable
+     * notes (channel swapped, pending/reattach command sent, reader ended) that
+     * the session manager routes to the connection log — so a reconnect that
+     * leaves the pane blank can be diagnosed on a release build, where app
+     * logcat is stripped. No-op when null.
+     */
+    private val onBreadcrumb: ((String) -> Unit)? = null,
 ) : Closeable {
 
     /** Queue of commands to send one-by-one as shell prompts are detected. */
@@ -126,6 +134,9 @@ class TerminalSession(
                             if (cmd != null) {
                                 Log.d(TAG, "Shell prompt detected ('$promptChar'), sending pending command")
                                 sendToSsh((cmd + "\n").toByteArray())
+                                onBreadcrumb?.invoke(
+                                    "pending/reattach sent on prompt '$promptChar': ${cmd.take(48)}",
+                                )
                             }
                         }
                     }
@@ -146,6 +157,9 @@ class TerminalSession(
             // (no status received) — that must trigger reconnection.
             val cleanExit = exitStatus >= 0 && !gotException
             Log.d(TAG, "readLoop ended for $sessionId — eof=$gotEof exception=$gotException exitStatus=$exitStatus cleanExit=$cleanExit")
+            onBreadcrumb?.invoke(
+                "shell reader ended eof=$gotEof exc=$gotException exit=$exitStatus clean=$cleanExit",
+            )
             onDisconnected?.invoke(cleanExit)
         }
     }
@@ -240,6 +254,7 @@ class TerminalSession(
         ) {
             readLoop()
         }
+        onBreadcrumb?.invoke("reconnect: channel swapped, reader restarted (replay ${lastCols}x${lastRows})")
     }
 
     /**

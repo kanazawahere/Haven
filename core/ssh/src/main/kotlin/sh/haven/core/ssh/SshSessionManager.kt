@@ -3,6 +3,9 @@ package sh.haven.core.ssh
 import android.util.Log
 import com.jcraft.jsch.ChannelSftp
 import com.jcraft.jsch.ChannelShell
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -10,7 +13,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import sh.haven.core.data.db.entities.ConnectionLog
+import sh.haven.core.data.repository.ConnectionLogRepository
 import sh.haven.core.data.terminal.ScrollbackRing
 import sh.haven.core.ssh.sftp.JschSftpSession
 import sh.haven.core.ssh.sftp.SftpSession
@@ -41,7 +47,29 @@ private const val TAG = "SshSessionManager"
 @Singleton
 class SshSessionManager @Inject constructor(
     private val hostKeyVerifier: HostKeyVerifier,
+    private val connectionLogRepository: ConnectionLogRepository,
 ) {
+
+    // Off-thread sink for reconnect breadcrumbs — never blocks the reader /
+    // ioExecutor; logEvent self-gates on the connection-logging preference.
+    private val logScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /**
+     * Record a reconnect-lifecycle breadcrumb in the connection log (visible in
+     * Settings on release builds, where app logcat is stripped). Used to diagnose
+     * reconnects that leave the terminal pane blank: the timeline of channel-swap
+     * → reattach-sent → reader-ended shows whether the reattach fired and whether
+     * the new shell produced any output. Best-effort; failures are swallowed.
+     */
+    private fun breadcrumb(profileId: String, detail: String) {
+        logScope.launch {
+            runCatching {
+                connectionLogRepository.logEvent(
+                    profileId, ConnectionLog.Status.DISCONNECTED, details = "reconnect-trace: $detail",
+                )
+            }
+        }
+    }
 
     data class PortForwardInfo(
         val ruleId: String,
@@ -294,6 +322,7 @@ class SshSessionManager @Inject constructor(
                 }
             },
             pendingCommands = pendingCmds,
+            onBreadcrumb = { detail -> breadcrumb(session.profileId, detail) },
         )
         attachTerminalSession(sessionId, termSession)
         return termSession
@@ -480,6 +509,7 @@ class SshSessionManager @Inject constructor(
         val sessionMgr = session.sessionManager
 
         updateStatus(sessionId, SessionState.Status.RECONNECTING)
+        breadcrumb(session.profileId, "attempt started → ${config.host}:${config.port}")
 
         // Proactively mark dependent sessions (that use this as jump host) as RECONNECTING
         // so the UI shows the reconnecting indicator immediately instead of waiting for keepalive timeout
