@@ -47,6 +47,7 @@ class TerminalViewModelTest {
             mockk(relaxed = true),
             mockk(relaxed = true),
             mockk(relaxed = true),
+            mockk(relaxed = true), // TunnelResolver
             sh.haven.core.data.agent.AgentUiCommandBus(),
             mockk(relaxed = true),
             sh.haven.feature.terminal.agent.TerminalSessionRegistry(),
