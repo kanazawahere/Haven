@@ -1,5 +1,7 @@
 package sh.haven.app.agent
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -8,6 +10,8 @@ import android.net.Uri
 import android.provider.Settings
 import android.util.Base64
 import android.webkit.MimeTypeMap
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -36,6 +40,7 @@ import sh.haven.core.ssh.SessionManagerRegistry
 import sh.haven.core.ssh.SshSessionManager
 import sh.haven.feature.sftp.SftpStreamServer
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Tool implementations for the MCP agent transport.
@@ -127,6 +132,22 @@ internal class McpTools(
      * tool drives it, so a single instance here is sufficient.
      */
     private val usbProxyServer by lazy { sh.haven.core.usb.UsbProxyServer(usbBroker) }
+
+    /**
+     * Auto-incrementing notification ID for raise_notification. Starts at
+     * 40_000 to stay clear of the foreground-service notification IDs the
+     * SSH / desktop / mcp services hand out (those use small, single-digit
+     * constants). AtomicInteger so concurrent agent calls don't collide.
+     */
+    private val nextAgentNotificationId = AtomicInteger(40_000)
+
+    /**
+     * True once the dedicated agent.test.notifications channel has been
+     * created on this process. Channel creation is idempotent, but skipping
+     * the system call on subsequent posts keeps raise_notification cheap.
+     */
+    @Volatile
+    private var agentNotificationChannelEnsured = false
 
     /** Tool registry: name → handler. */
     private val tools: Map<String, ToolHandler> = linkedMapOf(
@@ -494,6 +515,33 @@ internal class McpTools(
                 "Launch a GUI app window for the agent: ${args.optString("command")}"
             },
         ) { args -> presentApp(args) },
+
+        "raise_notification" to ToolHandler(
+            description = "Post a real Android system notification on Haven's behalf so the agent can drive notification-listener / wake / DND / silencer apps during F-Droid tester reviews without needing a second device. Always posts to the dedicated 'agent.test.notifications' channel (created on first use) so the user can mute agent notifications cleanly without affecting Haven's own connection / renewal notifications. Returns { posted, id, channel } — keep the id around if you want to dismiss or replace the notification later (a future tool). Notifications use Haven's app identity, so notification-listener apps see package=sh.haven.app. Requires the POST_NOTIFICATIONS runtime grant (declared in the manifest, granted by the user on first Haven launch); the call fails with a clear error if notifications have been disabled in system settings.",
+            inputSchema = JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("title", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Notification title (mandatory). Shown on the lockscreen / shade row.")
+                    })
+                    put("body", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Notification body (mandatory). Expanded into a BigTextStyle so multi-line content stays readable.")
+                    })
+                    put("priority", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "One of 'min', 'low', 'default', 'high', 'max'. Maps to NotificationCompat.PRIORITY_*. Defaults to 'default'. Note: from Android 8 the channel's importance is what actually drives heads-up behaviour; priority only matters on pre-O devices and as a hint to ranking.")
+                    })
+                    put("ongoing", JSONObject().apply {
+                        put("type", "boolean")
+                        put("description", "If true, post as ongoing (non-dismissable) so the agent can test foreground-service-like notifications. Defaults to false (dismissable, auto-cancels on tap).")
+                    })
+                })
+                put("required", JSONArray().put("title").put("body"))
+            },
+            consentLevel = ConsentLevel.NEVER,
+        ) { args -> raiseNotification(args) },
 
         "open_convert_dialog_with_args" to ToolHandler(
             description = "Stage a conversion in the SFTP screen's convert dialog with the given container / codec defaults. Switches to the SFTP tab and opens the dialog; the user reviews and taps Convert to actually run ffmpeg. Tap-equivalent — the agent suggests, the user confirms. Use convert_file (EVERY_CALL consent) to skip the dialog and run the conversion directly.",
@@ -3201,6 +3249,89 @@ internal class McpTools(
             put("bytes", bytes.size)
             put("mimeType", mime)
         }
+    }
+
+    /**
+     * Post a real system notification through Haven's NotificationManager.
+     *
+     * Always uses the dedicated [AGENT_NOTIFICATION_CHANNEL_ID] channel so
+     * the user can mute "agent test notifications" without silencing SSH /
+     * desktop / renewal notifications. The channel is created lazily on
+     * first call and pinned for the lifetime of the process.
+     *
+     * Fails early with a friendly McpError if the system-wide notification
+     * toggle is off — POST_NOTIFICATIONS is declared in the manifest and
+     * granted by the user during the connections flow, but on rare devices
+     * (or fresh installs that skipped the prompt) it can still be denied.
+     */
+    private fun raiseNotification(args: JSONObject): JSONObject {
+        val title = args.optString("title").ifEmpty {
+            throw McpError(-32602, "title is required")
+        }
+        val body = args.optString("body").ifEmpty {
+            throw McpError(-32602, "body is required")
+        }
+        val priorityStr = args.optString("priority", "default").lowercase()
+        val priority = when (priorityStr) {
+            "min" -> NotificationCompat.PRIORITY_MIN
+            "low" -> NotificationCompat.PRIORITY_LOW
+            "default", "" -> NotificationCompat.PRIORITY_DEFAULT
+            "high" -> NotificationCompat.PRIORITY_HIGH
+            "max" -> NotificationCompat.PRIORITY_MAX
+            else -> throw McpError(
+                -32602,
+                "priority must be one of: min, low, default, high, max (got '$priorityStr')",
+            )
+        }
+        val ongoing = args.optBoolean("ongoing", false)
+
+        val managerCompat = NotificationManagerCompat.from(context)
+        if (!managerCompat.areNotificationsEnabled()) {
+            throw McpError(
+                -32603,
+                "Notifications are disabled for Haven — grant the POST_NOTIFICATIONS permission in system settings before calling raise_notification.",
+            )
+        }
+        ensureAgentNotificationChannel()
+
+        val id = nextAgentNotificationId.getAndIncrement()
+        val notification = NotificationCompat.Builder(context, AGENT_NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(priority)
+            .setOngoing(ongoing)
+            .setAutoCancel(!ongoing)
+            .build()
+
+        try {
+            managerCompat.notify(id, notification)
+        } catch (e: SecurityException) {
+            throw McpError(
+                -32603,
+                "Could not post notification: ${e.message ?: "permission denied"}",
+            )
+        }
+        return JSONObject().apply {
+            put("posted", true)
+            put("id", id)
+            put("channel", AGENT_NOTIFICATION_CHANNEL_ID)
+        }
+    }
+
+    private fun ensureAgentNotificationChannel() {
+        if (agentNotificationChannelEnsured) return
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channel = NotificationChannel(
+            AGENT_NOTIFICATION_CHANNEL_ID,
+            "Agent test notifications",
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply {
+            description = "Notifications posted by the MCP raise_notification tool — used by the agent to drive notification-listener / wake / DND apps during tester reviews. Mute this channel to silence agent notifications without affecting Haven's connection or renewal notifications."
+        }
+        nm.createNotificationChannel(channel)
+        agentNotificationChannelEnsured = true
     }
 
     /**
@@ -6767,3 +6898,11 @@ private fun emptyObjectSchema(): JSONObject = JSONObject().apply {
     put("type", "object")
     put("properties", JSONObject())
 }
+
+/**
+ * Dedicated notification channel for agent-posted notifications
+ * (raise_notification). Kept separate from Haven's foreground / renewal
+ * channels so the user can mute "agent test notifications" without
+ * silencing real Haven notifications.
+ */
+private const val AGENT_NOTIFICATION_CHANNEL_ID = "agent.test.notifications"

@@ -113,6 +113,10 @@ class McpToolsConsentTest {
             // Enumerating attached USB devices is read-only; descriptor
             // strings stay hidden until permission is separately granted.
             "list_usb_devices",
+            // raise_notification posts to a dedicated, user-mutable
+            // channel and the result is deliberately user-visible — same
+            // shape as present_media: agent→user surface, no prompt.
+            "raise_notification",
         )) {
             val c = tools.consentFor(name)
                 ?: error("$name not registered")
