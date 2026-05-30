@@ -150,6 +150,10 @@ class McpToolsConsentTest {
             // test_spa sends a single SPA packet; one grant per (client, tool)
             // mirrors test_port_knock.
             "test_spa",
+            // read_logcat surfaces system-wide PII; gate per (client, tool)
+            // so a tester session grants once and isn't re-prompted across
+            // the before/after captures that a single review needs.
+            "read_logcat",
         )) {
             val c = tools.consentFor(name)
                 ?: error("$name not registered")
@@ -330,6 +334,18 @@ class McpToolsConsentTest {
             "must not crash on missing file — should report unknown size",
             s.isBlank(),
         )
+    }
+
+    @Test
+    fun `read_logcat summary names the scope`() {
+        val tools = newTools()
+        val c = tools.consentFor("read_logcat")!!
+        val sysWide = c.summary(JSONObject())
+        assertTrue("got: $sysWide", sysWide.contains("system-wide"))
+        val perPkg = c.summary(JSONObject().put("packageName", "com.example.app"))
+        assertTrue("got: $perPkg", perPkg.contains("com.example.app"))
+        val perPid = c.summary(JSONObject().put("pid", 4242))
+        assertTrue("got: $perPid", perPid.contains("4242"))
     }
 
     @Test

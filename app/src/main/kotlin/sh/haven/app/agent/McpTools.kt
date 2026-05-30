@@ -1107,6 +1107,42 @@ internal class McpTools(
             summarise = { _ -> "Enable Wireless debugging on this device?" },
         ) { _ -> enableWirelessAdb() },
 
+        "read_logcat" to ToolHandler(
+            description = "Read recent Android system log lines via Shizuku, so the agent can observe foreign-app behaviour (network calls, crashes, lifecycle) during F-Droid tester reviews. Requires Shizuku running + granted (no separate READ_LOGS grant on Haven — logcat is read as Shizuku's shell uid, which already has the permission). Optional `packageName` resolves to a `--uid` filter via `pm list packages -U`; combine with `filter` for tag-level narrowing. Returns the raw logcat block; the agent parses it. `lines` is capped at 5000 and the response payload is capped at 256 KiB (truncated:true when either limit hits). Use this whenever an MR review needs log-level observation of a non-Haven app — the Haven local shell's Alpine proot can't reach /system/bin/logcat.",
+            inputSchema = JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("lines", JSONObject().apply {
+                        put("type", "integer")
+                        put("description", "Number of recent lines to return (default 200, capped at 5000). Maps to logcat -t.")
+                    })
+                    put("filter", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Standard logcat filter expression, e.g. 'NOVA:V *:S' to keep only NOVA-tagged lines, or '*:E' to keep only errors. Appended verbatim to the logcat command.")
+                    })
+                    put("packageName", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Filter to this app only. Resolved to '--uid <uid>' via 'pm list packages -U'. Errors out if the package is not installed.")
+                    })
+                    put("pid", JSONObject().apply {
+                        put("type", "integer")
+                        put("description", "Filter to this process pid only. Maps to logcat --pid <pid>. Use when you already have the pid (e.g. from a previous capture or pgrep).")
+                    })
+                    put("since", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Only return lines after this point. Pass a logcat timestamp ('MM-DD HH:MM:SS.SSS') or an epoch-ms integer. Maps to logcat -T.")
+                    })
+                })
+            },
+            consentLevel = ConsentLevel.ONCE_PER_SESSION,
+            summarise = { args ->
+                val pkg = args.optString("packageName", "").ifEmpty { null }
+                val pid = if (args.has("pid")) args.optInt("pid") else null
+                val scope = pkg ?: pid?.let { "pid $it" } ?: "system-wide"
+                "Allow agent to read Android logs ($scope) via Shizuku for this session?"
+            },
+        ) { args -> readLogcat(args) },
+
         "expose_adb" to ToolHandler(
             description = "Make the device's adb reachable from the workstation over 4G even with a system VPN active. Enables classic adb-over-TCP on a loopback port (default 5555) via Shizuku — no per-host pairing — then reverse-forwards 127.0.0.1:<port> over the existing MCP tunnel. Because the only phone-side hop is loopback (which Android never routes through a VpnService), adb stays reachable through any VPN. On the workstation: `adb connect localhost:<port>`. Requires Shizuku running + granted. Use install_apk_from_url/_from_backend for installs that don't need a full adb connection. Tear down with unexpose_adb.",
             inputSchema = JSONObject().apply {
@@ -4430,6 +4466,133 @@ internal class McpTools(
         }
     }
 
+    /**
+     * Run `logcat -d` via Shizuku and return the captured block.
+     *
+     * Shizuku-as-shell-uid (2000) already holds READ_LOGS, so we don't have
+     * to grant the permission to Haven itself — every call routes through
+     * the same execAsShizuku path the other privileged tools use. That keeps
+     * Haven's own permission set minimal and reuses the user's existing
+     * Shizuku trust decision.
+     *
+     * `filter`, `packageName`, `pid` and `since` are all interpolated into
+     * a `sh -c` command line, so each arg is validated to reject shell
+     * metacharacters (`;`, `|`, `&`, `$`, backtick, newline) before reaching
+     * the shell. `lines` and the response payload are capped so a sloppy
+     * agent can't OOM the device or the MCP transport.
+     */
+    private suspend fun readLogcat(args: JSONObject): JSONObject = withContext(Dispatchers.IO) {
+        val requestedLines = if (args.has("lines")) args.getInt("lines") else 200
+        if (requestedLines < 1) {
+            throw McpError(-32602, "lines must be >= 1")
+        }
+        val lines = requestedLines.coerceAtMost(MAX_LOGCAT_LINES)
+        val truncatedByLines = requestedLines > MAX_LOGCAT_LINES
+
+        val filter = args.optString("filter", "")
+        if (filter.containsShellMetacharacter()) {
+            throw McpError(-32602, "filter contains a shell metacharacter (; | & \$ ` newline)")
+        }
+        val packageName = args.optString("packageName", "").ifEmpty { null }
+        val pid = if (args.has("pid")) args.getInt("pid").also {
+            if (it < 1) throw McpError(-32602, "pid must be >= 1")
+        } else null
+        val since = args.optString("since", "").ifEmpty { null }
+        if (since != null && since.containsShellMetacharacter()) {
+            throw McpError(-32602, "since contains a shell metacharacter")
+        }
+
+        val uid: Int? = packageName?.let { resolvePackageUid(it) }
+
+        val cmd = buildString {
+            append("logcat -d -t $lines")
+            if (uid != null) append(" --uid $uid")
+            if (pid != null) append(" --pid $pid")
+            if (since != null) append(" -T '$since'")
+            if (filter.isNotEmpty()) {
+                append(' ')
+                append(filter)
+            }
+        }
+
+        val result = try {
+            WaylandSocketHelper.execAsShizuku(cmd)
+        } catch (e: IllegalStateException) {
+            throw McpError(
+                -32603,
+                "${e.message}. Install Shizuku from https://shizuku.rikka.app and grant Haven permission, then retry.",
+            )
+        } catch (e: Exception) {
+            throw McpError(-32603, "Shizuku exec failed: ${e.message}")
+        }
+        if (result.exitCode != 0) {
+            throw McpError(
+                -32603,
+                "logcat exited ${result.exitCode}: ${result.output.take(500)}",
+            )
+        }
+
+        var output = result.output
+        var truncatedByBytes = false
+        if (output.length > MAX_LOGCAT_BYTES) {
+            output = output.substring(output.length - MAX_LOGCAT_BYTES)
+            truncatedByBytes = true
+            // Snap to the next line boundary so the first reported line
+            // isn't a partial chunk from the middle of an earlier line.
+            val nl = output.indexOf('\n')
+            if (nl in 0 until 512) output = output.substring(nl + 1)
+        }
+        val lineCount = when {
+            output.isEmpty() -> 0
+            output.endsWith('\n') -> output.count { it == '\n' }
+            else -> output.count { it == '\n' } + 1
+        }
+        JSONObject().apply {
+            put("ok", true)
+            put("lines", lineCount)
+            put("truncated", truncatedByLines || truncatedByBytes)
+            put("output", output)
+            if (uid != null) put("uid", uid)
+        }
+    }
+
+    /**
+     * Resolve a package name to its installed UID via Shizuku-issued
+     * `pm list packages -U <name>`. Returns the first exact-match line's
+     * uid; throws an McpError with the same Shizuku-install hint as the
+     * other privileged tools when Shizuku isn't reachable, and a
+     * "package not installed" error when no exact match is found.
+     */
+    private fun resolvePackageUid(packageName: String): Int {
+        if (packageName.isEmpty() ||
+            packageName.any { it !in 'A'..'Z' && it !in 'a'..'z' && it !in '0'..'9' && it != '.' && it != '_' }
+        ) {
+            throw McpError(-32602, "Invalid packageName: '$packageName'")
+        }
+        val result = try {
+            WaylandSocketHelper.execAsShizuku("pm list packages -U $packageName")
+        } catch (e: IllegalStateException) {
+            throw McpError(
+                -32603,
+                "${e.message}. Install Shizuku from https://shizuku.rikka.app and grant Haven permission, then retry.",
+            )
+        } catch (e: Exception) {
+            throw McpError(-32603, "Shizuku exec failed: ${e.message}")
+        }
+        // `pm list packages -U <name>` substring-matches the filter, so we
+        // re-anchor to an exact "package:<name> " (or tab) prefix. Output
+        // lines look like: "package:com.example uid:10123"
+        val line = result.output.lineSequence()
+            .firstOrNull {
+                it.startsWith("package:$packageName ") ||
+                    it.startsWith("package:$packageName\t")
+            }
+            ?: throw McpError(-32603, "Package not installed: $packageName")
+        val uidMatch = Regex("uid:(\\d+)").find(line)
+            ?: throw McpError(-32603, "Could not parse uid from pm output: $line")
+        return uidMatch.groupValues[1].toInt()
+    }
+
     private suspend fun enableWirelessAdb(): JSONObject = withContext(Dispatchers.IO) {
         // `cmd settings put global adb_wifi_enabled 1` is the
         // Android-11+ canonical flag. On older Android (<=10) the
@@ -6906,3 +7069,19 @@ private fun emptyObjectSchema(): JSONObject = JSONObject().apply {
  * silencing real Haven notifications.
  */
 private const val AGENT_NOTIFICATION_CHANNEL_ID = "agent.test.notifications"
+
+/** Upper bound on lines requested from logcat in a single read_logcat call. */
+private const val MAX_LOGCAT_LINES = 5000
+
+/** Upper bound on the response payload from a single read_logcat call (256 KiB). */
+private const val MAX_LOGCAT_BYTES = 256 * 1024
+
+/**
+ * Cheap shell-metacharacter screen for read_logcat args that get
+ * interpolated into a `sh -c` command line. Rejects the characters that
+ * can start a new command, a process substitution, or a variable
+ * expansion. Logcat filter expressions and timestamps don't legitimately
+ * contain any of these.
+ */
+private fun String.containsShellMetacharacter(): Boolean =
+    any { it == ';' || it == '|' || it == '&' || it == '$' || it == '`' || it == '\n' || it == '\r' }
