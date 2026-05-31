@@ -77,6 +77,15 @@ class TerminalSession(
     private var readerThread: Thread? = null
 
     /**
+     * Monotonic token identifying the current reader. [reconnect] bumps it
+     * before swapping the channel, so a *previous* reader — still blocked in
+     * `read()` on a silently-dead socket when a probe-driven reconnect runs —
+     * exits without reading the new stream or firing [onDisconnected] for an
+     * already-reconnected session. (#208 finding 2)
+     */
+    @Volatile private var readerGeneration = 0
+
+    /**
      * Start the reader thread that delivers SSH output to [onDataReceived].
      * Call this after all wiring (e.g., emulator setup) is complete.
      */
@@ -89,21 +98,22 @@ class TerminalSession(
     }
 
     fun start() {
+        val generation = ++readerGeneration
         readerThread = thread(
             name = "ssh-reader-$sessionId",
             isDaemon = true,
         ) {
-            readLoop()
+            readLoop(generation)
         }
     }
 
-    private fun readLoop() {
+    private fun readLoop(generation: Int) {
         val buffer = ByteArray(8192)
         var pendingSent = false
         var gotEof = false
         var gotException = false
         try {
-            while (!closed && channel.isConnected) {
+            while (!closed && readerGeneration == generation && channel.isConnected) {
                 val bytesRead = sshInput.read(buffer)
                 if (bytesRead == -1) {
                     gotEof = true
@@ -145,7 +155,9 @@ class TerminalSession(
         } catch (_: Exception) {
             gotException = true
         }
-        if (!closed) {
+        // Skip the disconnect/reconnect signal if a newer reader has taken over
+        // (this is a stale reader that just unblocked after a reconnect). (#208 #2)
+        if (!closed && readerGeneration == generation) {
             // Wait briefly for channel to fully close and exit status to propagate
             for (i in 1..10) {
                 if (channel.isClosed) break
@@ -220,10 +232,16 @@ class TerminalSession(
      * Starts a new reader on the new channel.
      */
     fun reconnect(newChannel: ChannelShell, newClient: SshClient) {
+        // Invalidate any still-running previous reader *before* swapping the
+        // channel, so when it unblocks it sees a newer generation and exits
+        // instead of reading the new stream or re-triggering reconnect. (#208 #2)
+        val generation = ++readerGeneration
+        val oldReader = readerThread
         channel = newChannel
         client = newClient
         sshInput = newChannel.inputStream
         sshOutput = newChannel.outputStream
+        oldReader?.interrupt()
         Log.d(TAG, "reconnect: swapped channel for $sessionId, starting new reader")
         // The new channel was opened with the default 80×24 PTY size
         // (SshClient.openShellChannel defaults). If the user had resized
@@ -252,7 +270,7 @@ class TerminalSession(
             name = "ssh-reader-$sessionId",
             isDaemon = true,
         ) {
-            readLoop()
+            readLoop(generation)
         }
         onBreadcrumb?.invoke("reconnect: channel swapped, reader restarted (replay ${lastCols}x${lastRows})")
     }

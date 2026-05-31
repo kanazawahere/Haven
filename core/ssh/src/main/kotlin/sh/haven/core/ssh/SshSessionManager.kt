@@ -526,6 +526,11 @@ class SshSessionManager @Inject constructor(
         }
     }
 
+    /** Sessions with a reconnect loop currently running, so a second caller
+     *  (e.g. a late onDisconnected racing a network-probe) can't start a
+     *  duplicate loop that tears down a healthy session. (#208 finding 10) */
+    private val reconnectingInFlight = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
     /**
      * Attempt to reconnect a dropped session with exponential backoff.
      * Called on the ioExecutor thread.
@@ -535,6 +540,11 @@ class SshSessionManager @Inject constructor(
         val config = session.connectionConfig ?: return
         val sessionMgr = session.sessionManager
 
+        if (!reconnectingInFlight.add(sessionId)) {
+            Log.d(TAG, "attemptReconnect: $sessionId already in flight — skipping duplicate")
+            return
+        }
+        try {
         updateStatus(sessionId, SessionState.Status.RECONNECTING)
         breadcrumb(session.profileId, "attempt started → ${config.host}:${config.port}")
 
@@ -683,6 +693,9 @@ class SshSessionManager @Inject constructor(
 
         Log.d(TAG, "Reconnect failed after $attempt attempts for $sessionId")
         updateStatus(sessionId, SessionState.Status.DISCONNECTED)
+        } finally {
+            reconnectingInFlight.remove(sessionId)
+        }
     }
 
     fun removeSession(sessionId: String) {

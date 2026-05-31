@@ -165,7 +165,6 @@ object SshCertificateParser {
      * and compare against the [SshKey.fingerprintSha256].
      */
     private fun extractPublicKeyBlob(certKeyType: String, certBlob: ByteArray): ByteArray? {
-        val baseType = getBaseKeyType(certKeyType)
         val buf = ByteBuffer.wrap(certBlob)
         buf.order(ByteOrder.BIG_ENDIAN)
 
@@ -173,27 +172,45 @@ object SshCertificateParser {
             readBytes(buf) // cert type
             readBytes(buf) // nonce
 
+            // Reconstruct the authorized_keys wire form: the base key type
+            // string followed by the algorithm-specific fields. SK types use a
+            // distinct base name (`...@openssh.com`) and include the trailing
+            // `application` field in the public key. (#208 finding 12)
             val pubKeyBuf = java.io.ByteArrayOutputStream()
-            writeBytes(pubKeyBuf, baseType.toByteArray())
-
-            when {
-                baseType.contains("ed25519") -> {
-                    val pk = readBytes(buf)
-                    writeBytes(pubKeyBuf, pk)
+            when (certKeyType) {
+                "ssh-ed25519-cert-v01@openssh.com" -> {
+                    writeBytes(pubKeyBuf, "ssh-ed25519".toByteArray())
+                    writeBytes(pubKeyBuf, readBytes(buf)) // pk
                 }
-                baseType.contains("ecdsa") -> {
-                    val curve = readBytes(buf)
-                    val point = readBytes(buf)
-                    writeBytes(pubKeyBuf, curve)
-                    writeBytes(pubKeyBuf, point)
+                "sk-ssh-ed25519-cert-v01@openssh.com" -> {
+                    writeBytes(pubKeyBuf, "sk-ssh-ed25519@openssh.com".toByteArray())
+                    writeBytes(pubKeyBuf, readBytes(buf)) // pk
+                    writeBytes(pubKeyBuf, readBytes(buf)) // application
                 }
-                baseType.contains("rsa") -> {
-                    val e = readBytes(buf)
-                    val n = readBytes(buf)
-                    writeBytes(pubKeyBuf, e)
-                    writeBytes(pubKeyBuf, n)
+                "ssh-rsa-cert-v01@openssh.com" -> {
+                    writeBytes(pubKeyBuf, "ssh-rsa".toByteArray())
+                    writeBytes(pubKeyBuf, readBytes(buf)) // e
+                    writeBytes(pubKeyBuf, readBytes(buf)) // n
                 }
-                else -> return null
+                "ssh-dss-cert-v01@openssh.com" -> {
+                    writeBytes(pubKeyBuf, "ssh-dss".toByteArray())
+                    repeat(4) { writeBytes(pubKeyBuf, readBytes(buf)) } // p,q,g,y
+                }
+                "sk-ecdsa-sha2-nistp256-cert-v01@openssh.com" -> {
+                    writeBytes(pubKeyBuf, "sk-ecdsa-sha2-nistp256@openssh.com".toByteArray())
+                    writeBytes(pubKeyBuf, readBytes(buf)) // curve
+                    writeBytes(pubKeyBuf, readBytes(buf)) // Q
+                    writeBytes(pubKeyBuf, readBytes(buf)) // application
+                }
+                else -> {
+                    if (certKeyType.startsWith("ecdsa-sha2-") && certKeyType.endsWith(CERT_SUFFIX)) {
+                        writeBytes(pubKeyBuf, getBaseKeyType(certKeyType).toByteArray())
+                        writeBytes(pubKeyBuf, readBytes(buf)) // curve
+                        writeBytes(pubKeyBuf, readBytes(buf)) // Q
+                    } else {
+                        return null
+                    }
+                }
             }
             return pubKeyBuf.toByteArray()
         } catch (_: Exception) {
@@ -202,24 +219,39 @@ object SshCertificateParser {
     }
 
     private fun skipKeyFields(buf: ByteBuffer, certKeyType: String) {
-        val baseType = getBaseKeyType(certKeyType)
-        when {
-            baseType.contains("ed25519") -> {
+        // Match the exact type, not substrings: the FIDO/SK types
+        // (`sk-ssh-ed25519`, `sk-ecdsa-…`) also *contain* "ed25519"/"ecdsa" but
+        // carry an extra trailing `application` string. Missing it leaves the
+        // cursor one wire-string short and misaligns every field after the key
+        // (serial, type, keyId, principals, validity). (#208 finding 12)
+        when (certKeyType) {
+            "ssh-ed25519-cert-v01@openssh.com" -> {
                 readBytes(buf) // public key (32 bytes)
             }
-            baseType.contains("ecdsa") -> {
-                readBytes(buf) // curve name
-                readBytes(buf) // EC point
+            "sk-ssh-ed25519-cert-v01@openssh.com" -> {
+                readBytes(buf) // public key
+                readBytes(buf) // application (SK extra field)
             }
-            baseType.contains("rsa") -> {
+            "ssh-rsa-cert-v01@openssh.com" -> {
                 readBytes(buf) // e
                 readBytes(buf) // n
             }
-            baseType.contains("dss") || baseType.contains("dsa") -> {
+            "ssh-dss-cert-v01@openssh.com" -> {
                 readBytes(buf) // p
                 readBytes(buf) // q
                 readBytes(buf) // g
                 readBytes(buf) // y
+            }
+            "sk-ecdsa-sha2-nistp256-cert-v01@openssh.com" -> {
+                readBytes(buf) // curve name
+                readBytes(buf) // EC point
+                readBytes(buf) // application (SK extra field)
+            }
+            else -> {
+                if (certKeyType.startsWith("ecdsa-sha2-") && certKeyType.endsWith(CERT_SUFFIX)) {
+                    readBytes(buf) // curve name
+                    readBytes(buf) // EC point
+                }
             }
         }
     }

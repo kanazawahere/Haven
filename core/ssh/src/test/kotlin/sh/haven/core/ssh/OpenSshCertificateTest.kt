@@ -161,6 +161,62 @@ class OpenSshCertificateTest {
         assertNotNull(OpenSshCertificate.parseOrNull(good))
     }
 
+    // ---- #208 finding 1: CA signature verification ----
+    //
+    // Real ed25519 host CA + host cert generated with ssh-keygen:
+    //   ssh-keygen -t ed25519 -f ca -N ""
+    //   ssh-keygen -t ed25519 -f hostkey -N ""
+    //   ssh-keygen -s ca -I host-cert-id -h -n example.com,www.example.com hostkey.pub
+    private val REAL_CA_KEY_B64 =
+        "AAAAC3NzaC1lZDI1NTE5AAAAIH97vXebALC3Z4fJiHo4nes7eERAYWxQuD9v+wzopaEV"
+    private val REAL_HOST_CERT_B64 =
+        "AAAAIHNzaC1lZDI1NTE5LWNlcnQtdjAxQG9wZW5zc2guY29tAAAAIJbjtbWlWGTVi3L0" +
+            "0RHSSIHw/XdqFdPFNmhNo6onYFepAAAAINnkcSfO0V1HLo6sTlIZTyH197wVF2A+D0gt" +
+            "YOhXfx0kAAAAAAAAAAAAAAACAAAADGhvc3QtY2VydC1pZAAAACIAAAALZXhhbXBsZS5j" +
+            "b20AAAAPd3d3LmV4YW1wbGUuY29tAAAAAGoar0gAAAAAfNrUyAAAAAAAAAAAAAAAAAAA" +
+            "ADMAAAALc3NoLWVkMjU1MTkAAAAgf3u9d5sAsLdnh8mIejid6zt4REBhbFC4P2/7DOil" +
+            "oRUAAABTAAAAC3NzaC1lZDI1NTE5AAAAQDYQt/4vfaCUjXRGPHB458QXJ3nX3m3GJkNs" +
+            "ewS7piKuVLzwaDwLFpgN3MLU94YG6vtvvyd2nNDGXI1VYg6GoAY="
+
+    @Test
+    fun `verifyHostCertSignature accepts a genuinely CA-signed cert`() {
+        val cert = Base64.getDecoder().decode(REAL_HOST_CERT_B64)
+        val ca = Base64.getDecoder().decode(REAL_CA_KEY_B64)
+        // Sanity: the cert's embedded signatureKey is exactly the CA's wire key.
+        assertTrue(OpenSshCertificate.parse(cert).signatureKey.contentEquals(ca))
+        assertTrue(OpenSshCertificate.verifyHostCertSignature(cert, ca))
+    }
+
+    @Test
+    fun `verifyHostCertSignature rejects a tampered cert (forged-CA-claim MITM)`() {
+        val cert = Base64.getDecoder().decode(REAL_HOST_CERT_B64)
+        val ca = Base64.getDecoder().decode(REAL_CA_KEY_B64)
+        // Flip a byte inside the signed region (the keyId text) — the embedded
+        // signatureKey still claims the real CA, but the signature no longer
+        // matches. This is exactly the attack #208 #1 describes.
+        val marker = "host-cert-id".toByteArray()
+        val idx = cert.indexOfSub(marker)
+        assertTrue("keyId marker present", idx >= 0)
+        val tampered = cert.copyOf()
+        tampered[idx] = (tampered[idx] + 1).toByte()
+        assertFalse(OpenSshCertificate.verifyHostCertSignature(tampered, ca))
+    }
+
+    @Test
+    fun `verifyHostCertSignature rejects when the supplied CA is not the signer`() {
+        val cert = Base64.getDecoder().decode(REAL_HOST_CERT_B64)
+        // A different (synthetic) CA key doesn't match the embedded signatureKey.
+        assertFalse(OpenSshCertificate.verifyHostCertSignature(cert, SYNTHETIC_CA_KEY_BLOB))
+    }
+
+    private fun ByteArray.indexOfSub(sub: ByteArray): Int {
+        outer@ for (i in 0..(size - sub.size)) {
+            for (j in sub.indices) if (this[i + j] != sub[j]) continue@outer
+            return i
+        }
+        return -1
+    }
+
     // ---- helpers ----
 
     /** Deterministic 32-byte nonce. Real certs use random; tests don't care. */

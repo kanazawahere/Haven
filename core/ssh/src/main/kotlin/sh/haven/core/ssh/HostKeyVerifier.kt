@@ -62,10 +62,24 @@ class HostKeyVerifier @Inject constructor(
             val raw = ca.sshHostCaPublicKey ?: return@any false
             extractWireFormatBase64(raw) == signatureKeyB64
         }
-        if (matched) {
-            Log.d(TAG, "Trusting CA-signed host cert for ${entry.hostname}")
+        if (!matched) return false
+
+        // Matching the cert's self-declared signatureKey against a trusted CA is
+        // necessary but NOT sufficient — that field is attacker-controllable, so
+        // a MITM could forge a cert that merely claims the real CA. Require a
+        // cryptographically verified signature before granting silent trust;
+        // otherwise fall through to TOFU (which prompts the user). (#208 finding 1)
+        val verified = OpenSshCertificate.verifyHostCertSignature(certBlob, cert.signatureKey)
+        if (verified) {
+            Log.d(TAG, "Trusting CA-signed host cert for ${entry.hostname} (signature verified)")
+        } else {
+            Log.w(
+                TAG,
+                "CA-signed host cert for ${entry.hostname} matched a registered CA but its " +
+                    "signature did not verify — falling back to TOFU",
+            )
         }
-        return matched
+        return verified
     }
 
     /**

@@ -12,6 +12,8 @@ import sh.haven.core.fido.FidoAuthenticator
 import sh.haven.core.fido.FidoIdentity
 import sh.haven.core.fido.SkKeyData
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import java.io.Closeable
 import java.net.DatagramPacket
@@ -292,8 +294,15 @@ class SshClient : Closeable {
 
         channel.connect()
 
-        val outBytes = stdout.readBytes()
-        val errBytes = stderr.readBytes()
+        // Drain stdout and stderr concurrently. JSch delivers both channels on
+        // one session thread into bounded (~32 KB) pipes, so reading stdout to
+        // EOF *before* touching stderr deadlocks when a command emits more than
+        // a pipe-buffer of stderr before stdout closes. (#208 finding 11)
+        val (outBytes, errBytes) = coroutineScope {
+            val errDeferred = async { stderr.readBytes() }
+            val out = stdout.readBytes()
+            out to errDeferred.await()
+        }
 
         // Wait for channel to close so exitStatus is available
         while (!channel.isClosed) {
@@ -396,18 +405,24 @@ class SshClient : Closeable {
             diag("forwardAgent=false — not registering any agent identities")
             return
         }
+        // The primary-auth keys (added via jsch.addIdentity during the auth step)
+        // are still in JSch's identity repo, and ChannelAgentForwarding exposes
+        // the ENTIRE repo over the forwarded socket — so a malicious remote could
+        // request signatures from the user's auth keys even when no agent
+        // identities were configured. Auth is complete by now, so clear the repo
+        // and re-add only the explicitly-forwarded identities. (#208 finding 3)
+        try {
+            jsch.identityRepository.removeAll()
+        } catch (e: Throwable) {
+            diag("Could not clear identity repo before agent registration: ${e.message}")
+        }
         if (config.agentIdentities.isEmpty()) {
             diag(
                 "forwardAgent=true but agentIdentities is empty — the forwarded " +
-                    "agent channel will expose no keys. Typical cause: all stored " +
-                    "SSH keys are passphrase-protected and were filtered out by " +
-                    "the caller (ConnectionsViewModel.agentIdentitiesFor)."
+                    "agent channel will expose no keys (repo cleared). Typical cause: " +
+                    "all stored SSH keys are passphrase-protected and were filtered " +
+                    "out by the caller (ConnectionsViewModel.agentIdentitiesFor)."
             )
-            // Log which identities are currently in JSch's repo (these came from
-            // the primary auth step earlier in connect()). JSch's
-            // ChannelAgentForwarding exposes THE ENTIRE repo over the forwarded
-            // channel, so even with agentIdentities empty these primary-auth
-            // identities may still be reachable from the remote.
             logJschIdentityRepo()
             return
         }

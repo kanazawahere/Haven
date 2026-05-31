@@ -1,8 +1,13 @@
 package sh.haven.core.ssh
 
+import java.math.BigInteger
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.security.KeyFactory
 import java.security.MessageDigest
+import java.security.Signature
+import java.security.spec.RSAPublicKeySpec
+import java.security.spec.X509EncodedKeySpec
 import java.util.Base64
 
 /**
@@ -238,6 +243,101 @@ data class OpenSshCertificate(
             val out = ByteArray(len)
             buf.get(out)
             return out
+        }
+
+        /** Fixed DER SubjectPublicKeyInfo prefix for a raw 32-byte Ed25519 key. */
+        private val ED25519_SPKI_PREFIX = byteArrayOf(
+            0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
+        )
+
+        /**
+         * Cryptographically verify that the certificate [blob] was signed by the
+         * CA whose SSH wire-format public key is [caKeyBlob]. Returns **false on
+         * any failure** — wrong signature, a `signatureKey` field that doesn't
+         * match [caKeyBlob], an unsupported algorithm, a parse error, or a JCA
+         * primitive missing on this API level — so callers fail closed.
+         *
+         * Matching the cert's self-declared `signatureKey` field against a
+         * trusted CA is *not* sufficient on its own: that field is an
+         * attacker-controllable part of the blob, so a MITM could forge a cert
+         * that merely *claims* the real CA. Only a verified signature proves the
+         * CA actually issued the cert. (#208 finding 1)
+         *
+         * Supports ed25519 and RSA CA keys (the common host-CA types). ECDSA and
+         * other algorithms currently fail closed (→ TOFU fallback).
+         */
+        fun verifyHostCertSignature(blob: ByteArray, caKeyBlob: ByteArray): Boolean {
+            return try {
+                val buf = ByteBuffer.wrap(blob).order(ByteOrder.BIG_ENDIAN)
+                val typeName = readString(buf)
+                if (!typeName.endsWith("-cert-v01@openssh.com")) return false
+                readBytes(buf) // nonce
+                skipPublicKeyFields(buf, typeName)
+                buf.long // serial
+                buf.int // type
+                readBytes(buf) // keyId
+                readBytes(buf) // valid principals
+                buf.long // valid after
+                buf.long // valid before
+                readBytes(buf) // critical options
+                readBytes(buf) // extensions
+                readBytes(buf) // reserved
+                val embeddedCa = readBytes(buf) // signature key
+                if (!embeddedCa.contentEquals(caKeyBlob)) return false
+                // Everything signed is the blob up to (not including) the
+                // trailing signature string.
+                val signedBytes = blob.copyOfRange(0, buf.position())
+                val signatureBlob = readBytes(buf)
+                verifySshSignature(caKeyBlob, signedBytes, signatureBlob)
+            } catch (_: Throwable) {
+                false
+            }
+        }
+
+        private fun verifySshSignature(
+            caKeyBlob: ByteArray,
+            signedBytes: ByteArray,
+            signatureBlob: ByteArray,
+        ): Boolean {
+            val keyBuf = ByteBuffer.wrap(caKeyBlob).order(ByteOrder.BIG_ENDIAN)
+            val keyType = readString(keyBuf)
+            val sigBuf = ByteBuffer.wrap(signatureBlob).order(ByteOrder.BIG_ENDIAN)
+            val sigFormat = readString(sigBuf)
+            val sigData = readBytes(sigBuf)
+
+            return when {
+                keyType == "ssh-ed25519" && sigFormat == "ssh-ed25519" -> {
+                    val rawKey = readBytes(keyBuf) // 32-byte raw public key
+                    if (rawKey.size != 32) return false
+                    val spki = ED25519_SPKI_PREFIX + rawKey
+                    val pub = KeyFactory.getInstance("Ed25519")
+                        .generatePublic(X509EncodedKeySpec(spki))
+                    Signature.getInstance("Ed25519").run {
+                        initVerify(pub)
+                        update(signedBytes)
+                        verify(sigData)
+                    }
+                }
+                keyType == "ssh-rsa" -> {
+                    // SSH mpint == Java BigInteger signed big-endian encoding.
+                    val e = BigInteger(readBytes(keyBuf))
+                    val n = BigInteger(readBytes(keyBuf))
+                    val jcaAlg = when (sigFormat) {
+                        "rsa-sha2-256" -> "SHA256withRSA"
+                        "rsa-sha2-512" -> "SHA512withRSA"
+                        "ssh-rsa" -> "SHA1withRSA"
+                        else -> return false
+                    }
+                    val pub = KeyFactory.getInstance("RSA")
+                        .generatePublic(RSAPublicKeySpec(n, e))
+                    Signature.getInstance(jcaAlg).run {
+                        initVerify(pub)
+                        update(signedBytes)
+                        verify(sigData)
+                    }
+                }
+                else -> false // ECDSA and others: fail closed for now.
+            }
         }
     }
 }

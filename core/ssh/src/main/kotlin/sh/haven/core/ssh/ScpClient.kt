@@ -251,7 +251,7 @@ class ScpClient(private val session: Session) {
                 }
                 'C' -> {
                     val (_, size, name) = parseCopyHeader(control)
-                    val target = File(stack.last(), name)
+                    val target = safeChild(stack.last(), name)
                     out.write(byteArrayOf(0)); out.flush()
                     receiveBody(inp, out, target, size, progress)
                     if (preserveTimes && pendingMtime > 0) target.setLastModified(pendingMtime * 1000)
@@ -259,7 +259,7 @@ class ScpClient(private val session: Session) {
                 }
                 'D' -> {
                     val (_, _, name) = parseCopyHeader(control)
-                    val sub = File(stack.last(), name)
+                    val sub = safeChild(stack.last(), name)
                     sub.mkdirs()
                     stack.addLast(sub)
                     out.write(byteArrayOf(0)); out.flush()
@@ -348,22 +348,27 @@ class ScpClient(private val session: Session) {
 
     /** Read one control line (ends at '\n'), or return null on EOF. */
     private fun readControl(inp: InputStream): String? {
-        val first = inp.read()
-        if (first == -1) return null
-        if (first == 1 || first == 2) {
-            val msg = readLine(inp)
-            if (first == 2) throw ScpException(msg)
-            Log.w(TAG, "scp warning: $msg")
-            return readControl(inp)
-        }
-        val sb = StringBuilder()
-        sb.append(first.toChar())
+        // Loop (not recurse) over warning records — a hostile server can stream
+        // an unbounded run of `\x01<msg>\n` and recursion would StackOverflow,
+        // which isn't caught by the SftpException/JSchException mapping. (#208 #13)
         while (true) {
-            val c = inp.read()
-            if (c == -1 || c == '\n'.code) break
-            sb.append(c.toChar())
+            val first = inp.read()
+            if (first == -1) return null
+            if (first == 1 || first == 2) {
+                val msg = readLine(inp)
+                if (first == 2) throw ScpException(msg)
+                Log.w(TAG, "scp warning: $msg")
+                continue
+            }
+            val sb = StringBuilder()
+            sb.append(first.toChar())
+            while (true) {
+                val c = inp.read()
+                if (c == -1 || c == '\n'.code) break
+                sb.append(c.toChar())
+            }
+            return sb.toString()
         }
-        return sb.toString()
     }
 
     private fun readLine(inp: InputStream): String {
@@ -383,9 +388,34 @@ class ScpClient(private val session: Session) {
         val secondSpace = body.indexOf(' ', firstSpace + 1)
         if (firstSpace < 0 || secondSpace < 0) throw ScpException("Bad header: $line")
         val mode = body.substring(0, firstSpace)
-        val size = body.substring(firstSpace + 1, secondSpace).toLong()
+        // toLongOrNull + non-negative: a non-numeric size would throw an
+        // unmapped NumberFormatException, and a negative one would skip the body
+        // loop entirely (empty file) and desync the stream. (#208 finding 20)
+        val size = body.substring(firstSpace + 1, secondSpace).toLongOrNull()?.takeIf { it >= 0 }
+            ?: throw ScpException("Bad size in header: $line")
         val name = body.substring(secondSpace + 1)
         return Triple(mode, size, name)
+    }
+
+    /**
+     * Resolve a server-supplied [name] as a direct child of [parent], rejecting
+     * anything that isn't a single safe path component — `..`, an embedded
+     * separator, or an absolute path — so a hostile server can't write outside
+     * the download root (CVE-2019-6111 class). (#208 finding 7)
+     */
+    private fun safeChild(parent: File, name: String): File {
+        if (name.isEmpty() || name == "." || name == ".." ||
+            name.contains('/') || name.contains('\\') || File(name).isAbsolute
+        ) {
+            throw ScpException("Unsafe path component from server: '$name'")
+        }
+        val child = File(parent, name)
+        val root = parent.canonicalFile
+        val canonical = child.canonicalFile
+        if (canonical != root && !canonical.path.startsWith(root.path + File.separator)) {
+            throw ScpException("Path escapes download root: '$name'")
+        }
+        return child
     }
 
     /** Parse `T<mtime> 0 <atime> 0` → returns mtime in seconds. */

@@ -204,11 +204,15 @@ class DynamicForwardServer(
                         channelOut.flush()
                     }
                 } catch (_: Exception) { /* bridge torn down */ }
-                try { channel.disconnect() } catch (_: Exception) {}
-                try { client.close() } catch (_: Exception) {}
+                // A SOCKS client half-close (shutdownOutput — `nc -N`, request/
+                // response protocols) must NOT kill the tunnel: send EOF to the
+                // SSH channel but keep it open so the downstream direction can
+                // finish relaying the server's response. (#208 finding 4)
+                try { channelOut.close() } catch (_: Exception) {}
             }
             // Downstream in current thread so the client connection lives
-            // until the SSH channel closes
+            // until the SSH channel closes. The server closing (or an error)
+            // is the real end-of-conversation — only then tear the tunnel down.
             try {
                 val buf = ByteArray(8192)
                 while (true) {
