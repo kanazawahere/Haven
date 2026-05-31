@@ -11,7 +11,7 @@
 > *"Haven is an interesting vibe coding experiment. Let's see what comes out of it."* — DBP
 
 <p align="center">
-  <a href="https://github.com/GlassHaven/Haven/releases/latest"><img src="https://img.shields.io/badge/release-v5.59.9-blue?style=flat-square" alt="Release" /></a>
+  <a href="https://github.com/GlassHaven/Haven/releases/latest"><img src="https://img.shields.io/badge/release-v5.59.10-blue?style=flat-square" alt="Release" /></a>
   <a href="https://f-droid.org/en/packages/sh.haven.app"><img src="https://img.shields.io/f-droid/v/sh.haven.app?style=flat-square" alt="F-Droid" /></a>
   <a href="https://github.com/GlassHaven/Haven/actions/workflows/ci.yml?query=branch%3Amain"><img src="https://github.com/GlassHaven/Haven/actions/workflows/ci.yml/badge.svg?branch=main" alt="Build" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-orange?style=flat-square" alt="License" /></a>
@@ -48,13 +48,13 @@
 
 - **Terminal** — Mosh / Eternal Terminal / SSH with tmux-aware session restore, configurable keyboard toolbar, OSC 7/8/9/52/777 integration. Bundled Hack Nerd Font Mono renders Powerline / Devicons / Font Awesome / Material Design glyphs in shell prompts out of the box.
 - **Desktop** — VNC (RFB 3.8 with VeNCrypt), RDP (via IronRDP, with EGFX graphics-pipeline support), a GPU-accelerated native Wayland compositor (labwc on GLES2), and a multi-distro local-desktop manager: install Alpine, Debian, Arch, or Void side-by-side and run Xfce4 / Openbox (X11) or Sway (nested Wayland, via wayvnc) desktops.
-- **Files** — Unified browser for SFTP/SCP, SMB, and 60+ cloud providers. Multi-select, built-in editor, image tools, chmod, cross-filesystem copy/move.
+- **Files** — Unified browser for SFTP/SCP, SMB, 60+ cloud providers, and Reticulum mesh. Multi-select, built-in editor, image tools, chmod, cross-filesystem copy/move.
 - **Media** — Transcode and stream on-device with FFmpeg 8.0; HLS streaming to the LAN; DLNA server for cloud media.
 - **Keys** — On-device Ed25519/RSA/ECDSA generation, FIDO2/SK hardware keys (NFC + USB), deploy-key helper.
 - **Connections** — Host-key TOFU, port forwarding (-L/-R/-D/-J), SOCKS/HTTP proxies, Tor, ProxyJump, **per-app WireGuard and Tailscale tunnels** (userspace, no system VPN slot — each profile can route through its own tunnel without affecting other apps), and **port knocking / Single Packet Authorization** — fire a TCP/UDP knock sequence, or send a native fwknop SPA packet (AES-256-CBC + HMAC-SHA256, interoperable with `fwknopd`), at the remote firewall before the real connect, with per-profile fields and in-dialog "Test knock" / "Test SPA" buttons.
 - **Local shell** — a Linux userland via PRoot (no root, any Android 8+ device): Alpine, Debian, Arch, or Void, each with its native package manager, side-by-side.
 - **USB to the guest** — broker an attached USB/OTG device through Android and re-expose it, no root: as MCP tools for the agent (enumerate + raw control/bulk transfers), or — with a Settings opt-in — into the Linux guest as a `/dev/hidraw*` node that unmodified native (`LD_PRELOAD`) and Mono/.NET HidSharp (DllMap) apps can use. HID-focused today.
-- **Reticulum** — rnsh over Reticulum mesh networks, pure Kotlin.
+- **Reticulum** — rnsh shell, file transfer (browse/download/upload), and `-L`/`-D` port forwarding over Reticulum mesh networks, pure Kotlin. The one transport that keeps working with no internet at all.
 - **Security** — Biometric lock, no telemetry, encrypted backup/restore (AES-256-GCM).
 - **Agent transport (MCP)** — Optional local loopback MCP server exposes Haven's read and write surfaces as tools. Every action prompts the user for consent; every call shows up in the audit log. Tunnel through any SSH profile in one tap so an MCP client running on the workstation reaches Haven via `localhost`. Disabled by default; under Settings → Agent endpoint.
 
@@ -112,8 +112,8 @@ Output: `app/build/outputs/apk/debug/haven-*-debug.apk`
 | [JSch](https://github.com/mwiede/jsch) | SSH/SFTP protocol | BSD |
 | [smbj](https://github.com/hierynomus/smbj) | SMB/CIFS protocol | Apache-2.0 |
 | [ConnectBot termlib](https://github.com/connectbot/connectbot) | Terminal emulator | Apache-2.0 |
-| [reticulum-kt](https://github.com/GlassOnTin/reticulum-kt) | Reticulum mesh network transport (Kotlin) | MIT |
-| [rnsh-kt](https://github.com/GlassOnTin/rnsh-kt) | Reticulum remote shell client (Kotlin) | MIT |
+| [reticulum-kt](https://github.com/GlassOnTin/reticulum-kt) | Reticulum mesh network transport (Kotlin) | MPL-2.0 |
+| [rnsh-kt](https://github.com/GlassOnTin/rnsh-kt) | Reticulum remote shell client (Kotlin) | AGPL-3.0 |
 | [FFmpeg](https://ffmpeg.org) | Media conversion and streaming | LGPL-2.1 / GPL-2.0 |
 | [PRoot](https://proot-me.github.io) | Local Linux shell (userspace chroot) | GPL-2.0 |
 | [labwc](https://labwc.github.io) | Wayland compositor (native desktop) | GPL-2.0 |

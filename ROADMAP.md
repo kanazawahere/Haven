@@ -35,7 +35,7 @@
 - [x] **Background notification** — persistent notification with disconnect action while sessions active
 - [x] **Mosh support** — UDP-based mobile shell for unreliable connections
 - [x] **Eternal Terminal** — ET protocol support
-- [x] **Reticulum** — mesh network transport
+- [x] **Reticulum** — mesh network transport (rnsh shell, file transfer, and `-L`/`-D` port forwarding over the mesh)
 - [x] **Network-aware reconnect** — ConnectivityManager detects WiFi/cellular/VPN changes, triggers immediate SSH reconnect (2s debounce) instead of waiting for TCP timeout
 - [x] **WireGuard tunnels** — per-app userspace WireGuard tunnel (wireguard-go + gVisor netstack via gomobile), wg-quick config per profile, no system VPN slot
 - [x] **Tailscale auto-discovery** — detect Tailscale peers via local API and show as discovered hosts
@@ -61,6 +61,7 @@
 - [x] **SMB/CIFS** — Windows file share browsing
 - [x] **DocumentsProvider** — expose SFTP as Android storage provider
 - [x] **rclone folder sync** — copy / mirror / move between remotes with include/exclude filters, size limits, bandwidth throttling, and dry-run preview; saved, reusable sync profiles; errors persisted to the connection log (#157, #158, #159)
+- [x] **Reticulum file transfer** — browse/download/upload over the mesh via rnsh remote command-exec (busybox-portable `ls -la` parsing, no GNU `stat`); uploads stream octal-encoded over a single Link, device-verified byte-identical including NUL/high bytes
 
 ### Media tools
 - [x] **ffmpeg integration** — custom FFmpeg 8.0 build (full codec/format/filter set) wired into the file browser. Long-press any media file to convert; works on local, SFTP, SMB, and rclone. Container + video + audio encoder dropdowns with copy-remux defaults. Frame preview with filter live-update, fullscreen view, and seek slider. Audio preview (5-second playback with filters applied). Video filters (brightness, contrast, saturation, gamma, sharpen, denoise, deshake, auto color, speed, rotation) and audio filters (volume, EBU R128 normalize). "Save to" picker: Downloads or back to source folder with upload progress.

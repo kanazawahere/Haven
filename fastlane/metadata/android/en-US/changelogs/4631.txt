@@ -1,0 +1,5 @@
+Files and tunnels over the Reticulum mesh
+
+The Reticulum transport now carries more than a remote shell. Browse, download and upload files on an rnsh destination straight from the file manager, and forward a local port (-L) or run a SOCKS proxy (-D) to reach hosts across the mesh.
+
+Reticulum is the one transport that keeps working when the internet is down, so these are uniquely offline-capable paths — not duplicates of SSH. Uploads were verified to arrive byte-for-byte intact over a real mesh link.
