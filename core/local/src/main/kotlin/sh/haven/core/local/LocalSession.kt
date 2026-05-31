@@ -49,12 +49,15 @@ class LocalSession(
         if (closed) return
 
         val result = PtyBridge.nativeForkPty(command, args, env, rows, cols)
-        masterFd = result[0]
-        childPid = result[1]
-
-        if (masterFd < 0) {
+        // On failure the native contract returns [-1, errno]; commit childPid
+        // only after the success check so a later close() can't feed errno to
+        // android.os.Process.killProcess(). (#208 finding 8)
+        val fd = result[0]
+        if (fd < 0) {
             throw IllegalStateException("forkpty failed: errno=${result[1]}")
         }
+        masterFd = fd
+        childPid = result[1]
 
         Log.d(TAG, "Started local process: pid=$childPid fd=$masterFd cmd=$command")
 
@@ -107,15 +110,21 @@ class LocalSession(
      */
     fun sendInput(data: ByteArray) {
         if (closed) return
-        writeExecutor.execute {
-            try {
-                outputStream?.write(data)
-                outputStream?.flush()
-            } catch (e: Exception) {
-                if (!closed) {
-                    Log.e(TAG, "Write failed: ${e.message}")
+        try {
+            writeExecutor.execute {
+                try {
+                    outputStream?.write(data)
+                    outputStream?.flush()
+                } catch (e: Exception) {
+                    if (!closed) {
+                        Log.e(TAG, "Write failed: ${e.message}")
+                    }
                 }
             }
+        } catch (_: java.util.concurrent.RejectedExecutionException) {
+            // close() raced between the `closed` check and execute() and shut the
+            // executor down — drop the keystroke instead of crashing the caller
+            // (the UI path runs on the main thread). (#208 finding 19)
         }
     }
 
