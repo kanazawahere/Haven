@@ -233,7 +233,10 @@ class ReticulumSftpSession(
             path = fullPath,
             isDirectory = isDirectory,
             size = size,
-            modifiedTime = modifiedTimeMillis,
+            // SftpEntry.modifiedTime is epoch SECONDS (the browser formatter does
+            // *1000, matching SSH/SCP); SFTP v3 mtime is already epoch seconds.
+            // Passing millis here produced year-58384 dates.
+            modifiedTime = modifiedTimeSeconds,
             permissions = permString(),
             owner = owner,
             group = group,
