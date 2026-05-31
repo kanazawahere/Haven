@@ -43,8 +43,8 @@ private const val TAG = "ReticulumFileBackend"
  *     after any stdin-EOF (a `close_stdin` -> _ensure_terminate behaviour,
  *     reproduced with the reference rnsh client), so nothing here streams over
  *     stdin. Uploads encode the bytes into the command as `printf` octal
- *     escapes instead — a single, clean-exiting command (large files append in
- *     chunks under the per-arg size limit).
+ *     escapes instead — clean-exiting commands, each sized to fit one Reticulum
+ *     Channel message (link MDU ~319); larger files append over several.
  *
  * Known v1 limitations (named, not hidden): modified-time is reported as 0
  * (no portable per-entry time source without `stat`); symlinks are treated
@@ -101,10 +101,20 @@ class ReticulumFileBackend(
         // a single no-stdin command that exits cleanly. Large files are written
         // in append chunks (each kept well under the per-arg size limit). Fully
         // POSIX/busybox-portable (printf is universal; no base64 dependency).
+        // Each chunk's command travels as ONE Reticulum Channel message
+        // (ExecuteCommandMesssage), bounded by the link MDU (~325, Channel mdu
+        // ~319). Bytes are octal-escaped (4 chars each) and the command is
+        // wrapped by run() with an `sh -c` + HRC sentinel, so size the per-chunk
+        // byte count from the budget left after the destination path and that
+        // fixed overhead. (Device-verified: a single ~1.2 KB command — the old
+        // 12 KB chunk — overflows the MDU and Channel.send throws "Packed
+        // message too big for packet".)
+        val octalBudget = (WRITE_CMD_OCTAL_BUDGET - path.length).coerceAtLeast(MIN_OCTAL_BUDGET)
+        val chunkBytes = (octalBudget / 4).coerceAtLeast(8)
         var off = 0
         var first = true
         while (first || off < data.size) {
-            val end = minOf(off + WRITE_CHUNK, data.size)
+            val end = minOf(off + chunkBytes, data.size)
             val redirect = if (first) ">" else ">>"
             run("printf '${octalEscape(data, off, end)}' $redirect ${q(path)}")
             first = false
@@ -282,9 +292,11 @@ class ReticulumFileBackend(
         /** Max stdin chunk per stream-data message (stays under the link MDU). */
         private const val STDIN_CHUNK = 400
 
-        /** Bytes per inline `printf` upload command (×4 octal stays under the
-         *  remote's per-argument size limit, ~128 KiB). Larger files append. */
-        private const val WRITE_CHUNK = 12_000
+        /** Budget (chars) for octal payload + path in one upload command, kept
+         *  well under the Reticulum Channel MDU (~319) after the `sh -c`/HRC
+         *  wrapper overhead. Per-chunk source bytes = (budget − pathLen) / 4. */
+        private const val WRITE_CMD_OCTAL_BUDGET = 200
+        private const val MIN_OCTAL_BUDGET = 40
 
         private const val METADATA_TIMEOUT_MS = 120_000L
         private const val TRANSFER_TIMEOUT_MS = 300_000L

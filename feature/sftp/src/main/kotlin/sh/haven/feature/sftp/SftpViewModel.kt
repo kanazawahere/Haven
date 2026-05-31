@@ -2582,6 +2582,16 @@ class SftpViewModel @Inject constructor(
                             client.upload(input, destPath, fileSize) { transferred, total ->
                                 _transferProgress.value = TransferProgress(fileName, total, transferred)
                             }
+                        } else if (reticulumSessionManager.isProfileConnected(profileId)) {
+                            // Reticulum has no streaming transport.upload(); route through the
+                            // resolved FileBackend (ReticulumFileBackend.writeBytes — octal-printf
+                            // over rnsh-exec, chunked to the link MDU). Small-file oriented; see
+                            // the backend kdoc. Without this branch uploads fell through to the
+                            // SSH path below and threw "Not connected".
+                            val backend = currentFileBackend() ?: throw IllegalStateException("Not connected")
+                            val data = input.readBytes()
+                            backend.writeBytes(destPath, data)
+                            _transferProgress.value = TransferProgress(fileName, data.size.toLong(), data.size.toLong())
                         } else {
                             val transport = currentSshTransport() ?: throw IllegalStateException("Not connected")
                             transport.upload(input, fileSize, destPath) { transferred, total ->
