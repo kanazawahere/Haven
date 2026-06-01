@@ -26,7 +26,11 @@ jobs:
       - uses: ./.github/actions/init-submodules-with-retry
       - uses: ./.github/actions/setup-toolchain
       - name: Run unit tests
-        run: ./gradlew testDebugUnitTest
+        # :app uses ABI product flavors, so the unqualified `testDebugUnitTest`
+        # matches no :app task and silently skips the agent/MCP unit tests.
+        # Name the flavor task explicitly (arm64 only — unit tests are
+        # flavor-agnostic) so they actually run in CI.
+        run: ./gradlew testDebugUnitTest :app:testArm64DebugUnitTest
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v7
