@@ -3423,7 +3423,8 @@ internal class McpTools(
             buildString {
                 append(session.errorMessage ?: "app window failed to start")
                 append(". The app + its Wayland deps must be installed in the guest, ")
-                append("and the Cage kiosk DE installed (provides cage + wayvnc).")
+                append("and the Sway DE installed (provides sway + wayvnc; present_app runs the ")
+                append("app as a single-app sway kiosk because cage 0.1.4 crashes on the headless backend).")
                 if (!logTail.isNullOrBlank()) append(" Compositor log: ").append(logTail)
             },
         )

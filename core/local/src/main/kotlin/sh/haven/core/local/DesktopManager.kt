@@ -799,7 +799,29 @@ class DesktopManager @Inject constructor(
         val sessionId = "appwin-${System.currentTimeMillis()}"
         val display = allocateDisplay()
         val port = 5900 + display
-        val compositorCmd = "cage -- $command"
+        // cage 0.1.4 (Debian Bookworm) does its own scan-out / back_buffer
+        // management that aborts on the headless backend (assert back_buffer
+        // != NULL when it direct-scans-out the single view; == NULL when it
+        // composites). sway drives the headless backend through wlr_scene,
+        // which manages buffers correctly — verified rendering here where cage
+        // crashes. Run sway as a single-app kiosk: a generated one-shot config
+        // runs the app fullscreen with no chrome and exits sway when the app
+        // closes, matching cage's lifecycle. sway also starts Xwayland, so X11
+        // GUIs work too. The config lives under cacheDir (bound to /tmp).
+        val kioskConfig = File(context.cacheDir, "haven-kiosk-$display.config")
+        kioskConfig.writeText(
+            """
+            |default_border none
+            |default_floating_border none
+            |hide_edge_borders both
+            |gaps inner 0
+            |gaps outer 0
+            |for_window [app_id=".*"] fullscreen enable
+            |for_window [class=".*"] fullscreen enable
+            |exec $command; swaymsg exit
+            |""".trimMargin(),
+        )
+        val compositorCmd = "sway -c /tmp/haven-kiosk-$display.config"
         var session = AppWindowSession(sessionId, command, display, port, DesktopState.STARTING)
         _appWindows.update { it + (sessionId to session) }
 
