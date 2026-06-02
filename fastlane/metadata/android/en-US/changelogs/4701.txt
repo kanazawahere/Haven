@@ -1,0 +1,3 @@
+Fixed: connecting a remote desktop could open the wrong bottom-nav tab.
+
+• If you'd reordered your bottom navigation tabs, connecting an RDP/VNC profile (or opening a desktop/terminal) could land on the wrong tab — e.g. Files instead of Desktop. Navigation now waits for the target tab and selects it reliably, whatever your tab order.

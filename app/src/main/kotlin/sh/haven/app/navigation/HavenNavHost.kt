@@ -182,6 +182,25 @@ fun HavenNavHost(
     fun pageOf(screen: Screen): Int = screens.indexOf(screen).coerceAtLeast(0)
     val coroutineScope = rememberCoroutineScope()
 
+    // Programmatic navigation target, applied reactively. `screens` is both
+    // dynamically filtered (Desktop/Terminal appear only once a session/profile
+    // exists) and user-reorderable, so scrolling eagerly with pageOf(...) at
+    // connect time can resolve to a stale index — pageOf returns 0 (often Files)
+    // when the target isn't in `screens` yet, so the pager landed on the wrong
+    // tab. Instead, record the desired Screen and scroll once it's actually
+    // present: adding the session/profile mutates `screens`, which re-fires this
+    // effect. No-op if the screen never appears.
+    var pendingScreenNav by remember { mutableStateOf<Screen?>(null) }
+    fun requestScreen(screen: Screen) { pendingScreenNav = screen }
+    LaunchedEffect(pendingScreenNav, screens) {
+        val target = pendingScreenNav ?: return@LaunchedEffect
+        val idx = screens.indexOf(target)
+        if (idx >= 0) {
+            pagerState.animateScrollToPage(idx)
+            pendingScreenNav = null
+        }
+    }
+
     // Desktop (VNC/RDP) navigation is collected HERE, at the always-composed
     // nav-host level, rather than inside ConnectionsScreen — so a desktop tab is
     // created the instant the connect emits, no matter which screen is on-screen.
@@ -201,7 +220,7 @@ fun HavenNavHost(
                 colorDepth = nav.colorDepth,
             )
             connectionsViewModel.onDesktopNavigated()
-            pagerState.animateScrollToPage(pageOf(Screen.Desktop))
+            requestScreen(Screen.Desktop)
         }
     }
     LaunchedEffect(navigateToRdpEvent) {
@@ -213,7 +232,7 @@ fun HavenNavHost(
                 colorDepth = nav.colorDepth,
             )
             connectionsViewModel.onDesktopNavigated()
-            pagerState.animateScrollToPage(pageOf(Screen.Desktop))
+            requestScreen(Screen.Desktop)
         }
     }
 
@@ -231,30 +250,23 @@ fun HavenNavHost(
     // internal state in parallel.
     LaunchedEffect(agentUiCommandBus, screens) {
         agentUiCommandBus.commands.collect { command ->
-            val route = when (command) {
-                is sh.haven.core.data.agent.AgentUiCommand.NavigateToSftpPath ->
-                    sh.haven.core.ui.navigation.Screen.Sftp.route
-                is sh.haven.core.data.agent.AgentUiCommand.OpenConvertDialog ->
-                    sh.haven.core.ui.navigation.Screen.Sftp.route
-                is sh.haven.core.data.agent.AgentUiCommand.FocusTerminalSession ->
-                    sh.haven.core.ui.navigation.Screen.Terminal.route
-                is sh.haven.core.data.agent.AgentUiCommand.OpenTerminalSession ->
-                    sh.haven.core.ui.navigation.Screen.Terminal.route
-                is sh.haven.core.data.agent.AgentUiCommand.OpenRemoteDesktop ->
-                    sh.haven.core.ui.navigation.Screen.Desktop.route
-                is sh.haven.core.data.agent.AgentUiCommand.OpenWaylandDesktop ->
-                    sh.haven.core.ui.navigation.Screen.Desktop.route
-                is sh.haven.core.data.agent.AgentUiCommand.RegenerateStepCaCert ->
-                    sh.haven.core.ui.navigation.Screen.Keys.route
-                is sh.haven.core.data.agent.AgentUiCommand.OpenInEditor ->
-                    sh.haven.core.ui.navigation.Screen.Sftp.route
+            val screen = when (command) {
+                is sh.haven.core.data.agent.AgentUiCommand.NavigateToSftpPath -> Screen.Sftp
+                is sh.haven.core.data.agent.AgentUiCommand.OpenConvertDialog -> Screen.Sftp
+                is sh.haven.core.data.agent.AgentUiCommand.FocusTerminalSession -> Screen.Terminal
+                is sh.haven.core.data.agent.AgentUiCommand.OpenTerminalSession -> Screen.Terminal
+                is sh.haven.core.data.agent.AgentUiCommand.OpenRemoteDesktop -> Screen.Desktop
+                is sh.haven.core.data.agent.AgentUiCommand.OpenWaylandDesktop -> Screen.Desktop
+                is sh.haven.core.data.agent.AgentUiCommand.RegenerateStepCaCert -> Screen.Keys
+                is sh.haven.core.data.agent.AgentUiCommand.OpenInEditor -> Screen.Sftp
                 is sh.haven.core.data.agent.AgentUiCommand.ConnectProfile ->
                     // Connect lands the user on the Connections tab so they
                     // can see the connecting → connected status flip.
-                    sh.haven.core.ui.navigation.Screen.Connections.route
+                    Screen.Connections
             }
-            val target = screens.indexOfFirst { it.route == route }
-            if (target >= 0) pagerState.animateScrollToPage(target)
+            // Reactive: e.g. OpenRemoteDesktop waits for Desktop to appear
+            // rather than silently no-op'ing when it's still hidden.
+            requestScreen(screen)
         }
     }
 
@@ -344,7 +356,7 @@ fun HavenNavHost(
     LaunchedEffect(desktopViewModel) {
         desktopViewModel.openLocalShellRequests.collect { profileId ->
             pendingLocalShellProfileId = profileId
-            pagerState.animateScrollToPage(pageOf(Screen.Terminal))
+            requestScreen(Screen.Terminal)
         }
     }
 
@@ -404,13 +416,13 @@ fun HavenNavHost(
                     onNavigateToTerminal = { profileId ->
                         pendingTerminalProfileId = profileId
                         coroutineScope.launch {
-                            pagerState.animateScrollToPage(pageOf(Screen.Terminal))
+                            requestScreen(Screen.Terminal)
                         }
                     },
                     onNavigateToNewSession = { profileId ->
                         pendingNewSessionProfileId = profileId
                         coroutineScope.launch {
-                            pagerState.animateScrollToPage(pageOf(Screen.Terminal))
+                            requestScreen(Screen.Terminal)
                         }
                     },
                     // VNC/RDP navigation is handled by the always-composed
@@ -419,24 +431,24 @@ fun HavenNavHost(
                     onNavigateToSmb = { profileId ->
                         pendingSmbProfileId = profileId
                         coroutineScope.launch {
-                            pagerState.animateScrollToPage(pageOf(Screen.Sftp))
+                            requestScreen(Screen.Sftp)
                         }
                     },
                     onNavigateToRclone = { profileId ->
                         pendingRcloneProfileId = profileId
                         coroutineScope.launch {
-                            pagerState.animateScrollToPage(pageOf(Screen.Sftp))
+                            requestScreen(Screen.Sftp)
                         }
                     },
                     onNavigateToWayland = {
                         desktopViewModel.addWaylandTab()
                         coroutineScope.launch {
-                            pagerState.animateScrollToPage(pageOf(Screen.Desktop))
+                            requestScreen(Screen.Desktop)
                         }
                     },
                     onNavigateToConnections = {
                         coroutineScope.launch {
-                            pagerState.animateScrollToPage(pageOf(Screen.Connections))
+                            requestScreen(Screen.Connections)
                         }
                     },
                     onNavigateToAgentActivity = { showAgentActivityOverlay = true },
@@ -477,7 +489,7 @@ fun HavenNavHost(
                         onFullscreenChanged = { terminalFullscreen = it },
                         onNavigateToConnections = {
                             coroutineScope.launch {
-                                pagerState.animateScrollToPage(pageOf(Screen.Connections))
+                                requestScreen(Screen.Connections)
                             }
                         },
                         onNavigateToVnc = { host, port, username, password, sshForward, sshSessionId, colorDepth ->
@@ -488,7 +500,7 @@ fun HavenNavHost(
                                 colorDepth = colorDepth,
                             )
                             coroutineScope.launch {
-                                pagerState.animateScrollToPage(pageOf(Screen.Desktop))
+                                requestScreen(Screen.Desktop)
                             }
                         },
                         onSelectionActiveChanged = { terminalSelectionActive = it },
@@ -501,12 +513,12 @@ fun HavenNavHost(
                         onOpenToolbarSettings = {
                             openToolbarConfig = true
                             coroutineScope.launch {
-                                pagerState.animateScrollToPage(pageOf(Screen.Settings))
+                                requestScreen(Screen.Settings)
                             }
                         },
                         onNavigateToSftp = {
                             coroutineScope.launch {
-                                pagerState.animateScrollToPage(pageOf(Screen.Sftp))
+                                requestScreen(Screen.Sftp)
                             }
                         },
                         terminalModifier = Modifier.pagerSwipeOverride(
@@ -595,7 +607,7 @@ fun HavenNavHost(
                             // shell-quoted path lands at their cursor where
                             // they can see it.
                             coroutineScope.launch {
-                                pagerState.animateScrollToPage(pageOf(Screen.Terminal))
+                                requestScreen(Screen.Terminal)
                             }
                         },
                         viewModel = sftpViewModel,
