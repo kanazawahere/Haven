@@ -1,0 +1,4 @@
+More reliable agent (MCP) endpoint reachability.
+
+• The agent endpoint now stays reachable after an app restart — Haven brings its WireGuard carrier tunnel back up on its own instead of going dark until you manually reconnect.
+• New option: expose the agent endpoint on your Wi-Fi/LAN for direct same-network access, with no WireGuard needed (off by default; still gated by client pairing).
