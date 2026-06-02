@@ -1,0 +1,3 @@
+Quicker terminal font setup.
+
+• New: a "Recommended fonts" quick-pick in Settings → Terminal font — one tap downloads and applies Source Code Pro, JetBrains Mono, Hack, or Inconsolata, with no need to track down a font URL.
