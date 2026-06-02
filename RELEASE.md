@@ -110,6 +110,21 @@ Things Haven's CI does **not** exercise but F-Droid does:
 
 Watch [fdroid/fdroiddata merge requests tagged with our app](https://gitlab.com/fdroid/fdroiddata/-/merge_requests?scope=all&search=sh.haven.app). The bot MR shows the build log; common causes are tool-version skew vs what's above, new apt deps the recipe's `sudo:` block doesn't install, or submodule commits the buildserver can't reach. When fixed, comment `@fdroidbot rebuild` on the MR.
 
+## Dependency verification
+
+`gradle/verification-metadata.xml` pins a SHA-256 for every external Gradle/Maven artifact (sha256 only — `verify-signatures=false`). Any Gradle invocation now fails if a resolved artifact's checksum isn't listed, so a poisoned mirror or swapped artifact is caught.
+
+**This means every dependency change must regenerate the file**, or the build fails with `Dependency verification failed ... is not in verification-metadata.xml`. After bumping any Gradle dependency / plugin (incl. merging a Dependabot `gradle` PR):
+
+```bash
+./gradlew --write-verification-metadata sha256 \
+  :app:assembleArm64Debug testDebugUnitTest :app:testArm64DebugUnitTest lintDebug \
+  --console=plain
+git diff gradle/verification-metadata.xml   # review the added checksums on a clean checkout
+```
+
+The task set above is a superset of what CI and the release build resolve (no release-only or ABI-specific deps). It captures composite-build deps and the JitPack Tesseract4Android AAR. Native deps (Go modules, Rust crates) are out of scope — they're integrity-pinned by `go.sum` / `Cargo.lock`. `androidTest`/connected-test deps are not covered (CI doesn't run them); add them to the task list if that changes.
+
 ## 6. Verify
 
 - [ ] GitHub release page has APK and a non-empty body
