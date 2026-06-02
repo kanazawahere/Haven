@@ -413,4 +413,66 @@
     <string name="connections_rdp_depth_16">16-bit (default — works everywhere, lower fidelity)</string>
     <string name="connections_rdp_depth_24">24-bit (xrdp — Windows resets the connection)</string>
     <string name="connections_rdp_depth_32">32-bit (Windows — black screen on xrdp)</string>
+
+    <!-- #210 i18n sweep: agent-activity header chip. -->
+    <string name="connections_agent_active">Agent active</string>
+    <string name="connections_agent_activity">Agent activity</string>
+
+    <!-- #210 i18n sweep: port-forward dialog visual flow and form. -->
+    <string name="connections_pf_type_local">LOCAL</string>
+    <string name="connections_pf_type_remote">REMOTE</string>
+    <string name="connections_pf_type_dynamic">DYNAMIC (SOCKS5)</string>
+    <string name="connections_pf_status_active">Active</string>
+    <string name="connections_pf_status_inactive">Inactive</string>
+    <string name="connections_pf_socks5_proxy">SOCKS5 proxy</string>
+    <string name="connections_pf_listens_on">listens on</string>
+    <string name="connections_pf_any_host">Any host</string>
+    <string name="connections_pf_via_ssh_tunnel">via SSH tunnel</string>
+    <string name="connections_pf_this_device">This device</string>
+    <string name="connections_pf_remote_server">Remote server</string>
+    <string name="connections_pf_delivers_to">delivers to</string>
+    <string name="connections_pf_err_not_a_number">Not a number</string>
+    <string name="connections_pf_err_port_range">Must be 1–65535</string>
+    <string name="connections_pf_err_privileged_port">Privileged port (&lt; 1024) — may fail without root</string>
+    <string name="connections_pf_err_port_in_use">Already used by another rule</string>
+    <string name="connections_pf_desc_local">Listen on this device, forward to remote server</string>
+    <string name="connections_pf_desc_remote">Listen on remote server, forward to this device</string>
+    <string name="connections_pf_desc_dynamic">Run a SOCKS5 proxy on this device, tunnel any destination through the server</string>
+    <string name="connections_pf_listen_header_dynamic">SOCKS5 proxy on (this device)</string>
+    <string name="connections_pf_listen_header_local">Listen on (this device)</string>
+    <string name="connections_pf_listen_header_remote">Listen on (remote server)</string>
+    <string name="connections_pf_forward_header_local">Forward to (remote server)</string>
+    <string name="connections_pf_forward_header_remote">Forward to (this device)</string>
+    <string name="connections_pf_dynamic_explanation">SOCKS5 clients on your device can connect to %1$s:%2$s and request any destination. Each request opens a new direct-tcpip channel through the SSH server.</string>
+    <string name="connections_pf_dynamic_port_fallback">&lt;port&gt;</string>
+
+    <!-- #210 i18n sweep: discovered-hosts supporting text in the edit dialog. -->
+    <string name="connections_hosts_discovered">%1$d hosts discovered</string>
+
+    <!-- #210 i18n sweep: rclone cloud-storage generic fallback label. -->
+    <string name="connections_rclone_provider_cloud">Cloud</string>
+
+    <!-- #210 i18n sweep: connection list "via jump host / proxy" suffix. -->
+    <string name="connections_list_via">via %1$s</string>
+
+    <!-- #210 i18n sweep: ordered multi-factor auth methods editor (#166). -->
+    <string name="connections_auth_methods_title">Authentication methods</string>
+    <string name="connections_auth_methods_description">Attempted in order in a single connect — for servers that require more than one (e.g. key + password, or PAM/OTP chains).</string>
+    <string name="connections_auth_method_keyboard_interactive">Keyboard-interactive (OTP)</string>
+    <string name="connections_auth_method_ssh_key">SSH key</string>
+    <string name="connections_auth_method_totp">Authenticator code (TOTP)</string>
+    <string name="connections_auth_key_any">SSH key: any</string>
+    <string name="connections_auth_key_any_menu">Any key</string>
+    <string name="connections_auth_totp_any">Authenticator: any</string>
+    <string name="connections_auth_totp_any_menu">Any authenticator</string>
+    <string name="connections_auth_move_up">Move up</string>
+    <string name="connections_auth_move_down">Move down</string>
+    <string name="connections_auth_remove">Remove</string>
+    <string name="connections_auth_add_method">Add method</string>
+    <string name="connections_auth_confirm_otp">Confirm OTP before sending</string>
+    <string name="connections_auth_confirm_otp_desc">Show the generated code for one-tap confirm instead of submitting it automatically.</string>
+
+    <!-- #210 i18n sweep: VM-setup copy toasts and code-block copy action. -->
+    <string name="connections_vm_copied_short">Copied</string>
+    <string name="connections_vm_terminal_not_found">Terminal app not found</string>
 </resources>

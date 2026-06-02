@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vnc_placeholder_title">VNC</string>
+    <string name="vnc_placeholder_hint">Add a connection on the Connections tab</string>
+    <string name="vnc_action_close">Close</string>
+    <string name="vnc_action_retry">Retry</string>
+    <string name="vnc_bandwidth_suggestion">Slow connection — switch to 256 colours for usable performance?</string>
+    <string name="vnc_action_switch">Switch</string>
+    <string name="vnc_action_dismiss">Dismiss</string>
+    <string name="vnc_cd_disconnect">Disconnect</string>
+    <string name="vnc_cd_toggle_keyboard">Toggle keyboard</string>
+    <string name="vnc_cd_background_to_edge">Background to edge icon</string>
+    <string name="vnc_cd_picture_in_picture">Picture-in-picture</string>
+    <string name="vnc_cd_reset_zoom">Reset zoom</string>
+    <string name="vnc_cd_fullscreen">Fullscreen</string>
+    <string name="vnc_cd_session_menu">Session menu</string>
+    <string name="vnc_cd_exit_fullscreen">Exit fullscreen</string>
+    <string name="vnc_cd_input_mode_trackpad_on">Trackpad mode on (tap for direct touch)</string>
+    <string name="vnc_cd_input_mode_direct">Direct touch mode (tap for trackpad)</string>
+    <string name="vnc_orientation_landscape_desc">Lock landscape (tap to switch to portrait)</string>
+    <string name="vnc_orientation_portrait_desc">Lock portrait (tap to switch to auto)</string>
+    <string name="vnc_orientation_auto_desc">Auto rotate (tap to switch to landscape)</string>
+</resources>

@@ -115,6 +115,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 import sh.haven.core.data.preferences.ToolbarKey
 import sh.haven.core.data.preferences.ToolbarLayout
 import sh.haven.core.ui.CursorOverlay
+import sh.haven.feature.vnc.R
+import androidx.compose.ui.res.stringResource
 import kotlin.math.abs
 
 /**
@@ -355,8 +357,8 @@ private fun InputModeToggle(inputMode: String, onSetInputMode: (String) -> Unit)
     ) {
         Icon(
             Icons.Default.TouchApp,
-            contentDescription = if (touchpad) "Trackpad mode on (tap for direct touch)"
-                                 else "Direct touch mode (tap for trackpad)",
+            contentDescription = if (touchpad) stringResource(R.string.vnc_cd_input_mode_trackpad_on)
+                                 else stringResource(R.string.vnc_cd_input_mode_direct),
         )
     }
 }
@@ -387,10 +389,10 @@ private fun VncPlaceholder(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("VNC", style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.vnc_placeholder_title), style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(16.dp))
         Text(
-            "Add a connection on the Connections tab",
+            stringResource(R.string.vnc_placeholder_hint),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -416,10 +418,10 @@ private fun VncPlaceholder(
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (onClose != null) {
-                        TextButton(onClick = onClose) { Text("Close") }
+                        TextButton(onClick = onClose) { Text(stringResource(R.string.vnc_action_close)) }
                     }
                     if (onRetry != null) {
-                        Button(onClick = onRetry) { Text("Retry") }
+                        Button(onClick = onRetry) { Text(stringResource(R.string.vnc_action_retry)) }
                     }
                 }
             }
@@ -471,6 +473,11 @@ private fun VncViewer(
     twoFingerZoom: Boolean = false,
 ) {
     val orientationMode = OrientationMode.fromActivityValue(currentOrientation)
+    val orientationDesc = when (orientationMode) {
+        OrientationMode.Landscape -> stringResource(R.string.vnc_orientation_landscape_desc)
+        OrientationMode.Portrait -> stringResource(R.string.vnc_orientation_portrait_desc)
+        OrientationMode.Auto -> stringResource(R.string.vnc_orientation_auto_desc)
+    }
     // Finger count that switches a multi-touch gesture from remote
     // scroll-wheel to local viewport pinch-zoom + pan.
     val zoomPanMinFingers = if (twoFingerZoom) 2 else 3
@@ -597,13 +604,13 @@ private fun VncViewer(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "Slow connection — switch to 256 colours for usable performance?",
+                        text = stringResource(R.string.vnc_bandwidth_suggestion),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onTertiaryContainer,
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = onAcceptBandwidthSuggestion) { Text("Switch") }
-                    TextButton(onClick = onDismissBandwidthSuggestion) { Text("Dismiss") }
+                    TextButton(onClick = onAcceptBandwidthSuggestion) { Text(stringResource(R.string.vnc_action_switch)) }
+                    TextButton(onClick = onDismissBandwidthSuggestion) { Text(stringResource(R.string.vnc_action_dismiss)) }
                 }
             }
         }
@@ -1028,7 +1035,7 @@ private fun VncViewer(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onDisconnect) {
-                    Icon(Icons.Default.Close, contentDescription = "Disconnect")
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.vnc_cd_disconnect))
                 }
 
                 // Keyboard toggle
@@ -1044,12 +1051,12 @@ private fun VncViewer(
                     Icon(
                         if (keyboardVisible) Icons.Default.KeyboardHide
                         else Icons.Default.Keyboard,
-                        contentDescription = "Toggle keyboard",
+                        contentDescription = stringResource(R.string.vnc_cd_toggle_keyboard),
                     )
                 }
 
                 IconButton(onClick = onCycleOrientation) {
-                    Icon(orientationMode.icon, contentDescription = orientationMode.description)
+                    Icon(orientationMode.icon, contentDescription = orientationDesc)
                 }
 
                 // Explicit mouse-button hold toggles (L/M/R) — #183.
@@ -1061,13 +1068,13 @@ private fun VncViewer(
                 // App-window-only: background to an edge icon (keeps it alive).
                 onMinimize?.let { minimize ->
                     IconButton(onClick = minimize) {
-                        Icon(Icons.Default.Minimize, contentDescription = "Background to edge icon")
+                        Icon(Icons.Default.Minimize, contentDescription = stringResource(R.string.vnc_cd_background_to_edge))
                     }
                 }
                 // App-window-only: enter system Picture-in-Picture.
                 onPictureInPicture?.let { pip ->
                     IconButton(onClick = pip) {
-                        Icon(Icons.Default.PictureInPictureAlt, contentDescription = "Picture-in-picture")
+                        Icon(Icons.Default.PictureInPictureAlt, contentDescription = stringResource(R.string.vnc_cd_picture_in_picture))
                     }
                 }
 
@@ -1080,13 +1087,13 @@ private fun VncViewer(
                         panX = 0f
                         panY = 0f
                     }) {
-                        Icon(Icons.Default.FitScreen, contentDescription = "Reset zoom")
+                        Icon(Icons.Default.FitScreen, contentDescription = stringResource(R.string.vnc_cd_reset_zoom))
                     }
                 }
 
                 // Fullscreen button
                 IconButton(onClick = onToggleFullscreen) {
-                    Icon(Icons.Default.Fullscreen, contentDescription = "Fullscreen")
+                    Icon(Icons.Default.Fullscreen, contentDescription = stringResource(R.string.vnc_cd_fullscreen))
                 }
             }
         }
@@ -1120,7 +1127,7 @@ private fun VncViewer(
             ) {
                 Icon(
                     Icons.Default.Menu,
-                    contentDescription = "Session menu",
+                    contentDescription = stringResource(R.string.vnc_cd_session_menu),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     modifier = Modifier.padding(8.dp).size(20.dp),
                 )
@@ -1147,7 +1154,7 @@ private fun VncViewer(
                         overlayVisible = false
                         onDisconnect()
                     }) {
-                        Icon(Icons.Default.Close, contentDescription = "Disconnect")
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.vnc_cd_disconnect))
                     }
                     IconButton(onClick = {
                         keyboardVisible = !keyboardVisible
@@ -1161,11 +1168,11 @@ private fun VncViewer(
                         Icon(
                             if (keyboardVisible) Icons.Default.KeyboardHide
                             else Icons.Default.Keyboard,
-                            contentDescription = "Toggle keyboard",
+                            contentDescription = stringResource(R.string.vnc_cd_toggle_keyboard),
                         )
                     }
                     IconButton(onClick = onCycleOrientation) {
-                        Icon(orientationMode.icon, contentDescription = orientationMode.description)
+                        Icon(orientationMode.icon, contentDescription = orientationDesc)
                     }
                     // Explicit mouse-button hold toggles (L/M/R) — #183.
                     MouseButtonToggles(held = heldButton, onToggle = toggleHeldButton)
@@ -1179,7 +1186,7 @@ private fun VncViewer(
                         }) {
                             Icon(
                                 Icons.Default.FitScreen,
-                                contentDescription = "Reset zoom",
+                                contentDescription = stringResource(R.string.vnc_cd_reset_zoom),
                             )
                         }
                     }
@@ -1187,7 +1194,7 @@ private fun VncViewer(
                         overlayVisible = false
                         onToggleFullscreen()
                     }) {
-                        Icon(Icons.Default.FullscreenExit, contentDescription = "Exit fullscreen")
+                        Icon(Icons.Default.FullscreenExit, contentDescription = stringResource(R.string.vnc_cd_exit_fullscreen))
                     }
                 }
             }
@@ -1624,7 +1631,7 @@ private fun VncBuiltInKey(
                 onClick = onToggleKeyboard,
                 modifier = Modifier.size(32.dp),
             ) {
-                Icon(Icons.Default.Keyboard, contentDescription = "Toggle keyboard", modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Keyboard, contentDescription = stringResource(R.string.vnc_cd_toggle_keyboard), modifier = Modifier.size(18.dp))
             }
         }
         ToolbarKey.CTRL -> VncToggleButton("Ctrl", ctrlActive, onToggleCtrl)

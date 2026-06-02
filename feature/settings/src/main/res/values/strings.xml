@@ -237,4 +237,157 @@
     <string name="settings_font_install_title">Install font from URL</string>
     <string name="settings_ime_flags_title">IME flags</string>
     <!-- #133 phase 2b: SSH host CA pubkey field -->
+
+    <!-- #210 i18n sweep: terminal font rows -->
+    <string name="settings_terminal_font_title">Terminal font</string>
+    <string name="settings_terminal_font_default_label">Hack Nerd Font Mono (default)</string>
+    <string name="settings_terminal_font_custom_fmt">Custom: %1$s</string>
+    <string name="settings_terminal_font_subtitle_fmt">%1$s — tap to pick a TTF/OTF (Nerd Fonts work)</string>
+    <string name="settings_recommended_fonts_title">Recommended fonts</string>
+    <string name="settings_recommended_fonts_subtitle">One-tap install: Source Code Pro, JetBrains Mono, Hack, Inconsolata</string>
+    <string name="settings_font_from_url_title">Install font from URL…</string>
+    <string name="settings_font_from_url_subtitle">Fetch a .ttf/.otf, or a .zip of them (mirrors the agent\'s set_terminal_font_from_url tool)</string>
+    <string name="settings_reset_font_title">Reset terminal font</string>
+    <string name="settings_reset_font_subtitle">Go back to bundled Hack Nerd Font Mono</string>
+    <string name="settings_terminal_font_reset_toast">Terminal font reset</string>
+    <string name="settings_terminal_font_set_toast">Terminal font set to %1$s</string>
+    <string name="settings_terminal_font_decode_failed_toast">Could not load that font — Android couldn\'t decode it as a typeface</string>
+    <string name="settings_font_installed_toast">Installed (%1$d KiB)</string>
+    <string name="settings_font_installing_toast">Installing %1$s…</string>
+    <string name="settings_font_named_installed_toast">%1$s installed (%2$d KiB)</string>
+
+    <!-- Language picker -->
+    <string name="settings_language_system_default">System default</string>
+
+    <!-- Keyboard mode -->
+    <string name="settings_keyboard_mode_subtitle_raw">Raw — physical keyboard only</string>
+    <string name="settings_keyboard_mode_subtitle_standard">Standard — full Gboard features</string>
+    <string name="settings_keyboard_mode_subtitle_custom">Custom — user-selected EditorInfo flags</string>
+    <string name="settings_keyboard_mode_subtitle_secure">Secure — default, suppresses autocorrect</string>
+    <string name="settings_keyboard_mode_secure_label">Secure (default)</string>
+    <string name="settings_keyboard_mode_secure_desc">Real software keyboard with privacy flags set: Gboard mic, autocorrect, swipe typing and writing-assist are suppressed. Best for typing passwords; works with Bluetooth keyboards too.</string>
+    <string name="settings_keyboard_mode_standard_label">Standard</string>
+    <string name="settings_keyboard_mode_standard_desc">Full Gboard features — voice input, swipe typing, autocorrect, word predictions. Pick this if your software keyboard isn\'t working in Secure mode, or if you want autocorrect.</string>
+    <string name="settings_keyboard_mode_raw_label">Raw — Bluetooth/USB only</string>
+    <string name="settings_keyboard_mode_raw_desc">No software keyboard at all. Only physical keys (Bluetooth or USB) reach the terminal. Strongest privacy; on-screen keyboard won\'t appear when you tap the terminal.</string>
+    <string name="settings_keyboard_mode_custom_label">Custom — pick your own flags</string>
+    <string name="settings_keyboard_mode_custom_desc">Advanced. Choose which EditorInfo bits the terminal sets so you can mix-and-match around your IME\'s quirks (e.g. voice input on Gboard without autocorrect). Configure under Settings → \"IME flags\" once selected.</string>
+
+    <!-- IME flags row -->
+    <string name="settings_ime_flags_subtitle">Pick which EditorInfo bits the terminal sets</string>
+
+    <!-- Ctrl+Shift+V paste -->
+    <string name="settings_ctrl_shift_v_title">Ctrl+Shift+V pastes</string>
+    <string name="settings_ctrl_shift_v_subtitle">Hardware keyboard Ctrl+Shift+V pastes from the Android clipboard. Off forwards the keys to the remote shell.</string>
+
+    <!-- Connections screen: always show all tabs -->
+    <string name="settings_always_show_all_tabs_title">Always show all tabs</string>
+    <string name="settings_always_show_all_tabs_subtitle">Show every bottom-nav tab even when its category is empty</string>
+
+    <!-- USB exposure -->
+    <string name="settings_usb_guest_title">Expose USB devices to the Linux guest</string>
+    <string name="settings_usb_guest_subtitle">Let attached USB devices reach guest apps via the haven-usb shim. Each attach still asks for consent.</string>
+
+    <!-- PRoot install log -->
+    <string name="settings_proot_install_log_title">View PRoot install log</string>
+    <string name="settings_proot_install_log_subtitle">Per-phase events from Linux distro installs (issue #162)</string>
+
+    <!-- Logcat capture -->
+    <string name="settings_logcat_capture_title">Logcat Capture</string>
+    <string name="settings_logcat_capture_subtitle_on">Recording to /sdcard/Download/haven-logcat.txt</string>
+    <string name="settings_logcat_capture_subtitle_off">Capture logcat for remote debugging</string>
+    <string name="settings_logcat_saved_toast">Logcat saved</string>
+    <string name="settings_logcat_started_toast">Logcat capture started</string>
+    <string name="settings_logcat_start_failed_toast">Failed to start capture</string>
+
+    <!-- MCP agent endpoint -->
+    <string name="settings_agent_endpoint_title">Agent endpoint (MCP)</string>
+    <string name="settings_agent_endpoint_subtitle_on">Enabled — local MCP server on loopback. Write tools prompt for consent.</string>
+    <string name="settings_agent_endpoint_subtitle_off">Disabled — turn on to let local AI agents read state and (with consent) act on it</string>
+    <string name="settings_agent_file_read_title">Allow agents to read file contents</string>
+    <string name="settings_agent_file_read_subtitle_on">Enabled — `serve_file` returns a single-use download URL after per-call consent</string>
+    <string name="settings_agent_file_read_subtitle_off">Disabled — `serve_file` requests fail immediately, no prompt</string>
+    <string name="settings_agent_terminal_input_title">Allow agents to queue terminal input</string>
+    <string name="settings_agent_terminal_input_subtitle_on">Enabled — `queue_terminal_input` watches the SSH session\'s output and types the queued text on the next prompt (per-call consent)</string>
+    <string name="settings_agent_terminal_input_subtitle_off">Disabled — `queue_terminal_input` requests fail immediately, no prompt</string>
+    <string name="settings_reverse_tunnel_title">Reverse-tunnel endpoint</string>
+    <string name="settings_reverse_tunnel_subtitle_set">Tunnelled to \"%1$s\" — survives WiFi changes &amp; app restarts</string>
+    <string name="settings_reverse_tunnel_subtitle_unset">Not set — endpoint reachable on-device only</string>
+    <string name="settings_reverse_tunnel_none">None (on-device only)</string>
+    <string name="settings_mcp_wireguard_title">Expose on WireGuard tunnel</string>
+    <string name="settings_mcp_wireguard_subtitle_on">Enabled — also reachable at &lt;wg-ip&gt;:8730 on the active WireGuard tunnel</string>
+    <string name="settings_mcp_wireguard_subtitle_off">Disabled — turn on to reach the endpoint over an active WireGuard tunnel</string>
+    <string name="settings_mcp_lan_title">Expose on Wi-Fi/LAN</string>
+    <string name="settings_mcp_lan_subtitle_on">Enabled — also reachable at &lt;device-lan-ip&gt;:8730 on the local network</string>
+    <string name="settings_mcp_lan_subtitle_off">Disabled — turn on for direct reach from a device on the same Wi-Fi/LAN</string>
+    <string name="settings_mcp_copy_url_title">Copy agent endpoint URL</string>
+    <string name="settings_mcp_url_copied_toast">Endpoint copied</string>
+    <string name="settings_mcp_copy_config_title">Copy MCP client config</string>
+    <string name="settings_mcp_copy_config_subtitle">Standard JSON snippet to paste into any MCP client</string>
+    <string name="settings_mcp_config_copied_toast">Config copied</string>
+    <string name="settings_mcp_proot_title">Also available in PRoot</string>
+    <string name="settings_agent_activity_title">View agent activity</string>
+    <string name="settings_agent_activity_subtitle">Every MCP call recorded with redacted args</string>
+    <string name="settings_agent_confirm_destructive_title">Confirm destructive agent actions</string>
+    <string name="settings_agent_confirm_destructive_subtitle">Prompt before any agent call that writes, deletes, uploads, or disconnects. Read-only calls never prompt.</string>
+    <string name="settings_agent_forget_allows_title">Forget remembered allows</string>
+    <string name="settings_agent_forget_allows_subtitle">Re-prompt for every tool that previously got a once-per-session approval.</string>
+    <string name="settings_agent_allows_cleared_toast">Remembered allows cleared</string>
+
+    <!-- Font-from-URL dialog -->
+    <string name="settings_font_from_url_body">Paste a direct link to a TTF or OTF font file. Common Nerd Fonts have raw TTFs on GitHub at github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/&lt;Name&gt;/Regular/&lt;Name&gt;NerdFont-Regular.ttf — copy that URL here.</string>
+    <string name="settings_font_from_url_placeholder">https://…/font.ttf</string>
+
+    <!-- Recommended fonts dialog -->
+    <string name="settings_recommended_fonts_dialog_body">Tap to download and apply a popular monospace coding font.</string>
+
+    <!-- IME flags dialog -->
+    <string name="settings_ime_flags_dialog_body">Each toggle controls one EditorInfo bit. Different IMEs honour different combinations; tweak until your terminal types verbatim while still letting through the IME features you need.</string>
+
+    <!-- #210 i18n sweep: AuditLogScreen / AgentActivityScreen / ProotInstallLogScreen -->
+    <string name="settings_cd_back">Back</string>
+    <string name="settings_filter_all">All</string>
+    <string name="settings_action_clear">Clear</string>
+    <string name="settings_cannot_be_undone">This cannot be undone.</string>
+    <string name="settings_cd_collapse">Collapse</string>
+    <string name="settings_cd_expand">Expand</string>
+    <string name="settings_cd_failed">Failed</string>
+
+    <string name="settings_audit_log_title">Connection log</string>
+    <string name="settings_audit_log_cd_clear">Clear logs</string>
+    <string name="settings_audit_log_cd_toggle_details">Toggle details</string>
+    <string name="settings_audit_log_cd_copy">Copy log</string>
+    <string name="settings_audit_log_cd_share">Share log</string>
+    <string name="settings_audit_log_empty">No connection events logged</string>
+    <string name="settings_audit_log_clear_dialog_title">Clear all logs?</string>
+    <string name="settings_audit_log_no_verbose">No verbose log for this entry</string>
+    <string name="settings_audit_log_share_chooser">Share log</string>
+    <string name="settings_audit_log_status_sync">Sync</string>
+    <string name="settings_audit_log_status_sync_failed">Sync failed</string>
+
+    <string name="settings_agent_activity_screen_title">Agent activity</string>
+    <string name="settings_agent_activity_cd_clear">Clear history</string>
+    <string name="settings_agent_activity_empty">No agent activity yet.\n\nWhen an MCP client calls a tool, the call will appear here with arguments redacted and the result summarised.</string>
+    <string name="settings_agent_activity_clear_dialog_title">Clear agent activity?</string>
+    <string name="settings_agent_activity_clear_dialog_text">All recorded MCP calls will be deleted from this device. This cannot be undone.</string>
+    <string name="settings_agent_activity_unknown_client">unknown client</string>
+    <string name="settings_agent_activity_args_redacted">args (redacted)</string>
+
+    <string name="settings_proot_install_log_screen_title">PRoot install log</string>
+    <string name="settings_proot_install_log_cd_clear">Clear log</string>
+    <string name="settings_proot_install_log_empty">No install events recorded yet. Install a distro via Connections → Desktops to populate this log.</string>
+    <string name="settings_proot_install_log_clear_dialog_title">Clear install log?</string>
+    <string name="settings_proot_install_log_clear_dialog_text">All recorded install events will be removed.</string>
+    <string name="settings_ime_flag_no_suggestions_title">Hide suggestion strip</string>
+    <string name="settings_ime_flag_no_suggestions_detail">TYPE_TEXT_FLAG_NO_SUGGESTIONS — universally honoured</string>
+    <string name="settings_ime_flag_visible_password_title">Suppress autocorrect / autocap / autospace</string>
+    <string name="settings_ime_flag_visible_password_detail">TYPE_TEXT_VARIATION_VISIBLE_PASSWORD — strongest hint; Gboard honours it. Mutually exclusive with full editor on most IMEs (no swipe / voice).</string>
+    <string name="settings_ime_flag_auto_correct_title">Enable autocorrect protocol</string>
+    <string name="settings_ime_flag_auto_correct_detail">TYPE_TEXT_FLAG_AUTO_CORRECT — required by Samsung Honeyboard\'s commit-text gate (#110); explicitly enables autocorrect on Gboard.</string>
+    <string name="settings_ime_flag_full_editor_title">Voice &amp; swipe (full editor)</string>
+    <string name="settings_ime_flag_full_editor_detail">Give the IME a real Editable. Needed for voice input, swipe typing, and CJK composition. Conflicts with the autocorrect-suppression hint above.</string>
+    <string name="settings_ime_flag_no_extract_ui_title">Suppress fullscreen IME</string>
+    <string name="settings_ime_flag_no_extract_ui_detail">IME_FLAG_NO_EXTRACT_UI — stops landscape\'s fullscreen IME UI from showing.</string>
+    <string name="settings_ime_flag_no_learning_title">Block IME from learning</string>
+    <string name="settings_ime_flag_no_learning_detail">IME_FLAG_NO_PERSONALIZED_LEARNING — privacy: IME\'s word bank ignores typed text. Strong enough on Gboard to also hide the mic.</string>
 </resources>

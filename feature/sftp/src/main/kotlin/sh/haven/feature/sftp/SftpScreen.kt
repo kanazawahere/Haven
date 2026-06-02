@@ -663,15 +663,15 @@ fun SftpScreen(
                 ) {
                     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                         Text(
-                            text = "Choose folder for ${req.fileName}",
+                            text = stringResource(R.string.sftp_attach_choose_folder, req.fileName),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onTertiaryContainer,
                         )
                         Text(
                             text = when {
-                                activeProfileId == null -> "Pick a connected profile to use"
-                                isLocalDest -> "Pick a remote profile — local can't accept uploads"
-                                else -> "Will upload into: $currentPath"
+                                activeProfileId == null -> stringResource(R.string.sftp_attach_pick_profile)
+                                isLocalDest -> stringResource(R.string.sftp_attach_local_no_upload)
+                                else -> stringResource(R.string.sftp_attach_will_upload_into, currentPath)
                             },
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onTertiaryContainer,
@@ -713,7 +713,7 @@ fun SftpScreen(
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
                     Text(
-                        "Sending ${p.fileName}…",
+                        stringResource(R.string.sftp_attach_sending, p.fileName),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
@@ -758,7 +758,7 @@ fun SftpScreen(
                         },
                         label = {
                             Text(
-                                if (filterMode == SftpViewModel.FilterMode.GLOB) "Glob" else "Regex",
+                                if (filterMode == SftpViewModel.FilterMode.GLOB) stringResource(R.string.sftp_filter_mode_glob) else stringResource(R.string.sftp_filter_mode_regex),
                                 style = MaterialTheme.typography.labelSmall,
                             )
                         },
@@ -836,7 +836,7 @@ fun SftpScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "Unfinished paste",
+                                stringResource(R.string.sftp_paste_unfinished),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                             )
@@ -984,12 +984,12 @@ fun SftpScreen(
                             Spacer(Modifier.width(14.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    "Storage access required",
+                                    stringResource(R.string.sftp_storage_permission_title),
                                     style = MaterialTheme.typography.titleSmall,
                                     color = MaterialTheme.colorScheme.onErrorContainer,
                                 )
                                 Text(
-                                    "Tap to grant access to local files — media features, browsing, and transfers need this permission.",
+                                    stringResource(R.string.sftp_storage_permission_body),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f),
                                 )
@@ -1528,7 +1528,7 @@ fun SftpScreen(
                             when (val ps = previewState) {
                                 is SftpViewModel.PreviewState.Idle -> {
                                     Text(
-                                        "Preparing preview...",
+                                        stringResource(R.string.sftp_preview_preparing_long),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -1539,7 +1539,7 @@ fun SftpScreen(
                                         if (previewIsRemote) {
                                             Spacer(Modifier.height(8.dp))
                                             Text(
-                                                "\u2601 Fetching from cloud\u2026",
+                                                stringResource(R.string.sftp_preview_fetching_cloud),
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
@@ -1562,7 +1562,7 @@ fun SftpScreen(
                                     }
                                     if (previewStale) {
                                         Text(
-                                            "Tap Preview to refresh",
+                                            stringResource(R.string.sftp_preview_tap_to_refresh),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier
@@ -1658,12 +1658,12 @@ fun SftpScreen(
                     // Output destination selector
                     Text(stringResource(R.string.sftp_convert_save_to), style = MaterialTheme.typography.labelMedium)
                     val sourceFolderLabel = when {
-                        viewModel.isLocalProfile() -> "Same folder as source"
-                        isRclone -> "Back to cloud (same folder)"
-                        else -> "Back to server (same folder)"
+                        viewModel.isLocalProfile() -> stringResource(R.string.sftp_convert_dest_same_folder_local)
+                        isRclone -> stringResource(R.string.sftp_convert_dest_same_folder_cloud)
+                        else -> stringResource(R.string.sftp_convert_dest_same_folder_server)
                     }
                     val destinationOptions = listOf(
-                        "downloads" to "Downloads (this device)",
+                        "downloads" to stringResource(R.string.sftp_convert_dest_downloads),
                         "source" to sourceFolderLabel,
                     )
                     destinationOptions.forEach { (key, label) ->
@@ -1698,14 +1698,14 @@ fun SftpScreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    "Download first",
+                                    stringResource(R.string.sftp_convert_download_first),
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                                 Text(
                                     if (downloadFirst) {
-                                        "Downloads the whole file before transcoding"
+                                        stringResource(R.string.sftp_convert_download_first_on)
                                     } else {
-                                        "Streams from cloud (faster for large files)"
+                                        stringResource(R.string.sftp_convert_download_first_off)
                                     },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -2401,7 +2401,7 @@ private fun FileListItem(
                             shape = MaterialTheme.shapes.small,
                         ) {
                             Text(
-                                "Agent",
+                                stringResource(R.string.sftp_agent_chip),
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onTertiaryContainer,
@@ -2936,14 +2936,17 @@ private fun PasteConflictDialog(prompt: ConflictPrompt) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("${prompt.fileName}", style = MaterialTheme.typography.titleSmall)
                 Text(
-                    "Existing: ${Formatter.formatFileSize(context, prompt.destSize)}  " +
-                        "·  New: ${Formatter.formatFileSize(context, prompt.sourceSize)}",
+                    stringResource(
+                        R.string.sftp_conflict_size_summary,
+                        Formatter.formatFileSize(context, prompt.destSize),
+                        Formatter.formatFileSize(context, prompt.sourceSize),
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (prompt.canResume) {
                     Text(
-                        "Existing file is smaller than the source — resume continues from the current offset.",
+                        stringResource(R.string.sftp_conflict_resume_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -2957,7 +2960,7 @@ private fun PasteConflictDialog(prompt: ConflictPrompt) {
                         onCheckedChange = { applyToAll = it },
                     )
                     Text(
-                        "Apply to all remaining files",
+                        stringResource(R.string.sftp_conflict_apply_to_all),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }

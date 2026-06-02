@@ -67,7 +67,7 @@ fun SnippetsBottomSheet(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
-                    "Snippets",
+                    stringResource(R.string.toolbar_snippet_title),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
@@ -88,8 +88,8 @@ fun SnippetsBottomSheet(
 
             if (filtered.isEmpty()) {
                 Text(
-                    if (snippets.isEmpty()) "No snippets yet. Add custom keys to the toolbar, or tap + above."
-                    else "No matching snippets.",
+                    if (snippets.isEmpty()) stringResource(R.string.toolbar_snippet_empty)
+                    else stringResource(R.string.toolbar_snippet_empty_filtered),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 16.dp),
@@ -161,7 +161,7 @@ private fun AddSnippetDialog(
                     value = label,
                     onValueChange = { label = it },
                     label = { Text(stringResource(R.string.toolbar_snippet_label)) },
-                    placeholder = { Text("e.g. Deploy, Restart") },
+                    placeholder = { Text(stringResource(R.string.toolbar_snippet_label_placeholder)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )

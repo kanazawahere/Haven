@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -96,7 +97,11 @@ internal fun AgentActiveChip(
     IconButton(onClick = onClick) {
         Icon(
             imageVector = Icons.Filled.SmartToy,
-            contentDescription = if (active) "Agent active" else "Agent activity",
+            contentDescription = if (active) {
+                stringResource(R.string.connections_agent_active)
+            } else {
+                stringResource(R.string.connections_agent_activity)
+            },
             tint = tint,
             modifier = Modifier.size(24.dp),
         )

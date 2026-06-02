@@ -234,6 +234,59 @@
     <!-- Filter -->
     <string name="sftp_filter">Filter files</string>
 
+    <!-- Attach folder picker banner -->
+    <string name="sftp_attach_choose_folder">Choose folder for %1$s</string>
+    <string name="sftp_attach_pick_profile">Pick a connected profile to use</string>
+    <string name="sftp_attach_local_no_upload">Pick a remote profile — local can\'t accept uploads</string>
+    <string name="sftp_attach_will_upload_into">Will upload into: %1$s</string>
+    <string name="sftp_attach_sending">Sending %1$s…</string>
+
+    <!-- Storage permission banner -->
+    <string name="sftp_storage_permission_title">Storage access required</string>
+    <string name="sftp_storage_permission_body">Tap to grant access to local files — media features, browsing, and transfers need this permission.</string>
+
+    <!-- Unfinished paste banner -->
+    <string name="sftp_paste_unfinished">Unfinished paste</string>
+
+    <!-- Agent-served file chip -->
+    <string name="sftp_agent_chip">Agent</string>
+
+    <!-- Convert dialog: destination options -->
+    <string name="sftp_convert_dest_downloads">Downloads (this device)</string>
+    <string name="sftp_convert_dest_same_folder_local">Same folder as source</string>
+    <string name="sftp_convert_dest_same_folder_cloud">Back to cloud (same folder)</string>
+    <string name="sftp_convert_dest_same_folder_server">Back to server (same folder)</string>
+
+    <!-- Convert dialog: download-first toggle -->
+    <string name="sftp_convert_download_first">Download first</string>
+    <string name="sftp_convert_download_first_on">Downloads the whole file before transcoding</string>
+    <string name="sftp_convert_download_first_off">Streams from cloud (faster for large files)</string>
+
+    <!-- Convert dialog: preview area -->
+    <string name="sftp_preview_preparing_long">Preparing preview…</string>
+    <string name="sftp_preview_fetching_cloud">☁ Fetching from cloud…</string>
+    <string name="sftp_preview_tap_to_refresh">Tap Preview to refresh</string>
+
+    <!-- Filter chip labels (Glob/Regex) -->
+    <string name="sftp_filter_mode_glob">Glob</string>
+    <string name="sftp_filter_mode_regex">Regex</string>
+
+    <!-- ViewModel snackbar messages -->
+    <string name="sftp_saved_file">Saved %1$s</string>
+    <string name="sftp_saved_file_to">Saved %1$s to %2$s</string>
+    <string name="sftp_downloaded_file">Downloaded %1$s</string>
+    <string name="sftp_location_downloads">Downloads</string>
+
+    <!-- Image processing labels (used in Processing state label) -->
+    <string name="sftp_processing_perspective">Applying perspective…</string>
+    <string name="sftp_processing_crop">Cropping…</string>
+    <string name="sftp_processing_rotate">Rotating…</string>
+
+    <!-- Paste conflict dialog -->
+    <string name="sftp_conflict_size_summary">Existing: %1$s  ·  New: %2$s</string>
+    <string name="sftp_conflict_resume_hint">Existing file is smaller than the source — resume continues from the current offset.</string>
+    <string name="sftp_conflict_apply_to_all">Apply to all remaining files</string>
+
     <!-- DLNA -->
     <string name="sftp_start_dlna">Start DLNA server</string>
     <string name="sftp_stop_dlna">Stop DLNA server</string>

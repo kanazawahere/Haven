@@ -667,7 +667,7 @@ class SftpViewModel @Inject constructor(
                 val backend = currentFileBackend() ?: throw IllegalStateException("Not connected")
                 backend.writeBytes(entry.path, data)
                 _editorFile.value = EditorFileState.Open(entry.name, entry.path, content)
-                _message.value = "Saved ${entry.name}"
+                _message.value = appContext.getString(R.string.sftp_saved_file, entry.name)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to save file from editor", e)
                 _error.value = "Save failed: ${e.message}"
@@ -748,7 +748,7 @@ class SftpViewModel @Inject constructor(
     fun applyPerspective(corners: List<androidx.compose.ui.geometry.Offset>, imgWidth: Int, imgHeight: Int) {
         val current = _imageToolFile.value
         if (current !is ImageToolFileState.Open) return
-        _imageToolFile.value = ImageToolFileState.Processing("Applying perspective…")
+        _imageToolFile.value = ImageToolFileState.Processing(appContext.getString(R.string.sftp_processing_perspective))
         viewModelScope.launch {
             try {
                 val c = corners
@@ -791,7 +791,7 @@ class SftpViewModel @Inject constructor(
     fun applyCrop(left: Float, top: Float, right: Float, bottom: Float, imgWidth: Int, imgHeight: Int) {
         val current = _imageToolFile.value
         if (current !is ImageToolFileState.Open) return
-        _imageToolFile.value = ImageToolFileState.Processing("Cropping…")
+        _imageToolFile.value = ImageToolFileState.Processing(appContext.getString(R.string.sftp_processing_crop))
         viewModelScope.launch {
             try {
                 val x = (left * imgWidth).toInt().coerceAtLeast(0)
@@ -818,7 +818,7 @@ class SftpViewModel @Inject constructor(
     fun applyRotate(degrees: Float, imgWidth: Int, imgHeight: Int) {
         val current = _imageToolFile.value
         if (current !is ImageToolFileState.Open) return
-        _imageToolFile.value = ImageToolFileState.Processing("Rotating…")
+        _imageToolFile.value = ImageToolFileState.Processing(appContext.getString(R.string.sftp_processing_rotate))
         viewModelScope.launch {
             try {
                 val filter = sh.haven.core.ffmpeg.VideoFilter.Rotate(degrees)
@@ -873,7 +873,7 @@ class SftpViewModel @Inject constructor(
                 }
                 val backend = currentFileBackend() ?: throw IllegalStateException("Not connected")
                 backend.writeBytes(entry.path, data)
-                _message.value = "Saved ${entry.name}"
+                _message.value = appContext.getString(R.string.sftp_saved_file, entry.name)
                 closeImageTools()
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to save image tool result", e)
@@ -1375,7 +1375,7 @@ class SftpViewModel @Inject constructor(
                     }
                 }
                 _lastDownload.value = DownloadResult(entry.name, destinationUri)
-                _message.value = "Downloaded ${entry.name}"
+                _message.value = appContext.getString(R.string.sftp_downloaded_file, entry.name)
             } catch (e: Exception) {
                 Log.e(TAG, "Download failed", e)
                 _error.value = "Download failed: ${e.message}"
@@ -1578,7 +1578,7 @@ class SftpViewModel @Inject constructor(
                                 cacheOutput.copyTo(dest, overwrite = true)
                             }
                         }
-                        "Downloads"
+                        appContext.getString(R.string.sftp_location_downloads)
                     }
                     ConvertDestination.SOURCE_FOLDER -> {
                         // The directory of the source file, expressed in that backend's native path
@@ -1637,7 +1637,7 @@ class SftpViewModel @Inject constructor(
                     }
                 }
 
-                _message.value = "Saved $outName to $savedLocation"
+                _message.value = appContext.getString(R.string.sftp_saved_file_to, outName, savedLocation)
                 // If we saved into the folder currently showing, refresh so the user sees it
                 if (destination == ConvertDestination.SOURCE_FOLDER) {
                     val sourceDir = entry.path.substringBeforeLast('/', "").ifEmpty { "/" }
@@ -1763,7 +1763,7 @@ class SftpViewModel @Inject constructor(
                         cacheOutput.copyTo(java.io.File(dlDir, outName), overwrite = true)
                     }
                 }
-                "Downloads"
+                appContext.getString(R.string.sftp_location_downloads)
             }
             ConvertDestination.SOURCE_FOLDER -> {
                 val sourceDir = entry.path.substringBeforeLast('/', "").ifEmpty { "/" }
@@ -1904,7 +1904,7 @@ class SftpViewModel @Inject constructor(
                     destination = destination,
                 )
                 appendLog("saved → $savedLocation")
-                _message.value = "Saved ${finalOutput.name} to $savedLocation"
+                _message.value = appContext.getString(R.string.sftp_saved_file_to, finalOutput.name, savedLocation)
                 logMediaEvent(entry, label, ConnectionLog.Status.CONNECTED, startTime, logBuffer.toString(), savedLocation)
                 if (destination == ConvertDestination.SOURCE_FOLDER) {
                     val sourceDir = entry.path.substringBeforeLast('/', "").ifEmpty { "/" }

@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.hilt.navigation.compose.hiltViewModel
 import sh.haven.core.data.db.entities.ConnectionLog
@@ -77,16 +78,16 @@ fun AuditLogScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("Connection log") },
+            title = { Text(stringResource(R.string.settings_audit_log_title)) },
             navigationIcon = {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_cd_back))
                 }
             },
             actions = {
                 if (logs.isNotEmpty()) {
                     IconButton(onClick = { showClearDialog = true }) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Clear logs")
+                        Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.settings_audit_log_cd_clear))
                     }
                 }
             },
@@ -103,7 +104,7 @@ fun AuditLogScreen(
                 FilterChip(
                     selected = filterProfileId == null,
                     onClick = { viewModel.setFilter(null) },
-                    label = { Text("All") },
+                    label = { Text(stringResource(R.string.settings_filter_all)) },
                 )
                 availableProfiles.forEach { (id, label) ->
                     FilterChip(
@@ -122,7 +123,7 @@ fun AuditLogScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    "No connection events logged",
+                    stringResource(R.string.settings_audit_log_empty),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -155,7 +156,7 @@ fun AuditLogScreen(
                                 putExtra(android.content.Intent.EXTRA_SUBJECT, "Haven connection log: ${item.profileLabel}")
                                 putExtra(android.content.Intent.EXTRA_TEXT, text)
                             }
-                            context.startActivity(android.content.Intent.createChooser(intent, "Share log"))
+                            context.startActivity(android.content.Intent.createChooser(intent, context.getString(R.string.settings_audit_log_share_chooser)))
                         },
                     )
                 }
@@ -166,16 +167,16 @@ fun AuditLogScreen(
     if (showClearDialog) {
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
-            title = { Text("Clear all logs?") },
-            text = { Text("This cannot be undone.") },
+            title = { Text(stringResource(R.string.settings_audit_log_clear_dialog_title)) },
+            text = { Text(stringResource(R.string.settings_cannot_be_undone)) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.clearLogs()
                     showClearDialog = false
-                }) { Text("Clear") }
+                }) { Text(stringResource(R.string.settings_action_clear)) }
             },
             dismissButton = {
-                TextButton(onClick = { showClearDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showClearDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }
@@ -217,8 +218,8 @@ private fun LogItem(
             },
             supportingContent = {
                 val statusLabel = when (item.status) {
-                    ConnectionLog.Status.SYNC_OK -> "Sync"
-                    ConnectionLog.Status.SYNC_FAILED -> "Sync failed"
+                    ConnectionLog.Status.SYNC_OK -> stringResource(R.string.settings_audit_log_status_sync)
+                    ConnectionLog.Status.SYNC_FAILED -> stringResource(R.string.settings_audit_log_status_sync_failed)
                     else -> item.status.name.lowercase().replaceFirstChar { it.uppercase() }
                 }
                 val line = if (item.details != null) "$statusLabel (${item.details}) - $timeText"
@@ -228,7 +229,7 @@ private fun LogItem(
             trailingContent = {
                 Icon(
                     if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = "Toggle details",
+                    contentDescription = stringResource(R.string.settings_audit_log_cd_toggle_details),
                     modifier = Modifier.size(20.dp),
                 )
             },
@@ -260,18 +261,18 @@ private fun LogItem(
                 ) {
                     if (onCopy != null) {
                         IconButton(onClick = { onCopy(verboseText) }, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Filled.ContentCopy, contentDescription = "Copy log", modifier = Modifier.size(18.dp))
+                            Icon(Icons.Filled.ContentCopy, contentDescription = stringResource(R.string.settings_audit_log_cd_copy), modifier = Modifier.size(18.dp))
                         }
                     }
                     if (onShare != null) {
                         IconButton(onClick = { onShare(verboseText) }, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Filled.Share, contentDescription = "Share log", modifier = Modifier.size(18.dp))
+                            Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.settings_audit_log_cd_share), modifier = Modifier.size(18.dp))
                         }
                     }
                 }
             } else {
                 Text(
-                    "No verbose log for this entry",
+                    stringResource(R.string.settings_audit_log_no_verbose),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),

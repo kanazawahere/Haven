@@ -268,11 +268,11 @@ fun SettingsScreen(
             fontImportScope.launch {
                 val path = viewModel.importCustomTerminalFont(uri, displayName)
                 if (path != null) {
-                    Toast.makeText(context, "Terminal font set to $displayName", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.settings_terminal_font_set_toast, displayName), Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(
                         context,
-                        "Could not load that font — Android couldn't decode it as a typeface",
+                        context.getString(R.string.settings_terminal_font_decode_failed_toast),
                         Toast.LENGTH_LONG,
                     ).show()
                 }
@@ -320,7 +320,7 @@ fun SettingsScreen(
                         is sh.haven.core.data.font.TerminalFontInstaller.Result.Success ->
                             Toast.makeText(
                                 context,
-                                "Installed (${r.bytesInstalled / 1024} KiB)",
+                                context.getString(R.string.settings_font_installed_toast, (r.bytesInstalled / 1024).toInt()),
                                 Toast.LENGTH_SHORT,
                             ).show()
                         is sh.haven.core.data.font.TerminalFontInstaller.Result.Failure ->
@@ -335,13 +335,13 @@ fun SettingsScreen(
         RecommendedFontsDialog(
             onPick = { name, url ->
                 showRecommendedFontsDialog = false
-                Toast.makeText(context, "Installing $name…", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.settings_font_installing_toast, name), Toast.LENGTH_SHORT).show()
                 settingsScope.launch {
                     when (val r = viewModel.installTerminalFontFromUrl(url)) {
                         is sh.haven.core.data.font.TerminalFontInstaller.Result.Success ->
                             Toast.makeText(
                                 context,
-                                "$name installed (${r.bytesInstalled / 1024} KiB)",
+                                context.getString(R.string.settings_font_named_installed_toast, name, (r.bytesInstalled / 1024).toInt()),
                                 Toast.LENGTH_SHORT,
                             ).show()
                         is sh.haven.core.data.font.TerminalFontInstaller.Result.Failure ->
@@ -439,14 +439,14 @@ fun SettingsScreen(
         run {
             val customFontPath by viewModel.terminalFontPath.collectAsState()
             val activeFontLabel = if (customFontPath == null) {
-                "Hack Nerd Font Mono (default)"
+                stringResource(R.string.settings_terminal_font_default_label)
             } else {
-                "Custom: ${java.io.File(customFontPath!!).nameWithoutExtension}"
+                stringResource(R.string.settings_terminal_font_custom_fmt, java.io.File(customFontPath!!).nameWithoutExtension)
             }
             SettingsItem(
                 icon = Icons.Filled.FontDownload,
-                title = "Terminal font",
-                subtitle = "$activeFontLabel — tap to pick a TTF/OTF (Nerd Fonts work)",
+                title = stringResource(R.string.settings_terminal_font_title),
+                subtitle = stringResource(R.string.settings_terminal_font_subtitle_fmt, activeFontLabel),
                 onClick = {
                     // Loose MIME — many file managers report fonts as
                     // application/octet-stream; we revalidate post-import.
@@ -455,31 +455,31 @@ fun SettingsScreen(
             )
             SettingsItem(
                 icon = Icons.Filled.FontDownload,
-                title = "Recommended fonts",
-                subtitle = "One-tap install: Source Code Pro, JetBrains Mono, Hack, Inconsolata",
+                title = stringResource(R.string.settings_recommended_fonts_title),
+                subtitle = stringResource(R.string.settings_recommended_fonts_subtitle),
                 onClick = { showRecommendedFontsDialog = true },
             )
             SettingsItem(
                 icon = Icons.Filled.CloudDownload,
-                title = "Install font from URL…",
-                subtitle = "Fetch a .ttf/.otf, or a .zip of them (mirrors the agent's set_terminal_font_from_url tool)",
+                title = stringResource(R.string.settings_font_from_url_title),
+                subtitle = stringResource(R.string.settings_font_from_url_subtitle),
                 onClick = { showFontUrlDialog = true },
             )
             if (customFontPath != null) {
                 SettingsItem(
                     icon = Icons.Filled.RestartAlt,
-                    title = "Reset terminal font",
-                    subtitle = "Go back to bundled Hack Nerd Font Mono",
+                    title = stringResource(R.string.settings_reset_font_title),
+                    subtitle = stringResource(R.string.settings_reset_font_subtitle),
                     onClick = {
                         viewModel.clearCustomTerminalFont()
-                        Toast.makeText(context, "Terminal font reset", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.settings_terminal_font_reset_toast), Toast.LENGTH_SHORT).show()
                     },
                 )
             }
         }
         run {
             val currentLocale = androidx.appcompat.app.AppCompatDelegate.getApplicationLocales()
-            val currentLang = if (currentLocale.isEmpty) "System default"
+            val currentLang = if (currentLocale.isEmpty) stringResource(R.string.settings_language_system_default)
                 else java.util.Locale.forLanguageTag(currentLocale.toLanguageTags()).displayLanguage
             SettingsItem(
                 icon = Icons.Filled.Language,
@@ -509,29 +509,29 @@ fun SettingsScreen(
             else -> "SECURE"
         }
         val keyboardModeLabel = when (keyboardModeId) {
-            "RAW" -> "Raw — physical keyboard only"
-            "STANDARD" -> "Standard — full Gboard features"
-            "CUSTOM" -> "Custom — user-selected EditorInfo flags"
-            else -> "Secure — default, suppresses autocorrect"
+            "RAW" -> stringResource(R.string.settings_keyboard_mode_subtitle_raw)
+            "STANDARD" -> stringResource(R.string.settings_keyboard_mode_subtitle_standard)
+            "CUSTOM" -> stringResource(R.string.settings_keyboard_mode_subtitle_custom)
+            else -> stringResource(R.string.settings_keyboard_mode_subtitle_secure)
         }
         SettingsItem(
             icon = Icons.Filled.Keyboard,
-            title = "Keyboard mode",
+            title = stringResource(R.string.settings_keyboard_mode_title),
             subtitle = keyboardModeLabel,
             onClick = { showKeyboardModeDialog = true },
         )
         if (keyboardCustomMode) {
             SettingsItem(
                 icon = Icons.Filled.Tune,
-                title = "IME flags",
-                subtitle = "Pick which EditorInfo bits the terminal sets",
+                title = stringResource(R.string.settings_ime_flags_title),
+                subtitle = stringResource(R.string.settings_ime_flags_subtitle),
                 onClick = { showImeFlagsDialog = true },
             )
         }
         SettingsToggleItem(
             icon = Icons.Filled.ContentPaste,
-            title = "Ctrl+Shift+V pastes",
-            subtitle = "Hardware keyboard Ctrl+Shift+V pastes from the Android clipboard. Off forwards the keys to the remote shell.",
+            title = stringResource(R.string.settings_ctrl_shift_v_title),
+            subtitle = stringResource(R.string.settings_ctrl_shift_v_subtitle),
             checked = interceptCtrlShiftV,
             onCheckedChange = viewModel::setInterceptCtrlShiftV,
         )
@@ -654,8 +654,8 @@ fun SettingsScreen(
         val alwaysShowAllTabs by viewModel.alwaysShowAllTabs.collectAsState()
         SettingsToggleItem(
             icon = Icons.Filled.ViewModule,
-            title = "Always show all tabs",
-            subtitle = "Show every bottom-nav tab even when its category is empty",
+            title = stringResource(R.string.settings_always_show_all_tabs_title),
+            subtitle = stringResource(R.string.settings_always_show_all_tabs_subtitle),
             checked = alwaysShowAllTabs,
             onCheckedChange = viewModel::setAlwaysShowAllTabs,
         )
@@ -666,8 +666,8 @@ fun SettingsScreen(
         val usbGuestExposure by viewModel.usbGuestExposureEnabled.collectAsState()
         SettingsToggleItem(
             icon = Icons.Filled.Usb,
-            title = "Expose USB devices to the Linux guest",
-            subtitle = "Let attached USB devices reach guest apps via the haven-usb shim. Each attach still asks for consent.",
+            title = stringResource(R.string.settings_usb_guest_title),
+            subtitle = stringResource(R.string.settings_usb_guest_subtitle),
             checked = usbGuestExposure,
             onCheckedChange = viewModel::setUsbGuestExposureEnabled,
         )
@@ -690,8 +690,8 @@ fun SettingsScreen(
             )
             SettingsItem(
                 icon = Icons.Filled.ListAlt,
-                title = "View PRoot install log",
-                subtitle = "Per-phase events from Linux distro installs (issue #162)",
+                title = stringResource(R.string.settings_proot_install_log_title),
+                subtitle = stringResource(R.string.settings_proot_install_log_subtitle),
                 onClick = { showProotInstallLog = true },
             )
             SettingsToggleItem(
@@ -708,22 +708,22 @@ fun SettingsScreen(
             var capturing by remember { mutableStateOf(helper.isCapturingLogcat) }
             SettingsItem(
                 icon = Icons.Filled.BugReport,
-                title = "Logcat Capture",
+                title = stringResource(R.string.settings_logcat_capture_title),
                 subtitle = if (capturing)
-                    "Recording to /sdcard/Download/haven-logcat.txt"
+                    stringResource(R.string.settings_logcat_capture_subtitle_on)
                 else
-                    "Capture logcat for remote debugging",
+                    stringResource(R.string.settings_logcat_capture_subtitle_off),
                 onClick = {
                     if (capturing) {
                         helper.stopLogcatCapture()
                         capturing = false
-                        Toast.makeText(context, "Logcat saved", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.settings_logcat_saved_toast), Toast.LENGTH_SHORT).show()
                     } else {
                         capturing = helper.startLogcatCapture()
                         if (capturing) {
-                            Toast.makeText(context, "Logcat capture started", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.settings_logcat_started_toast), Toast.LENGTH_SHORT).show()
                         } else {
-                            Toast.makeText(context, "Failed to start capture", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.settings_logcat_start_failed_toast), Toast.LENGTH_SHORT).show()
                         }
                     }
                 },
@@ -795,11 +795,11 @@ fun SettingsScreen(
         // bottom-sheet consent.
         SettingsToggleItem(
             icon = Icons.Filled.Hub,
-            title = "Agent endpoint (MCP)",
+            title = stringResource(R.string.settings_agent_endpoint_title),
             subtitle = if (mcpAgentEndpointEnabled) {
-                "Enabled — local MCP server on loopback. Write tools prompt for consent."
+                stringResource(R.string.settings_agent_endpoint_subtitle_on)
             } else {
-                "Disabled — turn on to let local AI agents read state and (with consent) act on it"
+                stringResource(R.string.settings_agent_endpoint_subtitle_off)
             },
             checked = mcpAgentEndpointEnabled,
             onCheckedChange = viewModel::setMcpAgentEndpointEnabled,
@@ -812,11 +812,11 @@ fun SettingsScreen(
             // narrower surfaces (terminal scrollback, list-only, etc.).
             SettingsToggleItem(
                 icon = Icons.Filled.Hub,
-                title = "Allow agents to read file contents",
+                title = stringResource(R.string.settings_agent_file_read_title),
                 subtitle = if (agentAllowFileRead) {
-                    "Enabled — `serve_file` returns a single-use download URL after per-call consent"
+                    stringResource(R.string.settings_agent_file_read_subtitle_on)
                 } else {
-                    "Disabled — `serve_file` requests fail immediately, no prompt"
+                    stringResource(R.string.settings_agent_file_read_subtitle_off)
                 },
                 checked = agentAllowFileRead,
                 onCheckedChange = viewModel::setAgentAllowFileRead,
@@ -829,11 +829,11 @@ fun SettingsScreen(
             val agentAllowTerminalInputQueue by viewModel.agentAllowTerminalInputQueue.collectAsState()
             SettingsToggleItem(
                 icon = Icons.Filled.Hub,
-                title = "Allow agents to queue terminal input",
+                title = stringResource(R.string.settings_agent_terminal_input_title),
                 subtitle = if (agentAllowTerminalInputQueue) {
-                    "Enabled — `queue_terminal_input` watches the SSH session's output and types the queued text on the next prompt (per-call consent)"
+                    stringResource(R.string.settings_agent_terminal_input_subtitle_on)
                 } else {
-                    "Disabled — `queue_terminal_input` requests fail immediately, no prompt"
+                    stringResource(R.string.settings_agent_terminal_input_subtitle_off)
                 },
                 checked = agentAllowTerminalInputQueue,
                 onCheckedChange = viewModel::setAgentAllowTerminalInputQueue,
@@ -852,10 +852,10 @@ fun SettingsScreen(
             Box {
                 SettingsItem(
                     icon = Icons.Filled.Hub,
-                    title = "Reverse-tunnel endpoint",
+                    title = stringResource(R.string.settings_reverse_tunnel_title),
                     subtitle = selectedEndpointLabel?.let {
-                        "Tunnelled to \"$it\" — survives WiFi changes & app restarts"
-                    } ?: "Not set — endpoint reachable on-device only",
+                        stringResource(R.string.settings_reverse_tunnel_subtitle_set, it)
+                    } ?: stringResource(R.string.settings_reverse_tunnel_subtitle_unset),
                     onClick = { tunnelEndpointExpanded = true },
                 )
                 DropdownMenu(
@@ -863,7 +863,7 @@ fun SettingsScreen(
                     onDismissRequest = { tunnelEndpointExpanded = false },
                 ) {
                     DropdownMenuItem(
-                        text = { Text("None (on-device only)") },
+                        text = { Text(stringResource(R.string.settings_reverse_tunnel_none)) },
                         onClick = {
                             viewModel.setMcpTunnelEndpointProfileId(null)
                             tunnelEndpointExpanded = false
@@ -887,11 +887,11 @@ fun SettingsScreen(
             val mcpWireguardEnabled by viewModel.mcpWireguardEnabled.collectAsState()
             SettingsToggleItem(
                 icon = Icons.Filled.Hub,
-                title = "Expose on WireGuard tunnel",
+                title = stringResource(R.string.settings_mcp_wireguard_title),
                 subtitle = if (mcpWireguardEnabled) {
-                    "Enabled — also reachable at <wg-ip>:8730 on the active WireGuard tunnel"
+                    stringResource(R.string.settings_mcp_wireguard_subtitle_on)
                 } else {
-                    "Disabled — turn on to reach the endpoint over an active WireGuard tunnel"
+                    stringResource(R.string.settings_mcp_wireguard_subtitle_off)
                 },
                 checked = mcpWireguardEnabled,
                 onCheckedChange = viewModel::setMcpWireguardEnabled,
@@ -904,11 +904,11 @@ fun SettingsScreen(
             val mcpLanBindEnabled by viewModel.mcpLanBindEnabled.collectAsState()
             SettingsToggleItem(
                 icon = Icons.Filled.Wifi,
-                title = "Expose on Wi-Fi/LAN",
+                title = stringResource(R.string.settings_mcp_lan_title),
                 subtitle = if (mcpLanBindEnabled) {
-                    "Enabled — also reachable at <device-lan-ip>:8730 on the local network"
+                    stringResource(R.string.settings_mcp_lan_subtitle_on)
                 } else {
-                    "Disabled — turn on for direct reach from a device on the same Wi-Fi/LAN"
+                    stringResource(R.string.settings_mcp_lan_subtitle_off)
                 },
                 checked = mcpLanBindEnabled,
                 onCheckedChange = viewModel::setMcpLanBindEnabled,
@@ -929,7 +929,7 @@ fun SettingsScreen(
             """.trimIndent()
             SettingsItem(
                 icon = Icons.Filled.ContentCopy,
-                title = "Copy agent endpoint URL",
+                title = stringResource(R.string.settings_mcp_copy_url_title),
                 subtitle = endpointUrl,
                 onClick = {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE)
@@ -937,13 +937,13 @@ fun SettingsScreen(
                     clipboard?.setPrimaryClip(
                         android.content.ClipData.newPlainText("Haven MCP endpoint", endpointUrl),
                     )
-                    Toast.makeText(context, "Endpoint copied", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.settings_mcp_url_copied_toast), Toast.LENGTH_SHORT).show()
                 },
             )
             SettingsItem(
                 icon = Icons.Filled.ContentCopy,
-                title = "Copy MCP client config",
-                subtitle = "Standard JSON snippet to paste into any MCP client",
+                title = stringResource(R.string.settings_mcp_copy_config_title),
+                subtitle = stringResource(R.string.settings_mcp_copy_config_subtitle),
                 onClick = {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE)
                         as? android.content.ClipboardManager
@@ -953,37 +953,38 @@ fun SettingsScreen(
                             mcpConfigJson,
                         ),
                     )
-                    Toast.makeText(context, "Config copied", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.settings_mcp_config_copied_toast), Toast.LENGTH_SHORT).show()
                 },
             )
             SettingsItem(
                 icon = Icons.Filled.Info,
-                title = "Also available in PRoot",
+                title = stringResource(R.string.settings_mcp_proot_title),
                 subtitle = "~/.config/haven/mcp-servers.json",
                 onClick = {},
             )
             SettingsItem(
                 icon = Icons.Filled.History,
-                title = if (unseenAgentActivity) "View agent activity  ●" else "View agent activity",
-                subtitle = "Every MCP call recorded with redacted args",
+                title = if (unseenAgentActivity)
+                    stringResource(R.string.settings_agent_activity_title) + "  ●"
+                else
+                    stringResource(R.string.settings_agent_activity_title),
+                subtitle = stringResource(R.string.settings_agent_activity_subtitle),
                 onClick = { showAgentActivity = true },
             )
             SettingsToggleItem(
                 icon = Icons.Filled.Fingerprint,
-                title = "Confirm destructive agent actions",
-                subtitle = "Prompt before any agent call that writes, " +
-                    "deletes, uploads, or disconnects. Read-only calls " +
-                    "never prompt.",
+                title = stringResource(R.string.settings_agent_confirm_destructive_title),
+                subtitle = stringResource(R.string.settings_agent_confirm_destructive_subtitle),
                 checked = requireAgentConsentForWrites,
                 onCheckedChange = viewModel::setRequireAgentConsentForWrites,
             )
             SettingsItem(
                 icon = Icons.Filled.LockReset,
-                title = "Forget remembered allows",
-                subtitle = "Re-prompt for every tool that previously got a once-per-session approval.",
+                title = stringResource(R.string.settings_agent_forget_allows_title),
+                subtitle = stringResource(R.string.settings_agent_forget_allows_subtitle),
                 onClick = {
                     viewModel.forgetMemoisedAgentAllows()
-                    Toast.makeText(context, "Remembered allows cleared", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.settings_agent_allows_cleared_toast), Toast.LENGTH_SHORT).show()
                 },
             )
         }
@@ -1077,14 +1078,14 @@ fun SettingsScreen(
 
     if (showKeyboardModeDialog) {
         val modes = listOf(
-            Triple("SECURE", "Secure (default)",
-                "Real software keyboard with privacy flags set: Gboard mic, autocorrect, swipe typing and writing-assist are suppressed. Best for typing passwords; works with Bluetooth keyboards too."),
-            Triple("STANDARD", "Standard",
-                "Full Gboard features — voice input, swipe typing, autocorrect, word predictions. Pick this if your software keyboard isn't working in Secure mode, or if you want autocorrect."),
-            Triple("RAW", "Raw — Bluetooth/USB only",
-                "No software keyboard at all. Only physical keys (Bluetooth or USB) reach the terminal. Strongest privacy; on-screen keyboard won't appear when you tap the terminal."),
-            Triple("CUSTOM", "Custom — pick your own flags",
-                "Advanced. Choose which EditorInfo bits the terminal sets so you can mix-and-match around your IME's quirks (e.g. voice input on Gboard without autocorrect). Configure under Settings → \"IME flags\" once selected."),
+            Triple("SECURE", stringResource(R.string.settings_keyboard_mode_secure_label),
+                stringResource(R.string.settings_keyboard_mode_secure_desc)),
+            Triple("STANDARD", stringResource(R.string.settings_keyboard_mode_standard_label),
+                stringResource(R.string.settings_keyboard_mode_standard_desc)),
+            Triple("RAW", stringResource(R.string.settings_keyboard_mode_raw_label),
+                stringResource(R.string.settings_keyboard_mode_raw_desc)),
+            Triple("CUSTOM", stringResource(R.string.settings_keyboard_mode_custom_label),
+                stringResource(R.string.settings_keyboard_mode_custom_desc)),
         )
         val current = when {
             rawKeyboardMode -> "RAW"
@@ -1155,7 +1156,7 @@ fun SettingsScreen(
 
     if (showLanguageDialog) {
         val languages = listOf(
-            "" to "System default",
+            "" to stringResource(R.string.settings_language_system_default),
             "en" to "English",
             "ar" to "العربية",
             "bn" to "বাংলা",
@@ -2847,7 +2848,7 @@ private fun FontFromUrlDialog(
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    "Paste a direct link to a TTF or OTF font file. Common Nerd Fonts have raw TTFs on GitHub at github.com/ryanoasis/nerd-fonts/raw/master/patched-fonts/<Name>/Regular/<Name>NerdFont-Regular.ttf — copy that URL here.",
+                    stringResource(R.string.settings_font_from_url_body),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 12.dp),
@@ -2855,7 +2856,7 @@ private fun FontFromUrlDialog(
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it.trim() },
-                    placeholder = { Text("https://…/font.ttf") },
+                    placeholder = { Text(stringResource(R.string.settings_font_from_url_placeholder)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -2899,11 +2900,11 @@ private fun RecommendedFontsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Recommended fonts") },
+        title = { Text(stringResource(R.string.settings_recommended_fonts_title)) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    "Tap to download and apply a popular monospace coding font.",
+                    stringResource(R.string.settings_recommended_fonts_dialog_body),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp),
@@ -2961,44 +2962,44 @@ private fun ImeFlagsDialog(
                     .verticalScroll(rememberScrollState()),
             ) {
                 Text(
-                    "Each toggle controls one EditorInfo bit. Different IMEs honour different combinations; tweak until your terminal types verbatim while still letting through the IME features you need.",
+                    stringResource(R.string.settings_ime_flags_dialog_body),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 12.dp),
                 )
                 ImeFlagToggle(
-                    title = "Hide suggestion strip",
-                    detail = "TYPE_TEXT_FLAG_NO_SUGGESTIONS — universally honoured",
+                    title = stringResource(R.string.settings_ime_flag_no_suggestions_title),
+                    detail = stringResource(R.string.settings_ime_flag_no_suggestions_detail),
                     checked = noSuggestions,
                     onCheckedChange = onNoSuggestions,
                 )
                 ImeFlagToggle(
-                    title = "Suppress autocorrect / autocap / autospace",
-                    detail = "TYPE_TEXT_VARIATION_VISIBLE_PASSWORD — strongest hint; Gboard honours it. Mutually exclusive with full editor on most IMEs (no swipe / voice).",
+                    title = stringResource(R.string.settings_ime_flag_visible_password_title),
+                    detail = stringResource(R.string.settings_ime_flag_visible_password_detail),
                     checked = visiblePassword,
                     onCheckedChange = onVisiblePassword,
                 )
                 ImeFlagToggle(
-                    title = "Enable autocorrect protocol",
-                    detail = "TYPE_TEXT_FLAG_AUTO_CORRECT — required by Samsung Honeyboard's commit-text gate (#110); explicitly enables autocorrect on Gboard.",
+                    title = stringResource(R.string.settings_ime_flag_auto_correct_title),
+                    detail = stringResource(R.string.settings_ime_flag_auto_correct_detail),
                     checked = autoCorrect,
                     onCheckedChange = onAutoCorrect,
                 )
                 ImeFlagToggle(
-                    title = "Voice & swipe (full editor)",
-                    detail = "Give the IME a real Editable. Needed for voice input, swipe typing, and CJK composition. Conflicts with the autocorrect-suppression hint above.",
+                    title = stringResource(R.string.settings_ime_flag_full_editor_title),
+                    detail = stringResource(R.string.settings_ime_flag_full_editor_detail),
                     checked = fullEditor,
                     onCheckedChange = onFullEditor,
                 )
                 ImeFlagToggle(
-                    title = "Suppress fullscreen IME",
-                    detail = "IME_FLAG_NO_EXTRACT_UI — stops landscape's fullscreen IME UI from showing.",
+                    title = stringResource(R.string.settings_ime_flag_no_extract_ui_title),
+                    detail = stringResource(R.string.settings_ime_flag_no_extract_ui_detail),
                     checked = noExtractUi,
                     onCheckedChange = onNoExtractUi,
                 )
                 ImeFlagToggle(
-                    title = "Block IME from learning",
-                    detail = "IME_FLAG_NO_PERSONALIZED_LEARNING — privacy: IME's word bank ignores typed text. Strong enough on Gboard to also hide the mic.",
+                    title = stringResource(R.string.settings_ime_flag_no_learning_title),
+                    detail = stringResource(R.string.settings_ime_flag_no_learning_detail),
                     checked = noPersonalizedLearning,
                     onCheckedChange = onNoPersonalizedLearning,
                 )

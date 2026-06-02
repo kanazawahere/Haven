@@ -183,7 +183,7 @@ fun DesktopScreen(
                     ) {
                         Icon(
                             imageVector = if (showManage) Icons.Filled.DesktopWindows else Icons.Filled.Tune,
-                            contentDescription = if (showManage) "Sessions" else "Manage desktops",
+                            contentDescription = if (showManage) stringResource(R.string.app_desktop_sessions_cd) else stringResource(R.string.app_desktop_manage_cd),
                         )
                     }
                 }
@@ -310,7 +310,7 @@ private fun DesktopEmptyState() {
         Text(stringResource(R.string.desktop_screen_title), style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(16.dp))
         Text(
-            "Connect via VNC or RDP from the Connections tab",
+            stringResource(R.string.app_desktop_empty_hint),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -380,7 +380,7 @@ private fun DesktopTabBar(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                "${tab.protocol} ${tab.label}",
+                                stringResource(R.string.app_desktop_tab_label, tab.protocol, tab.label),
                                 maxLines = 1,
                                 style = MaterialTheme.typography.labelLarge,
                             )
@@ -401,14 +401,14 @@ private fun DesktopTabBar(
                                 enabled = index > 0,
                                 modifier = Modifier.size(36.dp),
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Move left", modifier = Modifier.size(18.dp))
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.app_desktop_move_tab_left_cd), modifier = Modifier.size(18.dp))
                             }
                             IconButton(
                                 onClick = { onMoveTab(index, 1); showTabMenu = false },
                                 enabled = index < tabs.size - 1,
                                 modifier = Modifier.size(36.dp),
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowForward, "Move right", modifier = Modifier.size(18.dp))
+                                Icon(Icons.AutoMirrored.Filled.ArrowForward, stringResource(R.string.app_desktop_move_tab_right_cd), modifier = Modifier.size(18.dp))
                             }
                         }
                         TextButton(

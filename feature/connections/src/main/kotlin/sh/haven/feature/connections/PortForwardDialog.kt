@@ -160,9 +160,9 @@ private fun PortForwardCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         when (rule.type) {
-                            PortForwardRule.Type.LOCAL -> "LOCAL"
-                            PortForwardRule.Type.REMOTE -> "REMOTE"
-                            PortForwardRule.Type.DYNAMIC -> "DYNAMIC (SOCKS5)"
+                            PortForwardRule.Type.LOCAL -> stringResource(R.string.connections_pf_type_local)
+                            PortForwardRule.Type.REMOTE -> stringResource(R.string.connections_pf_type_remote)
+                            PortForwardRule.Type.DYNAMIC -> stringResource(R.string.connections_pf_type_dynamic)
                         },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
@@ -170,7 +170,11 @@ private fun PortForwardCard(
                     Spacer(modifier = Modifier.width(8.dp))
                     Icon(
                         Icons.Filled.Circle,
-                        contentDescription = if (isActive) "Active" else "Inactive",
+                        contentDescription = if (isActive) {
+                            stringResource(R.string.connections_pf_status_active)
+                        } else {
+                            stringResource(R.string.connections_pf_status_inactive)
+                        },
                         tint = if (isActive) Color(0xFF4CAF50) else MaterialTheme.colorScheme.outline,
                         modifier = Modifier.size(8.dp),
                     )
@@ -211,13 +215,13 @@ private fun PortForwardCard(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
-                            "SOCKS5 proxy",
+                            stringResource(R.string.connections_pf_socks5_proxy),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center,
                         )
                         Text(
-                            "listens on",
+                            stringResource(R.string.connections_pf_listens_on),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
@@ -252,13 +256,13 @@ private fun PortForwardCard(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
-                            "Any host",
+                            stringResource(R.string.connections_pf_any_host),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center,
                         )
                         Text(
-                            "via SSH tunnel",
+                            stringResource(R.string.connections_pf_via_ssh_tunnel),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
@@ -283,13 +287,17 @@ private fun PortForwardCard(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        if (isLocal) "This device" else "Remote server",
+                        if (isLocal) {
+                            stringResource(R.string.connections_pf_this_device)
+                        } else {
+                            stringResource(R.string.connections_pf_remote_server)
+                        },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         textAlign = TextAlign.Center,
                     )
                     Text(
-                        "listens on",
+                        stringResource(R.string.connections_pf_listens_on),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -328,13 +336,17 @@ private fun PortForwardCard(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        if (isLocal) "Remote server" else "This device",
+                        if (isLocal) {
+                            stringResource(R.string.connections_pf_remote_server)
+                        } else {
+                            stringResource(R.string.connections_pf_this_device)
+                        },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         textAlign = TextAlign.Center,
                     )
                     Text(
-                        "delivers to",
+                        stringResource(R.string.connections_pf_delivers_to),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -376,13 +388,18 @@ private fun PortForwardForm(
     val bPort = bindPort.toIntOrNull()
     val tPort = targetPort.toIntOrNull()
 
+    val errNotANumber = stringResource(R.string.connections_pf_err_not_a_number)
+    val errPortRange = stringResource(R.string.connections_pf_err_port_range)
+    val errPrivilegedPort = stringResource(R.string.connections_pf_err_privileged_port)
+    val errPortInUse = stringResource(R.string.connections_pf_err_port_in_use)
+
     val bindPortError = when {
         bindPort.isBlank() -> null
-        bPort == null -> "Not a number"
-        bPort !in 1..65535 -> "Must be 1\u201365535"
-        bPort < 1024 && listenIsLocal -> "Privileged port (< 1024) — may fail without root"
+        bPort == null -> errNotANumber
+        bPort !in 1..65535 -> errPortRange
+        bPort < 1024 && listenIsLocal -> errPrivilegedPort
         existingRules.any { it.id != initial.id && it.type == type && it.bindPort == bPort && it.bindAddress == bindAddress } ->
-            "Already used by another rule"
+            errPortInUse
         else -> null
     }
     val bindPortIsWarning = bindPortError != null && bPort != null && bPort in 1..1023 && listenIsLocal
@@ -390,8 +407,8 @@ private fun PortForwardForm(
     val targetPortError = when {
         isDynamic -> null
         targetPort.isBlank() -> null
-        tPort == null -> "Not a number"
-        tPort !in 1..65535 -> "Must be 1\u201365535"
+        tPort == null -> errNotANumber
+        tPort !in 1..65535 -> errPortRange
         else -> null
     }
 
@@ -435,9 +452,9 @@ private fun PortForwardForm(
         // Explanation of what the selected type does
         Text(
             when (type) {
-                PortForwardRule.Type.LOCAL -> "Listen on this device, forward to remote server"
-                PortForwardRule.Type.REMOTE -> "Listen on remote server, forward to this device"
-                PortForwardRule.Type.DYNAMIC -> "Run a SOCKS5 proxy on this device, tunnel any destination through the server"
+                PortForwardRule.Type.LOCAL -> stringResource(R.string.connections_pf_desc_local)
+                PortForwardRule.Type.REMOTE -> stringResource(R.string.connections_pf_desc_remote)
+                PortForwardRule.Type.DYNAMIC -> stringResource(R.string.connections_pf_desc_dynamic)
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -447,9 +464,9 @@ private fun PortForwardForm(
         // Listen side — labels change based on direction
         Text(
             when {
-                isDynamic -> "SOCKS5 proxy on (this device)"
-                isLocal -> "Listen on (this device)"
-                else -> "Listen on (remote server)"
+                isDynamic -> stringResource(R.string.connections_pf_listen_header_dynamic)
+                isLocal -> stringResource(R.string.connections_pf_listen_header_local)
+                else -> stringResource(R.string.connections_pf_listen_header_remote)
             },
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
@@ -487,7 +504,11 @@ private fun PortForwardForm(
         // Destination side (hidden for DYNAMIC — the SOCKS client chooses the destination per connection)
         if (!isDynamic) {
             Text(
-                if (isLocal) "Forward to (remote server)" else "Forward to (this device)",
+                if (isLocal) {
+                    stringResource(R.string.connections_pf_forward_header_local)
+                } else {
+                    stringResource(R.string.connections_pf_forward_header_remote)
+                },
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 4.dp),
@@ -520,7 +541,11 @@ private fun PortForwardForm(
             }
         } else {
             Text(
-                "SOCKS5 clients on your device can connect to ${bindAddress.ifEmpty { "127.0.0.1" }}:${bindPort.ifEmpty { "<port>" }} and request any destination. Each request opens a new direct-tcpip channel through the SSH server.",
+                stringResource(
+                    R.string.connections_pf_dynamic_explanation,
+                    bindAddress.ifEmpty { "127.0.0.1" },
+                    bindPort.ifEmpty { stringResource(R.string.connections_pf_dynamic_port_fallback) },
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 4.dp),

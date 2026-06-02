@@ -153,7 +153,7 @@ internal fun ConsentHost(viewModel: ConsentHostViewModel = hiltViewModel()) {
                 .padding(horizontal = 24.dp, vertical = 8.dp),
         ) {
             Text(
-                text = if (isPairing) "Pair MCP client?" else "Agent action requested",
+                text = if (isPairing) stringResource(R.string.app_agent_pair_title) else stringResource(R.string.app_agent_action_requested),
                 style = MaterialTheme.typography.titleMedium,
             )
             Spacer(Modifier.height(8.dp))
@@ -163,7 +163,7 @@ internal fun ConsentHost(viewModel: ConsentHostViewModel = hiltViewModel()) {
             if (!isPairing) {
                 clientHint?.let { hint ->
                     Text(
-                        text = "From: $hint",
+                        text = stringResource(R.string.app_agent_from_client, hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -177,7 +177,7 @@ internal fun ConsentHost(viewModel: ConsentHostViewModel = hiltViewModel()) {
             Spacer(Modifier.height(8.dp))
             if (!isPairing) {
                 Text(
-                    text = "Tool: ${current.toolName}",
+                    text = stringResource(R.string.app_agent_tool, current.toolName),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -197,11 +197,11 @@ internal fun ConsentHost(viewModel: ConsentHostViewModel = hiltViewModel()) {
                     Spacer(Modifier.width(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Allow all MCP requests from '$clientHint' until Haven restarts",
+                            text = stringResource(R.string.app_agent_bypass_label, clientHint ?: ""),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Text(
-                            text = "Includes destructive operations (terminal input, file write/delete, APK install). Cleared on app kill.",
+                            text = stringResource(R.string.app_agent_bypass_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -218,7 +218,7 @@ internal fun ConsentHost(viewModel: ConsentHostViewModel = hiltViewModel()) {
             if (current.offerTimedAllow) {
                 Spacer(Modifier.height(16.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Auto-allow window:", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.app_agent_auto_allow_window), style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.width(8.dp))
                     listOf(5, 10, 30).forEach { minutes ->
                         OutlinedButton(
@@ -229,7 +229,7 @@ internal fun ConsentHost(viewModel: ConsentHostViewModel = hiltViewModel()) {
                                 )
                             } else ButtonDefaults.outlinedButtonColors(),
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        ) { Text("${minutes}m") }
+                        ) { Text(stringResource(R.string.app_agent_minutes, minutes)) }
                         Spacer(Modifier.width(4.dp))
                     }
                 }
@@ -247,7 +247,7 @@ internal fun ConsentHost(viewModel: ConsentHostViewModel = hiltViewModel()) {
                     OutlinedButton(
                         onClick = { resolve(ConsentDecision.ALLOW, allowForMinutes = allowMinutes) },
                     ) {
-                        Text("Allow for ${allowMinutes}m")
+                        Text(stringResource(R.string.app_agent_allow_for_minutes, allowMinutes))
                     }
                 }
                 Button(
@@ -255,7 +255,7 @@ internal fun ConsentHost(viewModel: ConsentHostViewModel = hiltViewModel()) {
                     colors = ButtonDefaults.buttonColors(),
                 ) {
                     Text(
-                        if (isPairing) "Pair" else stringResource(R.string.common_allow),
+                        if (isPairing) stringResource(R.string.app_agent_pair) else stringResource(R.string.common_allow),
                     )
                 }
             }

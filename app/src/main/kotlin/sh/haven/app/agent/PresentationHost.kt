@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -49,6 +50,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import sh.haven.app.MainActivity
+import sh.haven.app.R
 import sh.haven.core.data.agent.AgentPresentationManager
 import sh.haven.core.data.agent.PresentedMedia
 import sh.haven.core.data.agent.PresentedMediaKind
@@ -203,7 +205,7 @@ internal fun PresentationHost(viewModel: PresentationHostViewModel = hiltViewMod
                             },
                         )
                     } else {
-                        Text("App window is missing its connection details.")
+                        Text(stringResource(R.string.app_present_app_missing_details))
                     }
                 }
             }
@@ -218,7 +220,7 @@ internal fun PresentationHost(viewModel: PresentationHostViewModel = hiltViewMod
                     horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
                 ) {
                     Button(onClick = { viewModel.dismiss(current) }) {
-                        Text("Dismiss")
+                        Text(stringResource(R.string.app_present_dismiss))
                     }
                 }
             }
@@ -241,7 +243,7 @@ private fun ImageContent(media: PresentedMedia) {
     if (bmp != null) {
         Image(
             bitmap = bmp,
-            contentDescription = media.caption ?: "Image shared by agent",
+            contentDescription = media.caption ?: stringResource(R.string.app_present_image_shared_cd),
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 480.dp),
@@ -305,11 +307,11 @@ private fun AudioContent(media: PresentedMedia) {
                 }
             },
         ) {
-            Text(if (playing) "Pause" else "Play")
+            Text(if (playing) stringResource(R.string.app_present_pause) else stringResource(R.string.app_present_play))
         }
         Spacer(Modifier.width(12.dp))
         Text(
-            text = if (ready) File(path).name else "Preparing audio…",
+            text = if (ready) File(path).name else stringResource(R.string.app_present_preparing_audio),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

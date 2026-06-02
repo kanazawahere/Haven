@@ -41,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -78,16 +79,16 @@ fun ProotInstallLogScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("PRoot install log") },
+            title = { Text(stringResource(R.string.settings_proot_install_log_screen_title)) },
             navigationIcon = {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_cd_back))
                 }
             },
             actions = {
                 if (items.isNotEmpty()) {
                     IconButton(onClick = { showClearDialog = true }) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Clear log")
+                        Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.settings_proot_install_log_cd_clear))
                     }
                 }
             },
@@ -103,7 +104,7 @@ fun ProotInstallLogScreen(
                 FilterChip(
                     selected = filterDistroId == null,
                     onClick = { viewModel.setFilter(null) },
-                    label = { Text("All") },
+                    label = { Text(stringResource(R.string.settings_filter_all)) },
                 )
                 availableDistros.forEach { id ->
                     FilterChip(
@@ -122,8 +123,7 @@ fun ProotInstallLogScreen(
                     .padding(24.dp),
             ) {
                 Text(
-                    "No install events recorded yet. Install a distro " +
-                        "via Connections → Desktops to populate this log.",
+                    stringResource(R.string.settings_proot_install_log_empty),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -136,7 +136,7 @@ fun ProotInstallLogScreen(
                         leadingContent = {
                             Icon(
                                 imageVector = if (item.ok) Icons.Filled.CheckCircle else Icons.Filled.Error,
-                                contentDescription = if (item.ok) "OK" else "Failed",
+                                contentDescription = if (item.ok) stringResource(R.string.common_ok) else stringResource(R.string.settings_cd_failed),
                                 tint = if (item.ok) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(20.dp),
                             )
@@ -176,7 +176,7 @@ fun ProotInstallLogScreen(
                                 }) {
                                     Icon(
                                         if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                                        contentDescription = if (isExpanded) "Collapse" else "Expand",
+                                        contentDescription = if (isExpanded) stringResource(R.string.settings_cd_collapse) else stringResource(R.string.settings_cd_expand),
                                     )
                                 }
                             }
@@ -219,19 +219,19 @@ fun ProotInstallLogScreen(
     if (showClearDialog) {
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
-            title = { Text("Clear install log?") },
-            text = { Text("All recorded install events will be removed.") },
+            title = { Text(stringResource(R.string.settings_proot_install_log_clear_dialog_title)) },
+            text = { Text(stringResource(R.string.settings_proot_install_log_clear_dialog_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     showClearDialog = false
                     viewModel.clearAll()
                 }) {
-                    Text("Clear")
+                    Text(stringResource(R.string.settings_action_clear))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
             },
         )

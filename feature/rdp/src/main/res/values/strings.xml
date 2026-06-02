@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rdp_status_connecting">Connecting…</string>
+    <string name="rdp_status_connecting_hint">Handshake in progress. If this hangs, enable verbose connection logging in Settings and retry to see the underlying error.</string>
+    <string name="rdp_status_waiting_for_frame">Connected — waiting for first frame…</string>
+    <string name="rdp_status_connection_failed">Connection failed</string>
+    <string name="rdp_action_close">Close</string>
+    <string name="rdp_action_cancel">Cancel</string>
+    <string name="rdp_action_retry">Retry</string>
+    <string name="rdp_cd_disconnect">Disconnect</string>
+    <string name="rdp_cd_toggle_keyboard">Toggle keyboard</string>
+    <string name="rdp_cd_reset_zoom">Reset zoom</string>
+    <string name="rdp_cd_fullscreen">Fullscreen</string>
+    <string name="rdp_cd_session_menu">Session menu</string>
+    <string name="rdp_cd_exit_fullscreen">Exit fullscreen</string>
+    <string name="rdp_cd_input_mode_trackpad_on">Trackpad mode on (tap for direct touch)</string>
+    <string name="rdp_cd_input_mode_direct">Direct touch mode (tap for trackpad)</string>
+    <string name="rdp_orientation_landscape_desc">Lock landscape (tap to switch to portrait)</string>
+    <string name="rdp_orientation_portrait_desc">Lock portrait (tap to switch to auto)</string>
+    <string name="rdp_orientation_auto_desc">Auto rotate (tap to switch to landscape)</string>
+</resources>

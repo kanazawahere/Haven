@@ -69,4 +69,85 @@
     <string name="biometric_screen_lock_icon">Screen lock</string>
     <string name="desktop_screen_title">Desktop</string>
     <string name="agent_deny">Deny</string>
+
+    <!-- Biometric lock screen -->
+    <string name="app_biometric_locked_title">Haven is locked</string>
+    <string name="app_biometric_authenticate_prompt">Authenticate to continue</string>
+    <string name="app_biometric_open_device_settings">Open device settings</string>
+
+    <!-- Desktop manager: app windows -->
+    <string name="app_desktop_app_windows_title">Application windows</string>
+    <string name="app_desktop_app_windows_description">Launch a single application in a floating window over the current screen. Apps run in the active Linux distro and must be installed there.</string>
+    <string name="app_desktop_app_windows_empty">No application windows yet. Add one to launch an app in a floating window.</string>
+    <string name="app_desktop_app_window_launch_cd">Launch %1$s</string>
+    <string name="app_desktop_app_window_edit_cd">Edit %1$s</string>
+    <string name="app_desktop_app_window_delete_cd">Delete %1$s</string>
+    <string name="app_desktop_add_app_window">Add app window</string>
+    <string name="app_desktop_edit_app_window_title">Edit app window</string>
+    <string name="app_desktop_add_app_window_title">Add app window</string>
+    <string name="app_desktop_app_window_label_placeholder">e.g. Image viewer</string>
+    <string name="app_desktop_app_window_command_label">Command</string>
+    <string name="app_desktop_app_window_command_placeholder">e.g. imv /root/board.png</string>
+
+    <!-- Desktop manager: distro / rootfs -->
+    <string name="app_desktop_open_shell_cd">Open shell in %1$s</string>
+    <string name="app_desktop_delete_distro_cd">Delete %1$s</string>
+    <string name="app_desktop_add_distro">+ %1$s  (~%2$d MB)</string>
+    <string name="app_desktop_rootfs_downloading">Downloading rootfs… %1$d%%</string>
+    <string name="app_desktop_rootfs_extracting">Extracting rootfs…</string>
+    <string name="app_desktop_rootfs_initializing">Setting up rootfs… (%1$s)</string>
+    <string name="app_desktop_phase_download">Download</string>
+    <string name="app_desktop_phase_extract">Extract</string>
+    <string name="app_desktop_phase_bootstrap_hook">Bootstrap hook</string>
+    <string name="app_desktop_phase_baseline">Baseline packages</string>
+    <string name="app_desktop_setup_failed_phase">Failed: %1$s</string>
+    <string name="app_desktop_proot_log_hint">Full per-phase history: Settings → View PRoot install log.</string>
+    <string name="app_desktop_retry_wipe">Wipe &amp; retry</string>
+    <string name="app_desktop_retry_step">Retry this step</string>
+
+    <!-- Desktop manager: DE rows -->
+    <string name="app_desktop_experimental">experimental</string>
+    <string name="app_desktop_vnc_running">VNC :%1$d (port %2$d)</string>
+    <string name="app_desktop_error">Error</string>
+    <string name="app_desktop_install_distro_first">" · install distro first"</string>
+    <string name="app_desktop_vnc_port_stored">VNC port %1$d</string>
+
+    <!-- Desktop setup dialog -->
+    <string name="app_desktop_de_with_size">%1$s (%2$s)</string>
+    <string name="app_desktop_experimental_on">Experimental on %1$s</string>
+    <string name="app_desktop_vnc_port_label">VNC port</string>
+    <string name="app_desktop_vnc_display">Display :%1$d</string>
+    <string name="app_desktop_vnc_port_range">Range 5901–5999</string>
+    <string name="app_desktop_phase_packages">Packages</string>
+    <string name="app_desktop_phase_vnc_config">VNC config</string>
+    <string name="app_desktop_phase_marker">Marker file</string>
+    <string name="app_desktop_addon_with_size">%1$s (%2$s)</string>
+
+    <!-- Desktop sessions screen -->
+    <string name="app_desktop_sessions_cd">Sessions</string>
+    <string name="app_desktop_manage_cd">Manage desktops</string>
+    <string name="app_desktop_empty_hint">Connect via VNC or RDP from the Connections tab</string>
+    <string name="app_desktop_tab_label">%1$s %2$s</string>
+    <string name="app_desktop_move_tab_left_cd">Move left</string>
+    <string name="app_desktop_move_tab_right_cd">Move right</string>
+
+    <!-- Agent consent sheet -->
+    <string name="app_agent_pair_title">Pair MCP client?</string>
+    <string name="app_agent_action_requested">Agent action requested</string>
+    <string name="app_agent_from_client">From: %1$s</string>
+    <string name="app_agent_tool">Tool: %1$s</string>
+    <string name="app_agent_bypass_label">Allow all MCP requests from \'%1$s\' until Haven restarts</string>
+    <string name="app_agent_bypass_description">Includes destructive operations (terminal input, file write/delete, APK install). Cleared on app kill.</string>
+    <string name="app_agent_auto_allow_window">Auto-allow window:</string>
+    <string name="app_agent_minutes">%1$dm</string>
+    <string name="app_agent_allow_for_minutes">Allow for %1$dm</string>
+    <string name="app_agent_pair">Pair</string>
+
+    <!-- Agent presentation sheet -->
+    <string name="app_present_app_missing_details">App window is missing its connection details.</string>
+    <string name="app_present_dismiss">Dismiss</string>
+    <string name="app_present_image_shared_cd">Image shared by agent</string>
+    <string name="app_present_pause">Pause</string>
+    <string name="app_present_play">Play</string>
+    <string name="app_present_preparing_audio">Preparing audio…</string>
 </resources>

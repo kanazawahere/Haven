@@ -125,7 +125,7 @@ fun BiometricLockScreen(
         LockedSurface(
             title = lockState.title,
             body = lockState.body,
-            primaryLabel = if (lockState.canOpenSettings) "Open device settings" else null,
+            primaryLabel = if (lockState.canOpenSettings) stringResource(R.string.app_biometric_open_device_settings) else null,
             onPrimary = if (lockState.canOpenSettings && maybeActivity != null) {
                 {
                     runCatching {
@@ -161,10 +161,10 @@ fun BiometricLockScreen(
     }
 
     LockedSurface(
-        title = "Haven is locked",
-        body = "Authenticate to continue",
+        title = stringResource(R.string.app_biometric_locked_title),
+        body = stringResource(R.string.app_biometric_authenticate_prompt),
         errorMessage = errorMessage,
-        primaryLabel = "Unlock",
+        primaryLabel = stringResource(R.string.common_unlock),
         onPrimary = { authTrigger++ },
     )
 }

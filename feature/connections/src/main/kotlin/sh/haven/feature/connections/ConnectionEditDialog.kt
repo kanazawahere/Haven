@@ -1537,7 +1537,7 @@ fun ConnectionEditDialog(
                                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = smbHostExpanded)
                                 },
                                 supportingText = if (filteredSmbHosts.isNotEmpty()) {{
-                                    Text("${filteredSmbHosts.size} hosts discovered")
+                                    Text(stringResource(R.string.connections_hosts_discovered, filteredSmbHosts.size))
                                 }} else null,
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1781,7 +1781,7 @@ fun ConnectionEditDialog(
                                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = hostExpanded)
                                 },
                                 supportingText = if (filteredHosts.isNotEmpty()) {{
-                                    Text("${filteredHosts.size} hosts discovered")
+                                    Text(stringResource(R.string.connections_hosts_discovered, filteredHosts.size))
                                 }} else null,
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -2265,10 +2265,10 @@ fun ConnectionEditDialog(
                             .any { it is ConnectionProfile.AuthMethodSpec.Totp }
                     ) {
                         BooleanToggleRow(
-                            label = "Confirm OTP before sending",
+                            label = stringResource(R.string.connections_auth_confirm_otp),
                             checked = totpConfirmBeforeSend,
                             onCheckedChange = { totpConfirmBeforeSend = it },
-                            description = "Show the generated code for one-tap confirm instead of submitting it automatically.",
+                            description = stringResource(R.string.connections_auth_confirm_otp_desc),
                         )
                     }
 
@@ -3146,9 +3146,9 @@ private fun AuthMethodsEditor(
         emit(m)
     }
 
-    Text("Authentication methods", style = MaterialTheme.typography.bodyMedium)
+    Text(stringResource(R.string.connections_auth_methods_title), style = MaterialTheme.typography.bodyMedium)
     Text(
-        "Attempted in order in a single connect — for servers that require more than one (e.g. key + password, or PAM/OTP chains).",
+        stringResource(R.string.connections_auth_methods_description),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -3163,18 +3163,18 @@ private fun AuthMethodsEditor(
             Spacer(Modifier.width(8.dp))
             when (spec) {
                 ConnectionProfile.AuthMethodSpec.Password ->
-                    Text("Password", modifier = Modifier.weight(1f))
+                    Text(stringResource(R.string.common_password), modifier = Modifier.weight(1f))
                 ConnectionProfile.AuthMethodSpec.KeyboardInteractive ->
-                    Text("Keyboard-interactive (OTP)", modifier = Modifier.weight(1f))
+                    Text(stringResource(R.string.connections_auth_method_keyboard_interactive), modifier = Modifier.weight(1f))
                 is ConnectionProfile.AuthMethodSpec.Key -> {
                     var expanded by remember { mutableStateOf(false) }
                     Box(modifier = Modifier.weight(1f)) {
                         OutlinedButton(onClick = { expanded = true }) {
-                            Text(sshKeys.firstOrNull { it.id == spec.keyId }?.label ?: "SSH key: any")
+                            Text(sshKeys.firstOrNull { it.id == spec.keyId }?.label ?: stringResource(R.string.connections_auth_key_any))
                         }
                         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                             DropdownMenuItem(
-                                text = { Text("Any key") },
+                                text = { Text(stringResource(R.string.connections_auth_key_any_menu)) },
                                 onClick = {
                                     emit(specs.toMutableList().also { it[index] = ConnectionProfile.AuthMethodSpec.Key(null) })
                                     expanded = false
@@ -3198,12 +3198,12 @@ private fun AuthMethodsEditor(
                         OutlinedButton(onClick = { expanded = true }) {
                             Text(
                                 totpSecrets.firstOrNull { it.id == spec.secretId }?.label
-                                    ?: "Authenticator: any",
+                                    ?: stringResource(R.string.connections_auth_totp_any),
                             )
                         }
                         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                             DropdownMenuItem(
-                                text = { Text("Any authenticator") },
+                                text = { Text(stringResource(R.string.connections_auth_totp_any_menu)) },
                                 onClick = {
                                     emit(specs.toMutableList().also { it[index] = ConnectionProfile.AuthMethodSpec.Totp(null) })
                                     expanded = false
@@ -3223,16 +3223,16 @@ private fun AuthMethodsEditor(
                 }
             }
             IconButton(onClick = { swap(index, index - 1) }, enabled = index > 0) {
-                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move up")
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.connections_auth_move_up))
             }
             IconButton(onClick = { swap(index, index + 1) }, enabled = index < specs.size - 1) {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move down")
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.connections_auth_move_down))
             }
             IconButton(
                 onClick = { emit(specs.toMutableList().also { it.removeAt(index) }) },
                 enabled = specs.size > 1,
             ) {
-                Icon(Icons.Default.Close, contentDescription = "Remove")
+                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.connections_auth_remove))
             }
         }
     }
@@ -3242,23 +3242,23 @@ private fun AuthMethodsEditor(
         TextButton(onClick = { addExpanded = true }) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(Modifier.width(4.dp))
-            Text("Add method")
+            Text(stringResource(R.string.connections_auth_add_method))
         }
         DropdownMenu(expanded = addExpanded, onDismissRequest = { addExpanded = false }) {
             DropdownMenuItem(
-                text = { Text("Password") },
+                text = { Text(stringResource(R.string.common_password)) },
                 onClick = { emit(specs + ConnectionProfile.AuthMethodSpec.Password); addExpanded = false },
             )
             DropdownMenuItem(
-                text = { Text("SSH key") },
+                text = { Text(stringResource(R.string.connections_auth_method_ssh_key)) },
                 onClick = { emit(specs + ConnectionProfile.AuthMethodSpec.Key(null)); addExpanded = false },
             )
             DropdownMenuItem(
-                text = { Text("Keyboard-interactive (OTP)") },
+                text = { Text(stringResource(R.string.connections_auth_method_keyboard_interactive)) },
                 onClick = { emit(specs + ConnectionProfile.AuthMethodSpec.KeyboardInteractive); addExpanded = false },
             )
             DropdownMenuItem(
-                text = { Text("Authenticator code (TOTP)") },
+                text = { Text(stringResource(R.string.connections_auth_method_totp)) },
                 onClick = { emit(specs + ConnectionProfile.AuthMethodSpec.Totp(null)); addExpanded = false },
             )
         }

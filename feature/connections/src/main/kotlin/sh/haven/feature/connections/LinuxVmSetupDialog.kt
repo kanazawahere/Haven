@@ -282,15 +282,17 @@ private fun CodeBlock(code: String, context: Context) {
                     .weight(1f)
                     .horizontalScroll(rememberScrollState()),
             )
+            val copiedToast = stringResource(R.string.connections_vm_copied_short)
+            val copyDescription = stringResource(R.string.common_copy)
             IconButton(
                 onClick = {
                     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     cm.setPrimaryClip(ClipData.newPlainText("commands", code.trimIndent()))
-                    Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, copiedToast, Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier.size(32.dp),
             ) {
-                Icon(Icons.Filled.ContentCopy, "Copy", Modifier.size(16.dp))
+                Icon(Icons.Filled.ContentCopy, copyDescription, Modifier.size(16.dp))
             }
         }
     }
@@ -310,7 +312,11 @@ private fun launchTerminalApp(context: Context) {
         if (fallback != null) {
             context.startActivity(fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } else {
-            Toast.makeText(context, "Terminal app not found", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                context.getString(R.string.connections_vm_terminal_not_found),
+                Toast.LENGTH_SHORT,
+            ).show()
         }
     }
 }

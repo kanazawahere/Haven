@@ -324,7 +324,7 @@ fun KeysScreen(
                 }
             if (totpSecrets.isNotEmpty()) {
                 item(key = "totp-header") {
-                    SectionHeader("Authenticator (TOTP) · ${totpSecrets.size}")
+                    SectionHeader(stringResource(R.string.keys_totp_section_header, totpSecrets.size))
                 }
                 items(totpSecrets, key = { "totp-${it.id}" }) { secret ->
                     TotpSecretRow(secret = secret, onDelete = { viewModel.deleteTotp(secret.id) })
@@ -484,7 +484,7 @@ private fun TotpSecretRow(
         leadingContent = { Icon(Icons.Filled.Pin, contentDescription = null) },
         trailingContent = {
             IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = "Delete authenticator")
+                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.keys_totp_delete_desc))
             }
         },
     )
@@ -569,16 +569,16 @@ private fun AddKeyChooser(
                 )
                 ListItem(
                     modifier = Modifier.clickable { onScanTotpQr() },
-                    headlineContent = { Text("Scan authenticator QR (TOTP)") },
-                    supportingContent = { Text("Pick an image with an otpauth:// QR code") },
+                    headlineContent = { Text(stringResource(R.string.keys_totp_scan_qr)) },
+                    supportingContent = { Text(stringResource(R.string.keys_totp_scan_qr_hint)) },
                     leadingContent = {
                         Icon(Icons.Filled.QrCodeScanner, contentDescription = null)
                     },
                 )
                 ListItem(
                     modifier = Modifier.clickable { onAddTotpPaste() },
-                    headlineContent = { Text("Add authenticator from clipboard (TOTP)") },
-                    supportingContent = { Text("Paste an otpauth:// URI or base32 secret") },
+                    headlineContent = { Text(stringResource(R.string.keys_totp_paste)) },
+                    supportingContent = { Text(stringResource(R.string.keys_totp_paste_hint)) },
                     leadingContent = {
                         Icon(Icons.Filled.Pin, contentDescription = null)
                     },

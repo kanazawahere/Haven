@@ -147,6 +147,14 @@
     <string name="keys_discover_picker_body">Pick which resident credentials to import. Each becomes a new SSH key entry; the security key itself still holds the private material.</string>
     <string name="keys_discover_import_selected">Import selected</string>
 
+    <!-- TOTP / Authenticator -->
+    <string name="keys_totp_section_header">Authenticator (TOTP) · %1$d</string>
+    <string name="keys_totp_delete_desc">Delete authenticator</string>
+    <string name="keys_totp_scan_qr">Scan authenticator QR (TOTP)</string>
+    <string name="keys_totp_scan_qr_hint">Pick an image with an otpauth:// QR code</string>
+    <string name="keys_totp_paste">Add authenticator from clipboard (TOTP)</string>
+    <string name="keys_totp_paste_hint">Paste an otpauth:// URI or base32 secret</string>
+
     <!-- FIDO2 touch / PIN dialog (mirrors connections_fido_* — used during discover) -->
     <string name="keys_fido_pin_title">Security key PIN</string>
     <string name="keys_fido_pin_label">PIN</string>

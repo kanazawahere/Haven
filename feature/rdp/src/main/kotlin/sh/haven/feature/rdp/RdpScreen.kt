@@ -108,6 +108,8 @@ import kotlinx.coroutines.flow.StateFlow
 import sh.haven.core.data.preferences.ToolbarKey
 import sh.haven.core.data.preferences.ToolbarLayout
 import sh.haven.core.ui.CursorOverlay
+import sh.haven.feature.rdp.R
+import androidx.compose.ui.res.stringResource
 import kotlin.math.abs
 
 /**
@@ -345,12 +347,12 @@ private fun DesktopPlaceholder(
                 androidx.compose.material3.CircularProgressIndicator()
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "Connecting…",
+                    stringResource(R.string.rdp_status_connecting),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    "Handshake in progress. If this hangs, enable verbose connection logging in Settings and retry to see the underlying error.",
+                    stringResource(R.string.rdp_status_connecting_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -361,14 +363,14 @@ private fun DesktopPlaceholder(
                 androidx.compose.material3.CircularProgressIndicator()
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "Connected — waiting for first frame…",
+                    stringResource(R.string.rdp_status_waiting_for_frame),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             ProgressState.Error -> {
                 Text(
-                    "Connection failed",
+                    stringResource(R.string.rdp_status_connection_failed),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.error,
                 )
@@ -433,12 +435,12 @@ private fun DesktopPlaceholder(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (onDisconnect != null) {
                     TextButton(onClick = onDisconnect) {
-                        Text(if (progressState == ProgressState.Error) "Close" else "Cancel")
+                        Text(if (progressState == ProgressState.Error) stringResource(R.string.rdp_action_close) else stringResource(R.string.rdp_action_cancel))
                     }
                 }
                 // Retry only makes sense once it's failed, not mid-handshake.
                 if (onRetry != null && progressState == ProgressState.Error) {
-                    Button(onClick = onRetry) { Text("Retry") }
+                    Button(onClick = onRetry) { Text(stringResource(R.string.rdp_action_retry)) }
                 }
             }
         }
@@ -478,6 +480,11 @@ private fun RdpViewer(
     // survives recomposition cycles that would tear down a `remember`
     // here.
     val orientationMode = OrientationMode.fromActivityValue(currentOrientation)
+    val orientationDesc = when (orientationMode) {
+        OrientationMode.Landscape -> stringResource(R.string.rdp_orientation_landscape_desc)
+        OrientationMode.Portrait -> stringResource(R.string.rdp_orientation_portrait_desc)
+        OrientationMode.Auto -> stringResource(R.string.rdp_orientation_auto_desc)
+    }
     var viewSize by remember { mutableStateOf(IntSize.Zero) }
     val imageBitmap = remember(frame) { frame.asImageBitmap() }
     val cursorImage = remember(cursor) { cursor?.bitmap?.asImageBitmap() }
@@ -840,7 +847,7 @@ private fun RdpViewer(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onDisconnect) {
-                    Icon(Icons.Default.Close, contentDescription = "Disconnect")
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.rdp_cd_disconnect))
                 }
 
                 IconButton(onClick = {
@@ -855,12 +862,12 @@ private fun RdpViewer(
                     Icon(
                         if (keyboardVisible) Icons.Default.KeyboardHide
                         else Icons.Default.Keyboard,
-                        contentDescription = "Toggle keyboard",
+                        contentDescription = stringResource(R.string.rdp_cd_toggle_keyboard),
                     )
                 }
 
                 IconButton(onClick = onCycleOrientation) {
-                    Icon(orientationMode.icon, contentDescription = orientationMode.description)
+                    Icon(orientationMode.icon, contentDescription = orientationDesc)
                 }
 
                 // Direct/trackpad input-mode toggle — #183/#212.
@@ -874,12 +881,12 @@ private fun RdpViewer(
                         panX = 0f
                         panY = 0f
                     }) {
-                        Icon(Icons.Default.FitScreen, contentDescription = "Reset zoom")
+                        Icon(Icons.Default.FitScreen, contentDescription = stringResource(R.string.rdp_cd_reset_zoom))
                     }
                 }
 
                 IconButton(onClick = onToggleFullscreen) {
-                    Icon(Icons.Default.Fullscreen, contentDescription = "Fullscreen")
+                    Icon(Icons.Default.Fullscreen, contentDescription = stringResource(R.string.rdp_cd_fullscreen))
                 }
             }
         }
@@ -911,7 +918,7 @@ private fun RdpViewer(
             ) {
                 Icon(
                     Icons.Default.Menu,
-                    contentDescription = "Session menu",
+                    contentDescription = stringResource(R.string.rdp_cd_session_menu),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     modifier = Modifier
                         .padding(8.dp)
@@ -939,7 +946,7 @@ private fun RdpViewer(
                         overlayVisible = false
                         onDisconnect()
                     }) {
-                        Icon(Icons.Default.Close, contentDescription = "Disconnect")
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.rdp_cd_disconnect))
                     }
                     IconButton(onClick = {
                         keyboardVisible = !keyboardVisible
@@ -953,11 +960,11 @@ private fun RdpViewer(
                         Icon(
                             if (keyboardVisible) Icons.Default.KeyboardHide
                             else Icons.Default.Keyboard,
-                            contentDescription = "Toggle keyboard",
+                            contentDescription = stringResource(R.string.rdp_cd_toggle_keyboard),
                         )
                     }
                     IconButton(onClick = onCycleOrientation) {
-                        Icon(orientationMode.icon, contentDescription = orientationMode.description)
+                        Icon(orientationMode.icon, contentDescription = orientationDesc)
                     }
                     // Direct/trackpad input-mode toggle — #183/#212.
                     onSetInputMode?.let { InputModeToggle(inputMode, it) }
@@ -969,7 +976,7 @@ private fun RdpViewer(
                         }) {
                             Icon(
                                 Icons.Default.FitScreen,
-                                contentDescription = "Reset zoom",
+                                contentDescription = stringResource(R.string.rdp_cd_reset_zoom),
                             )
                         }
                     }
@@ -977,7 +984,7 @@ private fun RdpViewer(
                         overlayVisible = false
                         onToggleFullscreen()
                     }) {
-                        Icon(Icons.Default.FullscreenExit, contentDescription = "Exit fullscreen")
+                        Icon(Icons.Default.FullscreenExit, contentDescription = stringResource(R.string.rdp_cd_exit_fullscreen))
                     }
                 }
             }
@@ -1002,8 +1009,8 @@ private fun InputModeToggle(inputMode: String, onSetInputMode: (String) -> Unit)
     ) {
         Icon(
             Icons.Default.TouchApp,
-            contentDescription = if (touchpad) "Trackpad mode on (tap for direct touch)"
-                                 else "Direct touch mode (tap for trackpad)",
+            contentDescription = if (touchpad) stringResource(R.string.rdp_cd_input_mode_trackpad_on)
+                                 else stringResource(R.string.rdp_cd_input_mode_direct),
         )
     }
 }
@@ -1177,7 +1184,7 @@ private fun RdpKeyToolbar(
                     onClick = onToggleKeyboard,
                     modifier = Modifier.size(32.dp),
                 ) {
-                    Icon(Icons.Default.Keyboard, contentDescription = "Toggle keyboard", modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Keyboard, contentDescription = stringResource(R.string.rdp_cd_toggle_keyboard), modifier = Modifier.size(18.dp))
                 }
                 RdpToggleButton("Ctrl", ctrlActive, onToggleCtrl)
                 RdpToggleButton("Alt", altActive, onToggleAlt)

@@ -845,7 +845,7 @@ fun ConnectionsScreen(
                 sh.haven.core.ui.PasswordField(
                     value = vncPwd,
                     onValueChange = { vncPwd = it },
-                    label = "Password",
+                    label = stringResource(R.string.common_password),
                     modifier = Modifier.fillMaxWidth(),
                 )
             },
@@ -1555,13 +1555,13 @@ private fun ConnectionTreeItem(
                             "mega" -> "MEGA"
                             "pcloud" -> "pCloud"
                             "box" -> "Box"
-                            else -> profile.rcloneProvider ?: "Cloud"
+                            else -> profile.rcloneProvider ?: stringResource(R.string.connections_rclone_provider_cloud)
                         }
                         Text("$providerLabel \u2022 ${profile.rcloneRemoteName ?: ""}")
                     } else {
                         val via = when {
-                            jumpHostLabel != null && indent == 0 -> " via $jumpHostLabel"
-                            profile.proxyType != null && indent == 0 -> " via ${profile.proxyType}"
+                            jumpHostLabel != null && indent == 0 -> " " + stringResource(R.string.connections_list_via, jumpHostLabel)
+                            profile.proxyType != null && indent == 0 -> " " + stringResource(R.string.connections_list_via, profile.proxyType.toString())
                             else -> ""
                         }
                         Text("${profile.username}@${profile.host}:${profile.port}$via")

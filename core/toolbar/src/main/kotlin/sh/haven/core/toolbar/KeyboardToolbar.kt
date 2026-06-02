@@ -808,9 +808,9 @@ private fun BuiltInKey(
             // input is just one of the things the toggle unlocks. (#115)
             icon = if (cb.allowStandardKeyboard) Icons.Filled.LockOpen else Icons.Filled.Lock,
             contentDescription = if (cb.allowStandardKeyboard)
-                "Standard keyboard (voice, suggestions, autocorrect on)"
+                stringResource(R.string.toolbar_keyboard_standard_desc)
             else
-                "Secure keyboard (no suggestions, no autocorrect)",
+                stringResource(R.string.toolbar_keyboard_secure_desc),
             active = cb.allowStandardKeyboard,
             onClick = cb.onToggleStandardKeyboard,
         )
@@ -848,7 +848,7 @@ private fun BuiltInKey(
         }
         ToolbarKey.ATTACH -> ToolbarIconButton(
             icon = Icons.Filled.AttachFile,
-            description = "Attach file to send to remote",
+            description = stringResource(R.string.toolbar_attach_desc),
             onClick = cb.onAttachTap,
         )
         ToolbarKey.SHIFT -> ToolbarToggleButton("Shift", shiftActive, onClick = cb.onToggleShift)
@@ -2055,7 +2055,7 @@ private fun AddCustomKeyDialog(
                     onExpandedChange = { presetExpanded = it },
                 ) {
                     OutlinedTextField(
-                        value = "Presets",
+                        value = stringResource(R.string.toolbar_presets_label),
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = {
@@ -2089,7 +2089,7 @@ private fun AddCustomKeyDialog(
                     value = label,
                     onValueChange = { label = it },
                     label = { Text(stringResource(R.string.toolbar_custom_key_label)) },
-                    placeholder = { Text("e.g. ^C, Paste") },
+                    placeholder = { Text(stringResource(R.string.toolbar_custom_key_label_placeholder)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )

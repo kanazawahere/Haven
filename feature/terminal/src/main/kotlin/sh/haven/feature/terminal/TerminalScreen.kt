@@ -1425,9 +1425,9 @@ private fun VncSettingsDialog(
                 }
                 androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
                 val depthOptions = listOf(
-                    "BPP_24_TRUE" to "24-bit colour (best quality)",
-                    "BPP_16_TRUE" to "16-bit colour (faster)",
-                    "BPP_8_INDEXED" to "256 colours (lowest bandwidth)",
+                    "BPP_24_TRUE" to stringResource(R.string.terminal_vnc_depth_24bit),
+                    "BPP_16_TRUE" to stringResource(R.string.terminal_vnc_depth_16bit),
+                    "BPP_8_INDEXED" to stringResource(R.string.terminal_vnc_depth_256),
                 )
                 var depthExpanded by remember { mutableStateOf(false) }
                 val selectedDepth = depthOptions.firstOrNull { it.first == colorDepth } ?: depthOptions.first()

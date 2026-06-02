@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,16 +68,16 @@ fun AgentActivityScreen(
             .background(MaterialTheme.colorScheme.background),
     ) {
         TopAppBar(
-            title = { Text("Agent activity") },
+            title = { Text(stringResource(R.string.settings_agent_activity_screen_title)) },
             navigationIcon = {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_cd_back))
                 }
             },
             actions = {
                 if (events.isNotEmpty()) {
                     IconButton(onClick = { showClearDialog = true }) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Clear history")
+                        Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.settings_agent_activity_cd_clear))
                     }
                 }
             },
@@ -88,9 +89,7 @@ fun AgentActivityScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "No agent activity yet.\n\n" +
-                        "When an MCP client calls a tool, the call will appear here " +
-                        "with arguments redacted and the result summarised.",
+                    text = stringResource(R.string.settings_agent_activity_empty),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -123,16 +122,16 @@ fun AgentActivityScreen(
     if (showClearDialog) {
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
-            title = { Text("Clear agent activity?") },
-            text = { Text("All recorded MCP calls will be deleted from this device. This cannot be undone.") },
+            title = { Text(stringResource(R.string.settings_agent_activity_clear_dialog_title)) },
+            text = { Text(stringResource(R.string.settings_agent_activity_clear_dialog_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.clearAll()
                     showClearDialog = false
-                }) { Text("Clear") }
+                }) { Text(stringResource(R.string.settings_action_clear)) }
             },
             dismissButton = {
-                TextButton(onClick = { showClearDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showClearDialog = false }) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }
@@ -142,7 +141,7 @@ fun AgentActivityScreen(
 private fun SessionHeader(events: List<AgentAuditEvent>) {
     val first = events.first() // newest in section
     val last = events.last()   // oldest in section
-    val clientHint = first.clientHint ?: "unknown client"
+    val clientHint = first.clientHint ?: stringResource(R.string.settings_agent_activity_unknown_client)
     val span = if (events.size == 1) {
         DateUtils.getRelativeTimeSpanString(first.timestamp).toString()
     } else {
@@ -228,7 +227,7 @@ private fun EventRow(
                 event.argsJson?.let { args ->
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "args (redacted)",
+                        text = stringResource(R.string.settings_agent_activity_args_redacted),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

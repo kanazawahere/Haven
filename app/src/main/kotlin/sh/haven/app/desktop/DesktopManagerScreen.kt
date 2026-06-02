@@ -68,6 +68,7 @@ import sh.haven.core.local.proot.DistroCatalog
 import sh.haven.core.local.proot.PackageFamily
 import sh.haven.core.data.preferences.AppWindowDef
 import sh.haven.feature.connections.R
+import sh.haven.app.R as AppR
 
 /**
  * Desktop-tab Manage view (issue #162 Phase 3c). Hosts the distro picker
@@ -207,11 +208,10 @@ private fun AppWindowsSection(
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Application windows", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(AppR.string.app_desktop_app_windows_title), style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Launch a single application in a floating window over the current " +
-                    "screen. Apps run in the active Linux distro and must be installed there.",
+                stringResource(AppR.string.app_desktop_app_windows_description),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -219,7 +219,7 @@ private fun AppWindowsSection(
 
             if (defs.isEmpty()) {
                 Text(
-                    "No application windows yet. Add one to launch an app in a floating window.",
+                    stringResource(AppR.string.app_desktop_app_windows_empty),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -254,21 +254,21 @@ private fun AppWindowsSection(
                             }
                         } else {
                             IconButton(onClick = { onLaunch(def) }) {
-                                Icon(Icons.Filled.PlayArrow, contentDescription = "Launch ${def.label}")
+                                Icon(Icons.Filled.PlayArrow, contentDescription = stringResource(AppR.string.app_desktop_app_window_launch_cd, def.label))
                             }
                         }
                         IconButton(onClick = { onEdit(def) }) {
-                            Icon(Icons.Filled.Edit, contentDescription = "Edit ${def.label}")
+                            Icon(Icons.Filled.Edit, contentDescription = stringResource(AppR.string.app_desktop_app_window_edit_cd, def.label))
                         }
                         IconButton(onClick = { onDelete(def) }) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Delete ${def.label}")
+                            Icon(Icons.Filled.Delete, contentDescription = stringResource(AppR.string.app_desktop_app_window_delete_cd, def.label))
                         }
                     }
                     HorizontalDivider()
                 }
             }
             Spacer(Modifier.height(8.dp))
-            TextButton(onClick = onAdd) { Text("Add app window") }
+            TextButton(onClick = onAdd) { Text(stringResource(AppR.string.app_desktop_add_app_window)) }
         }
     }
 }
@@ -288,14 +288,14 @@ private fun AppWindowDialog(
     val editing = initial != null
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (editing) "Edit app window" else "Add app window") },
+        title = { Text(if (editing) stringResource(AppR.string.app_desktop_edit_app_window_title) else stringResource(AppR.string.app_desktop_add_app_window_title)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = label,
                     onValueChange = { label = it },
-                    label = { Text("Label") },
-                    placeholder = { Text("e.g. Image viewer") },
+                    label = { Text(stringResource(R.string.common_label)) },
+                    placeholder = { Text(stringResource(AppR.string.app_desktop_app_window_label_placeholder)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -303,8 +303,8 @@ private fun AppWindowDialog(
                 OutlinedTextField(
                     value = command,
                     onValueChange = { command = it },
-                    label = { Text("Command") },
-                    placeholder = { Text("e.g. imv /root/board.png") },
+                    label = { Text(stringResource(AppR.string.app_desktop_app_window_command_label)) },
+                    placeholder = { Text(stringResource(AppR.string.app_desktop_app_window_command_placeholder)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -314,10 +314,10 @@ private fun AppWindowDialog(
             TextButton(
                 onClick = { onSave(label.trim(), command.trim()) },
                 enabled = command.isNotBlank(),
-            ) { Text(if (editing) "Save" else "Add") }
+            ) { Text(if (editing) stringResource(R.string.common_save) else stringResource(R.string.common_add)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         },
     )
 }
@@ -423,7 +423,7 @@ private fun DesktopManagerSection(
                                 }) {
                                     Icon(
                                         Icons.Filled.Terminal,
-                                        contentDescription = "Open shell in ${distro.label}",
+                                        contentDescription = stringResource(AppR.string.app_desktop_open_shell_cd, distro.label),
                                         modifier = Modifier.size(20.dp),
                                     )
                                 }
@@ -433,7 +433,7 @@ private fun DesktopManagerSection(
                                 }) {
                                     Icon(
                                         Icons.Filled.Delete,
-                                        contentDescription = "Delete ${distro.label}",
+                                        contentDescription = stringResource(AppR.string.app_desktop_delete_distro_cd, distro.label),
                                         modifier = Modifier.size(20.dp),
                                     )
                                 }
@@ -445,7 +445,7 @@ private fun DesktopManagerSection(
                         availableDistros.forEach { distro ->
                             DropdownMenuItem(
                                 text = {
-                                    Text("+ ${distro.label}  (~${distro.sizeEstimateMb} MB)")
+                                    Text(stringResource(AppR.string.app_desktop_add_distro, distro.label, distro.sizeEstimateMb))
                                 },
                                 onClick = {
                                     onAddDistro(distro)
@@ -459,7 +459,7 @@ private fun DesktopManagerSection(
                     is ProotManager.SetupState.Downloading -> {
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "Downloading rootfs… ${s.progress}%",
+                            stringResource(AppR.string.app_desktop_rootfs_downloading, s.progress),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                         )
@@ -467,7 +467,7 @@ private fun DesktopManagerSection(
                     ProotManager.SetupState.Extracting -> {
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "Extracting rootfs…",
+                            stringResource(AppR.string.app_desktop_rootfs_extracting),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                         )
@@ -475,7 +475,7 @@ private fun DesktopManagerSection(
                     is ProotManager.SetupState.Initializing -> {
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "Setting up rootfs… (${s.step})",
+                            stringResource(AppR.string.app_desktop_rootfs_initializing, s.step),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                         )
@@ -483,14 +483,14 @@ private fun DesktopManagerSection(
                     is ProotManager.SetupState.Error -> {
                         Spacer(Modifier.height(4.dp))
                         val phaseLabel = when (s.phase) {
-                            ProotManager.Phase.RootfsDownload -> "Download"
-                            ProotManager.Phase.RootfsExtract -> "Extract"
-                            ProotManager.Phase.BootstrapHook -> "Bootstrap hook"
-                            ProotManager.Phase.Baseline -> "Baseline packages"
+                            ProotManager.Phase.RootfsDownload -> stringResource(AppR.string.app_desktop_phase_download)
+                            ProotManager.Phase.RootfsExtract -> stringResource(AppR.string.app_desktop_phase_extract)
+                            ProotManager.Phase.BootstrapHook -> stringResource(AppR.string.app_desktop_phase_bootstrap_hook)
+                            ProotManager.Phase.Baseline -> stringResource(AppR.string.app_desktop_phase_baseline)
                         }
                         AssistChip(
                             onClick = {},
-                            label = { Text("Failed: $phaseLabel", style = MaterialTheme.typography.labelSmall) },
+                            label = { Text(stringResource(AppR.string.app_desktop_setup_failed_phase, phaseLabel), style = MaterialTheme.typography.labelSmall) },
                             colors = AssistChipDefaults.assistChipColors(
                                 containerColor = MaterialTheme.colorScheme.errorContainer,
                                 labelColor = MaterialTheme.colorScheme.onErrorContainer,
@@ -513,7 +513,7 @@ private fun DesktopManagerSection(
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "Full per-phase history: Settings → View PRoot install log.",
+                                stringResource(AppR.string.app_desktop_proot_log_hint),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -528,9 +528,9 @@ private fun DesktopManagerSection(
                         // will take.
                         val retryLabel = when (s.phase) {
                             ProotManager.Phase.RootfsDownload,
-                            ProotManager.Phase.RootfsExtract -> "Wipe & retry"
+                            ProotManager.Phase.RootfsExtract -> stringResource(AppR.string.app_desktop_retry_wipe)
                             ProotManager.Phase.BootstrapHook,
-                            ProotManager.Phase.Baseline -> "Retry this step"
+                            ProotManager.Phase.Baseline -> stringResource(AppR.string.app_desktop_retry_step)
                         }
                         TextButton(onClick = onRetryRootfs) { Text(retryLabel) }
                     }
@@ -661,7 +661,7 @@ private fun DesktopRow(
                 if (compatibility == Compatibility.Experimental) {
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        "experimental",
+                        stringResource(AppR.string.app_desktop_experimental),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary,
                     )
@@ -670,7 +670,7 @@ private fun DesktopRow(
             when {
                 instance?.state == DesktopManager.DesktopState.RUNNING && !de.isNative ->
                     Text(
-                        "VNC :${instance.displayNumber} (port ${instance.vncPort})",
+                        stringResource(AppR.string.app_desktop_vnc_running, instance.displayNumber, instance.vncPort),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -682,21 +682,21 @@ private fun DesktopRow(
                     )
                 instance?.state == DesktopManager.DesktopState.ERROR ->
                     Text(
-                        instance.errorMessage ?: "Error",
+                        instance.errorMessage ?: stringResource(AppR.string.app_desktop_error),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
                 !isInstalled ->
                     Text(
                         de.sizeEstimate +
-                            if (!isRootfsReady) " · install distro first" else "",
+                            if (!isRootfsReady) stringResource(AppR.string.app_desktop_install_distro_first) else "",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 isInstalled && instance?.state != DesktopManager.DesktopState.RUNNING &&
                     instance?.state != DesktopManager.DesktopState.STARTING && storedVncPort != null && !de.isNative ->
                     Text(
-                        "VNC port $storedVncPort",
+                        stringResource(AppR.string.app_desktop_vnc_port_stored, storedVncPort),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -778,7 +778,7 @@ private fun DesktopSetupDialog(
                 when (desktopState) {
                     is ProotManager.DesktopSetupState.Idle -> {
                         Text(
-                            "${selectedDe.label} (${selectedDe.sizeEstimate})",
+                            stringResource(AppR.string.app_desktop_de_with_size, selectedDe.label, selectedDe.sizeEstimate),
                             style = MaterialTheme.typography.titleSmall,
                         )
                         if (compatibility == Compatibility.Experimental && compatibilityNote != null) {
@@ -789,7 +789,7 @@ private fun DesktopSetupDialog(
                             ) {
                                 Column(modifier = Modifier.padding(8.dp)) {
                                     Text(
-                                        "Experimental on ${activeFamily.name}",
+                                        stringResource(AppR.string.app_desktop_experimental_on, activeFamily.name),
                                         style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.onTertiaryContainer,
                                     )
@@ -829,11 +829,11 @@ private fun DesktopSetupDialog(
                             OutlinedTextField(
                                 value = portText,
                                 onValueChange = { portText = it.filter { c -> c.isDigit() }.take(4) },
-                                label = { Text("VNC port") },
+                                label = { Text(stringResource(AppR.string.app_desktop_vnc_port_label)) },
                                 supportingText = {
                                     Text(
-                                        if (portValid) "Display :${(portInt!! - 5900)}"
-                                        else "Range 5901–5999",
+                                        if (portValid) stringResource(AppR.string.app_desktop_vnc_display, portInt!! - 5900)
+                                        else stringResource(AppR.string.app_desktop_vnc_port_range),
                                     )
                                 },
                                 isError = !portValid,
@@ -890,7 +890,7 @@ private fun DesktopSetupDialog(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(addon.label, style = MaterialTheme.typography.bodyMedium)
                                         Text(
-                                            "${addon.description} (${addon.sizeEstimate})",
+                                            stringResource(AppR.string.app_desktop_addon_with_size, addon.description, addon.sizeEstimate),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
@@ -916,14 +916,14 @@ private fun DesktopSetupDialog(
                     }
                     is ProotManager.DesktopSetupState.Error -> {
                         val phaseLabel = when (desktopState.phase) {
-                            ProotManager.DePhase.Packages -> "Packages"
-                            ProotManager.DePhase.VncConfig -> "VNC config"
-                            ProotManager.DePhase.Marker -> "Marker file"
+                            ProotManager.DePhase.Packages -> stringResource(AppR.string.app_desktop_phase_packages)
+                            ProotManager.DePhase.VncConfig -> stringResource(AppR.string.app_desktop_phase_vnc_config)
+                            ProotManager.DePhase.Marker -> stringResource(AppR.string.app_desktop_phase_marker)
                         }
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             AssistChip(
                                 onClick = {},
-                                label = { Text("Failed: $phaseLabel", style = MaterialTheme.typography.labelSmall) },
+                                label = { Text(stringResource(AppR.string.app_desktop_setup_failed_phase, phaseLabel), style = MaterialTheme.typography.labelSmall) },
                                 colors = AssistChipDefaults.assistChipColors(
                                     containerColor = MaterialTheme.colorScheme.errorContainer,
                                     labelColor = MaterialTheme.colorScheme.onErrorContainer,
@@ -944,7 +944,7 @@ private fun DesktopSetupDialog(
                                 )
                             }
                             Text(
-                                "Full per-phase history: Settings → View PRoot install log.",
+                                stringResource(AppR.string.app_desktop_proot_log_hint),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
