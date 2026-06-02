@@ -86,6 +86,20 @@ class TerminalSession(
     @Volatile private var readerGeneration = 0
 
     /**
+     * Set by [reconnect] so the next time the pending-command queue drains
+     * (i.e. the tmux/zellij/screen reattach command has been sent and any
+     * post-login command after it), we force the freshly-attached session to
+     * repaint. tmux only does a full redraw when a client attaches or its size
+     * changes; on reconnect the sole resize replay lands on the bare login
+     * shell *before* the reattach fires, so the multiplexer never receives a
+     * post-attach SIGWINCH. If the attach-time redraw is then lost (e.g. a
+     * second reconnect swaps the channel ~seconds later, orphaning the bytes
+     * in flight) the pane stays blank until the user manually resizes or opens
+     * a fresh tab. A post-reattach window-change closes that gap.
+     */
+    @Volatile private var redrawAfterPendingDrain = false
+
+    /**
      * Start the reader thread that delivers SSH output to [onDataReceived].
      * Call this after all wiring (e.g., emulator setup) is complete.
      */
@@ -147,6 +161,14 @@ class TerminalSession(
                                 onBreadcrumb?.invoke(
                                     "pending/reattach sent on prompt '$promptChar': ${cmd.take(48)}",
                                 )
+                                // Last pending command sent on a reconnect: the
+                                // session manager is reattached now, so force a
+                                // repaint (see [redrawAfterPendingDrain]).
+                                val drained = synchronized(_pendingCommands) { _pendingCommands.isEmpty() }
+                                if (drained && redrawAfterPendingDrain) {
+                                    redrawAfterPendingDrain = false
+                                    schedulePostReattachRedraw()
+                                }
                             }
                         }
                     }
@@ -242,6 +264,10 @@ class TerminalSession(
         sshInput = newChannel.inputStream
         sshOutput = newChannel.outputStream
         oldReader?.interrupt()
+        // Arm the post-reattach repaint: fires once the queued session-manager
+        // reattach command drains (see [redrawAfterPendingDrain]). No-op for a
+        // plain-shell reconnect, which carries no pending commands.
+        redrawAfterPendingDrain = true
         Log.d(TAG, "reconnect: swapped channel for $sessionId, starting new reader")
         // The new channel was opened with the default 80×24 PTY size
         // (SshClient.openShellChannel defaults). If the user had resized
@@ -276,6 +302,44 @@ class TerminalSession(
     }
 
     /**
+     * Force the freshly-reattached multiplexer to repaint by delivering a
+     * window-change after the reattach command has been sent. A same-size
+     * resize is not reliably honoured by tmux, so we wobble one row and back —
+     * two genuine size changes guarantee a SIGWINCH-driven full redraw, then
+     * restore the real geometry. Scheduled (not immediate) to give the attach
+     * a moment to complete first. Skipped until a real size is known.
+     */
+    private fun schedulePostReattachRedraw() {
+        val cols = lastCols
+        val rows = lastRows
+        if (cols <= 0 || rows <= 0 || closed || writeExecutor.isShutdown) return
+        val wobbleRows = if (rows > 1) rows - 1 else rows + 1
+        try {
+            writeExecutor.schedule({
+                if (closed || !channel.isConnected) return@schedule
+                try {
+                    client.resizeShell(channel, cols, wobbleRows)
+                } catch (e: Exception) {
+                    Log.w(TAG, "post-reattach redraw nudge failed", e)
+                }
+            }, POST_REATTACH_REDRAW_DELAY_MS, TimeUnit.MILLISECONDS)
+            writeExecutor.schedule({
+                if (closed || !channel.isConnected) return@schedule
+                try {
+                    client.resizeShell(channel, cols, rows)
+                } catch (e: Exception) {
+                    Log.w(TAG, "post-reattach redraw restore failed", e)
+                }
+            }, POST_REATTACH_REDRAW_DELAY_MS + POST_REATTACH_REDRAW_WOBBLE_MS, TimeUnit.MILLISECONDS)
+            onBreadcrumb?.invoke(
+                "reconnect: forced repaint (resize ${cols}x$wobbleRows→${cols}x$rows) after reattach",
+            )
+        } catch (_: java.util.concurrent.RejectedExecutionException) {
+            // Executor shut down between check and schedule — ignore
+        }
+    }
+
+    /**
      * Detach from the channel without disconnecting it.
      * Stops the reader thread and write executor but leaves the shell channel
      * alive so a new TerminalSession can be attached to it.
@@ -295,5 +359,13 @@ class TerminalSession(
         writeExecutor.shutdown()
         try { channel.disconnect() } catch (_: Exception) {}
         readerThread?.interrupt()
+    }
+
+    companion object {
+        /** Delay after the reattach command before the repaint nudge, to let the attach complete. */
+        private const val POST_REATTACH_REDRAW_DELAY_MS = 450L
+
+        /** Gap between the wobble resize and the restore resize. */
+        private const val POST_REATTACH_REDRAW_WOBBLE_MS = 150L
     }
 }

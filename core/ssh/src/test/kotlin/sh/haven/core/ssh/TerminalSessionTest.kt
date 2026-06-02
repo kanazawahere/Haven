@@ -6,6 +6,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -191,6 +192,61 @@ class TerminalSessionTest {
 
         // All characters must be preserved — no dedup
         assertArrayEquals("43339".toByteArray(), outputStream.toByteArray())
+
+        session.close()
+    }
+
+    @Test
+    fun `reconnect forces a repaint after the session-manager reattach drains`() {
+        // Channel 1: the original connection. Its reader sees no data.
+        val channel1 = mockk<ChannelShell>(relaxed = true) {
+            every { inputStream } returns ByteArrayInputStream(ByteArray(0))
+            every { getOutputStream() } returns ByteArrayOutputStream()
+            every { isConnected } returns true
+        }
+        val client = mockk<SshClient>(relaxed = true)
+
+        val session = TerminalSession(
+            sessionId = "test-session",
+            profileId = "test",
+            label = "near@host",
+            channel = channel1,
+            client = client,
+            onDataReceived = { _, _, _ -> },
+        )
+        // The user has been using the tab, so a real PTY size is known.
+        session.resize(80, 24)
+        Thread.sleep(250)
+
+        // attemptReconnect() queues the tmux reattach, then swaps the channel.
+        session.setPendingCommands(listOf("exec sh -c 'exec tmux new-session -A -s near'"))
+
+        val out2 = ByteArrayOutputStream()
+        val pipeOut = PipedOutputStream()
+        val pipeIn = PipedInputStream(pipeOut)
+        val channel2 = mockk<ChannelShell>(relaxed = true) {
+            every { inputStream } returns pipeIn
+            every { getOutputStream() } returns out2
+            every { isConnected } returns true
+        }
+        session.reconnect(channel2, client)
+
+        // The fresh login shell prints its prompt; reattach fires on the '$'.
+        pipeOut.write("droid@host:~$ ".toByteArray())
+        pipeOut.flush()
+
+        // Allow prompt detection + the scheduled post-reattach redraw (450+150ms).
+        Thread.sleep(900)
+
+        // Reattach command went out on the new channel.
+        assertTrue(
+            "expected reattach command on new channel, got: '${String(out2.toByteArray())}'",
+            String(out2.toByteArray()).contains("tmux new-session -A -s near"),
+        )
+        // Repaint wobble: a genuine size change (80x23) then restore (80x24)
+        // on the *new* channel, forcing tmux to redraw the reattached pane.
+        verify { client.resizeShell(channel2, 80, 23) }
+        verify { client.resizeShell(channel2, 80, 24) }
 
         session.close()
     }
