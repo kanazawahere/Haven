@@ -142,4 +142,12 @@
     <string name="app_present_pause">일시정지</string>
     <string name="app_present_play">재생</string>
     <string name="app_present_preparing_audio">오디오 준비 중…</string>
+
+    <!-- i18n sweep #210 (follow-up batch) -->
+    <string name="app_biometric_blocked_no_activity_title">Haven이 잠겨 있습니다</string>
+    <string name="app_biometric_blocked_no_activity_body">이 상황에서는 인증 프롬프트를 표시할 수 없습니다.</string>
+    <string name="app_biometric_not_enrolled_title">화면 잠금 설정</string>
+    <string name="app_biometric_not_enrolled_body">Haven 앱 잠금이 켜져 있지만, 이 기기에는 화면 잠금이나 등록된 생체 인증이 없습니다. 잠금을 해제하려면 기기 설정에서 하나를 설정하세요.</string>
+    <string name="app_biometric_no_hardware_title">인증을 사용할 수 없음</string>
+    <string name="app_biometric_no_hardware_body">이 기기는 인증할 수 없습니다(생체 인증 하드웨어와 기기 자격 증명이 모두 없음). 잠금을 해제하려면 설정에서 PIN 또는 비밀번호를 설정하세요.</string>
 </resources>

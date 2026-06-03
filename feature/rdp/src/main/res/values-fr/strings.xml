@@ -19,4 +19,20 @@
     <string name="rdp_orientation_landscape_desc">Bloquer en paysage (appuyer pour passer en portrait)</string>
     <string name="rdp_orientation_portrait_desc">Bloquer en portrait (appuyer pour passer en automatique)</string>
     <string name="rdp_orientation_auto_desc">Rotation automatique (appuyer pour passer en paysage)</string>
+
+    <!-- i18n sweep #210 (follow-up batch) -->
+    <string name="rdp_hint_legacy_rdp_title">Le serveur utilise un RDP ancien non chiffré</string>
+    <string name="rdp_hint_legacy_rdp_body">Haven ne prend en charge que le RDP chiffré par TLS. Votre serveur (souvent xrdp sous Linux) a négocié le protocole obsolète STANDARD_RDP_SECURITY — généralement parce que le certificat TLS du serveur est manquant ou illisible. Régénérez /etc/xrdp/cert.pem et /etc/xrdp/key.pem sur le serveur, puis redémarrez xrdp.</string>
+    <string name="rdp_hint_legacy_rdp_link">Instructions de correction côté serveur</string>
+    <string name="rdp_hint_nla_internal_error_title">Le serveur a rejeté la session TLS pendant NLA</string>
+    <string name="rdp_hint_nla_internal_error_body">C\'était autrefois le symptôme d\'un bug de Haven corrigé en v5.24.37 — si vous êtes sur une version plus récente et que vous voyez toujours cela, le serveur ne prend peut-être pas du tout en charge CredSSP. Essayez de décocher Network Level Authentication dans le profil de connexion et reconnectez-vous.</string>
+    <string name="rdp_hint_logon_failure_title">Nom d\'utilisateur ou mot de passe incorrect</string>
+    <string name="rdp_hint_logon_failure_body">Le serveur a terminé CredSSP proprement et a rejeté vos identifiants. Vérifiez le nom d\'utilisateur (essayez DOMAIN\\User si le compte appartient à un domaine) et le mot de passe.</string>
+    <string name="rdp_hint_pubkey_hash_title">Le serveur a rejeté le hachage de clé publique CredSSP</string>
+    <string name="rdp_hint_pubkey_hash_body">gnome-remote-desktop sous Linux et certaines versions de xrdp calculent le hachage CredSSP pub_key_auth différemment de ironrdp/sspi-rs de Haven — la poignée de main TLS réussit, mais NLA échoue une couche plus haut.\n\nContournement : modifiez le profil de cette connexion et décochez \"Network Level Authentication (NLA)\". RDP basculera vers une authentification après la configuration du canal, ce qui ne passe pas par le hachage incompatible.</string>
+    <string name="rdp_hint_pubkey_hash_link">Suivi des problèmes</string>
+    <string name="rdp_hint_time_skew_title">L\'horloge de l\'appareil diffère de celle du serveur</string>
+    <string name="rdp_hint_time_skew_body">CredSSP rejette la session lorsque l\'horloge de l\'appareil diffère de celle du serveur de plus de quelques minutes. Vérifiez Paramètres → Date et heure → Réglage automatique et reconnectez-vous.</string>
+    <string name="rdp_hint_tls_ciphers_title">Le serveur exige des chiffrements TLS non pris en charge par Haven</string>
+    <string name="rdp_hint_tls_ciphers_body">Haven utilise la pile TLS rustls/ring, dont la couverture de chiffrements est plus étroite que celle du client RDP de Microsoft (SChannel) ou d\'OpenSSL. Le réglage côté serveur le plus compatible est ECDHE-RSA + AES-GCM sur TLS 1.2 ou 1.3.</string>
 </resources>

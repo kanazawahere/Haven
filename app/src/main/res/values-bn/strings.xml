@@ -132,4 +132,12 @@
     <string name="app_present_pause">বিরতি</string>
     <string name="app_present_play">চালান</string>
     <string name="app_present_preparing_audio">অডিও প্রস্তুত হচ্ছে…</string>
+
+    <!-- i18n sweep #210 (follow-up batch) -->
+    <string name="app_biometric_blocked_no_activity_title">Haven লক করা আছে</string>
+    <string name="app_biometric_blocked_no_activity_body">এই প্রসঙ্গে authentication prompt দেখানো যাচ্ছে না।</string>
+    <string name="app_biometric_not_enrolled_title">একটি screen lock সেট আপ করুন</string>
+    <string name="app_biometric_not_enrolled_body">Haven app-lock চালু আছে, কিন্তু এই ডিভাইসে কোনো screen lock বা biometric নথিভুক্ত নেই। আনলক করতে ডিভাইস Settings-এ একটি সেট আপ করুন।</string>
+    <string name="app_biometric_no_hardware_title">Authentication উপলব্ধ নয়</string>
+    <string name="app_biometric_no_hardware_body">এই ডিভাইস authenticate করতে পারে না (কোনো biometric hardware বা device credential নেই)। আনলক করতে Settings-এ একটি PIN বা পাসওয়ার্ড সেট আপ করুন।</string>
 </resources>

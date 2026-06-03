@@ -395,20 +395,20 @@ private fun DesktopPlaceholder(
                         modifier = Modifier.padding(12.dp),
                     ) {
                         Text(
-                            text = hint.title,
+                            text = stringResource(hint.titleRes),
                             color = MaterialTheme.colorScheme.onTertiaryContainer,
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            text = hint.body,
+                            text = stringResource(hint.bodyRes),
                             color = MaterialTheme.colorScheme.onTertiaryContainer,
                             style = MaterialTheme.typography.bodySmall,
                         )
-                        if (hint.linkUrl != null && hint.linkLabel != null) {
+                        if (hint.linkUrl != null && hint.linkLabelRes != null) {
                             Spacer(Modifier.height(4.dp))
                             TextButton(onClick = { uriHandler.openUri(hint.linkUrl) }) {
-                                Text(hint.linkLabel)
+                                Text(stringResource(hint.linkLabelRes!!))
                             }
                         }
                     }
@@ -1428,9 +1428,9 @@ private const val SC_F12 = 0x58
 
 /** A friendly diagnosis layered on top of an opaque server error string. */
 internal data class RdpErrorHint(
-    val title: String,
-    val body: String,
-    val linkLabel: String? = null,
+    val titleRes: Int,
+    val bodyRes: Int,
+    val linkLabelRes: Int? = null,
     val linkUrl: String? = null,
 )
 
@@ -1441,46 +1441,32 @@ internal data class RdpErrorHint(
  */
 internal fun rdpErrorHint(error: String): RdpErrorHint? = when {
     "STANDARD_RDP_SECURITY" in error -> RdpErrorHint(
-        title = "Server is using legacy unencrypted RDP",
-        body = "Haven only supports TLS-encrypted RDP. Your server (commonly xrdp on Linux) " +
-            "negotiated the deprecated STANDARD_RDP_SECURITY protocol — usually because " +
-            "the server's TLS certificate is missing or unreadable. Regenerate /etc/xrdp/cert.pem " +
-            "and /etc/xrdp/key.pem on the server, then restart xrdp.",
-        linkLabel = "Server-side fix instructions",
+        titleRes = R.string.rdp_hint_legacy_rdp_title,
+        bodyRes = R.string.rdp_hint_legacy_rdp_body,
+        linkLabelRes = R.string.rdp_hint_legacy_rdp_link,
         linkUrl = "https://github.com/GlassHaven/Haven/issues/106#issuecomment-4319030771",
     )
     "AlertReceived(InternalError)" in error -> RdpErrorHint(
-        title = "Server rejected the TLS session during NLA",
-        body = "This used to be the symptom of a Haven bug fixed in v5.24.37 — if you're on a " +
-            "newer build and still see this, the server may not speak CredSSP at all. Try unticking " +
-            "Network Level Authentication on the connection profile and reconnecting.",
+        titleRes = R.string.rdp_hint_nla_internal_error_title,
+        bodyRes = R.string.rdp_hint_nla_internal_error_body,
     )
     "STATUS_LOGON_FAILURE" in error || "0xc000006d" in error -> RdpErrorHint(
-        title = "Wrong username or password",
-        body = "The server completed CredSSP cleanly and rejected your credentials. Check the " +
-            "username (try DOMAIN\\User if the account is domain-joined) and password.",
+        titleRes = R.string.rdp_hint_logon_failure_title,
+        bodyRes = R.string.rdp_hint_logon_failure_body,
     )
     "MessageAltered" in error || "public-key hash" in error -> RdpErrorHint(
-        title = "Server rejected the CredSSP public-key hash",
-        body = "Linux gnome-remote-desktop and certain xrdp builds compute the CredSSP " +
-            "pub_key_auth hash differently than Haven's ironrdp/sspi-rs — the TLS handshake " +
-            "succeeds but NLA fails one layer up.\n\n" +
-            "Workaround: edit this connection's profile and uncheck \"Network Level " +
-            "Authentication (NLA)\". RDP will fall back to authenticating after channel setup, " +
-            "which doesn't go through the mismatched hash.",
-        linkLabel = "Issue tracker",
+        titleRes = R.string.rdp_hint_pubkey_hash_title,
+        bodyRes = R.string.rdp_hint_pubkey_hash_body,
+        linkLabelRes = R.string.rdp_hint_pubkey_hash_link,
         linkUrl = "https://github.com/GlassHaven/Haven/issues/109",
     )
     "TimeSkew" in error -> RdpErrorHint(
-        title = "Device clock differs from server's",
-        body = "CredSSP rejects the session when the device clock is more than a few minutes " +
-            "off the server's. Check Settings → Date & time → Set automatically and reconnect.",
+        titleRes = R.string.rdp_hint_time_skew_title,
+        bodyRes = R.string.rdp_hint_time_skew_body,
     )
     "no shared TLS parameters" in error || "PeerIncompatible" in error -> RdpErrorHint(
-        title = "Server requires TLS ciphers Haven doesn't support",
-        body = "Haven uses the rustls/ring TLS stack which has narrower cipher coverage than " +
-            "Microsoft's RDP client (SChannel) or OpenSSL. The most compatible server-side " +
-            "setting is ECDHE-RSA + AES-GCM over TLS 1.2 or 1.3.",
+        titleRes = R.string.rdp_hint_tls_ciphers_title,
+        bodyRes = R.string.rdp_hint_tls_ciphers_body,
     )
     else -> null
 }

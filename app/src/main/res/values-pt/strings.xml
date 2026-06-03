@@ -132,4 +132,12 @@
     <string name="app_present_pause">Pausar</string>
     <string name="app_present_play">Reproduzir</string>
     <string name="app_present_preparing_audio">Preparando áudio…</string>
+
+    <!-- i18n sweep #210 (follow-up batch) -->
+    <string name="app_biometric_blocked_no_activity_title">O Haven está bloqueado</string>
+    <string name="app_biometric_blocked_no_activity_body">Não é possível mostrar o aviso de autenticação neste contexto.</string>
+    <string name="app_biometric_not_enrolled_title">Configure um bloqueio de tela</string>
+    <string name="app_biometric_not_enrolled_body">O bloqueio do app Haven está ativado, mas este dispositivo não tem bloqueio de tela nem biometria cadastrada. Configure um nas Configurações do dispositivo para desbloquear.</string>
+    <string name="app_biometric_no_hardware_title">Autenticação indisponível</string>
+    <string name="app_biometric_no_hardware_body">Este dispositivo não consegue autenticar (sem hardware biométrico nem credencial do dispositivo). Configure um PIN ou senha nas Configurações para desbloquear.</string>
 </resources>

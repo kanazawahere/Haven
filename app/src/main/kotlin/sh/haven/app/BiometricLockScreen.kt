@@ -55,8 +55,8 @@ internal sealed class BiometricLockState {
      * recovery path. Never call onUnlocked from this state.
      */
     data class Blocked(
-        val title: String,
-        val body: String,
+        val titleRes: Int,
+        val bodyRes: Int,
         val canOpenSettings: Boolean,
     ) : BiometricLockState()
 }
@@ -72,23 +72,21 @@ internal fun biometricLockStateFor(
 ): BiometricLockState {
     if (!hasFragmentActivity) {
         return BiometricLockState.Blocked(
-            title = "Haven is locked",
-            body = "Cannot show authentication prompt in this context.",
+            titleRes = R.string.app_biometric_blocked_no_activity_title,
+            bodyRes = R.string.app_biometric_blocked_no_activity_body,
             canOpenSettings = false,
         )
     }
     return when (availability) {
         BiometricAuthenticator.Availability.AVAILABLE -> BiometricLockState.Prompt
         BiometricAuthenticator.Availability.NOT_ENROLLED -> BiometricLockState.Blocked(
-            title = "Set up a screen lock",
-            body = "Haven app-lock is enabled, but this device has no screen lock " +
-                "or biometric enrolled. Set one up in device Settings to unlock.",
+            titleRes = R.string.app_biometric_not_enrolled_title,
+            bodyRes = R.string.app_biometric_not_enrolled_body,
             canOpenSettings = true,
         )
         BiometricAuthenticator.Availability.NO_HARDWARE -> BiometricLockState.Blocked(
-            title = "Authentication unavailable",
-            body = "This device cannot authenticate (no biometric hardware and no " +
-                "device credential). Set up a PIN or password in Settings to unlock.",
+            titleRes = R.string.app_biometric_no_hardware_title,
+            bodyRes = R.string.app_biometric_no_hardware_body,
             canOpenSettings = true,
         )
     }
@@ -123,8 +121,8 @@ fun BiometricLockScreen(
     if (lockState is BiometricLockState.Blocked) {
         val maybeActivity = activity
         LockedSurface(
-            title = lockState.title,
-            body = lockState.body,
+            title = stringResource(lockState.titleRes),
+            body = stringResource(lockState.bodyRes),
             primaryLabel = if (lockState.canOpenSettings) stringResource(R.string.app_biometric_open_device_settings) else null,
             onPrimary = if (lockState.canOpenSettings && maybeActivity != null) {
                 {

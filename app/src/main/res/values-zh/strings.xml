@@ -132,4 +132,12 @@
     <string name="app_present_pause">暂停</string>
     <string name="app_present_play">播放</string>
     <string name="app_present_preparing_audio">正在准备音频…</string>
+
+    <!-- i18n sweep #210 (follow-up batch) -->
+    <string name="app_biometric_blocked_no_activity_title">Haven 已锁定</string>
+    <string name="app_biometric_blocked_no_activity_body">无法在此情境下显示身份验证提示。</string>
+    <string name="app_biometric_not_enrolled_title">设置屏幕锁定</string>
+    <string name="app_biometric_not_enrolled_body">Haven 应用锁已启用，但此设备未设置屏幕锁定或录入生物识别。请在设备“设置”中设置一项以解锁。</string>
+    <string name="app_biometric_no_hardware_title">无法进行身份验证</string>
+    <string name="app_biometric_no_hardware_body">此设备无法进行身份验证（无生物识别硬件且无设备凭据）。请在“设置”中设置 PIN 码或密码以解锁。</string>
 </resources>

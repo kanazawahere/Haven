@@ -19,4 +19,20 @@
     <string name="rdp_orientation_landscape_desc">Landscape লক (portrait-এ যেতে ট্যাপ করুন)</string>
     <string name="rdp_orientation_portrait_desc">Portrait লক (auto-তে যেতে ট্যাপ করুন)</string>
     <string name="rdp_orientation_auto_desc">স্বয়ংক্রিয় ঘোরানো (landscape-এ যেতে ট্যাপ করুন)</string>
+
+    <!-- i18n sweep #210 (follow-up batch) -->
+    <string name="rdp_hint_legacy_rdp_title">সার্ভার পুরোনো, এনক্রিপশনহীন RDP ব্যবহার করছে</string>
+    <string name="rdp_hint_legacy_rdp_body">Haven শুধু TLS-এনক্রিপ্টেড RDP সমর্থন করে। আপনার সার্ভার (Linux-এ সাধারণত xrdp) অবচিত STANDARD_RDP_SECURITY প্রোটোকল নেগোশিয়েট করেছে — সাধারণত কারণ সার্ভারের TLS সার্টিফিকেট অনুপস্থিত বা পঠনযোগ্য নয়। সার্ভারে /etc/xrdp/cert.pem এবং /etc/xrdp/key.pem পুনরায় তৈরি করুন, তারপর xrdp রিস্টার্ট করুন।</string>
+    <string name="rdp_hint_legacy_rdp_link">সার্ভার-সাইড সমাধানের নির্দেশনা</string>
+    <string name="rdp_hint_nla_internal_error_title">NLA চলাকালীন সার্ভার TLS সেশন প্রত্যাখ্যান করেছে</string>
+    <string name="rdp_hint_nla_internal_error_body">এটি আগে v5.24.37-এ ঠিক করা একটি Haven বাগের লক্ষণ ছিল — যদি আপনি নতুন বিল্ডে থাকেন এবং তবুও এটি দেখেন, সার্ভার হয়তো CredSSP একদমই বোঝে না। সংযোগ প্রোফাইলে Network Level Authentication আনটিক করে আবার সংযোগ করার চেষ্টা করুন।</string>
+    <string name="rdp_hint_logon_failure_title">ভুল ইউজারনেম বা পাসওয়ার্ড</string>
+    <string name="rdp_hint_logon_failure_body">সার্ভার CredSSP পরিষ্কারভাবে সম্পন্ন করেছে এবং আপনার credentials প্রত্যাখ্যান করেছে। ইউজারনেম (অ্যাকাউন্ট domain-যুক্ত হলে DOMAIN\\User চেষ্টা করুন) ও পাসওয়ার্ড যাচাই করুন।</string>
+    <string name="rdp_hint_pubkey_hash_title">সার্ভার CredSSP public-key hash প্রত্যাখ্যান করেছে</string>
+    <string name="rdp_hint_pubkey_hash_body">Linux gnome-remote-desktop এবং কিছু xrdp বিল্ড CredSSP pub_key_auth hash Haven-এর ironrdp/sspi-rs থেকে ভিন্নভাবে গণনা করে — TLS handshake সফল হয় কিন্তু এক স্তর উপরে NLA ব্যর্থ হয়।\n\nWorkaround: এই সংযোগের প্রোফাইল সম্পাদনা করে \"Network Level Authentication (NLA)\" আনচেক করুন। RDP তখন চ্যানেল সেটআপের পরে authenticate করতে ফিরে যাবে, যা mismatched hash দিয়ে যায় না।</string>
+    <string name="rdp_hint_pubkey_hash_link">Issue tracker</string>
+    <string name="rdp_hint_time_skew_title">ডিভাইসের ঘড়ি সার্ভারের থেকে আলাদা</string>
+    <string name="rdp_hint_time_skew_body">ডিভাইসের ঘড়ি সার্ভারের থেকে কয়েক মিনিটের বেশি আলাদা হলে CredSSP সেশন প্রত্যাখ্যান করে। Settings → Date &amp; time → Set automatically দেখুন এবং আবার সংযোগ করুন।</string>
+    <string name="rdp_hint_tls_ciphers_title">সার্ভার এমন TLS ciphers চায় যা Haven সমর্থন করে না</string>
+    <string name="rdp_hint_tls_ciphers_body">Haven rustls/ring TLS স্ট্যাক ব্যবহার করে, যার cipher কভারেজ Microsoft-এর RDP ক্লায়েন্ট (SChannel) বা OpenSSL-এর চেয়ে সংকীর্ণ। সবচেয়ে সামঞ্জস্যপূর্ণ সার্ভার-সাইড সেটিং হলো TLS 1.2 বা 1.3-এর উপর ECDHE-RSA + AES-GCM।</string>
 </resources>

@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import sh.haven.app.R
 import sh.haven.core.security.BiometricAuthenticator
 
 /**
@@ -38,10 +39,10 @@ class BiometricLockStateTest {
         )
         assertTrue("must be Blocked, was $state", state is BiometricLockState.Blocked)
         val blocked = state as BiometricLockState.Blocked
-        assertTrue(
+        assertEquals(
             "user-facing copy must explain how to recover",
-            blocked.body.contains("screen lock", ignoreCase = true) ||
-                blocked.body.contains("biometric", ignoreCase = true),
+            R.string.app_biometric_not_enrolled_body,
+            blocked.bodyRes,
         )
         assertTrue(
             "NOT_ENROLLED must offer a Settings shortcut so the user can fix it",
@@ -104,8 +105,10 @@ class BiometricLockStateTest {
             val state = biometricLockStateFor(availability, hasFragmentActivity = hasActivity)
             assertNotNull(state)
             if (state is BiometricLockState.Blocked) {
-                assertTrue("title for $availability/$hasActivity is blank", state.title.isNotBlank())
-                assertTrue("body for $availability/$hasActivity is blank", state.body.isNotBlank())
+                assertTrue(
+                    "title/body res for $availability/$hasActivity is unset",
+                    state.titleRes != 0 && state.bodyRes != 0,
+                )
             }
         }
     }

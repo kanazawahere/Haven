@@ -138,4 +138,12 @@
     <string name="app_present_pause">Пауза</string>
     <string name="app_present_play">Воспроизвести</string>
     <string name="app_present_preparing_audio">Подготовка аудио…</string>
+
+    <!-- i18n sweep #210 (follow-up batch) -->
+    <string name="app_biometric_blocked_no_activity_title">Haven заблокирован</string>
+    <string name="app_biometric_blocked_no_activity_body">В этом контексте невозможно показать запрос аутентификации.</string>
+    <string name="app_biometric_not_enrolled_title">Настройте блокировку экрана</string>
+    <string name="app_biometric_not_enrolled_body">Блокировка приложения Haven включена, но на этом устройстве нет блокировки экрана или зарегистрированной биометрии. Настройте её в настройках устройства, чтобы разблокировать.</string>
+    <string name="app_biometric_no_hardware_title">Аутентификация недоступна</string>
+    <string name="app_biometric_no_hardware_body">Это устройство не может выполнить аутентификацию (нет биометрического оборудования и учётных данных устройства). Настройте PIN-код или пароль в настройках, чтобы разблокировать.</string>
 </resources>

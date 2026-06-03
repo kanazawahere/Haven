@@ -74,6 +74,12 @@
     <string name="app_biometric_locked_title">Haven is locked</string>
     <string name="app_biometric_authenticate_prompt">Authenticate to continue</string>
     <string name="app_biometric_open_device_settings">Open device settings</string>
+    <string name="app_biometric_blocked_no_activity_title">Haven is locked</string>
+    <string name="app_biometric_blocked_no_activity_body">Cannot show authentication prompt in this context.</string>
+    <string name="app_biometric_not_enrolled_title">Set up a screen lock</string>
+    <string name="app_biometric_not_enrolled_body">Haven app-lock is enabled, but this device has no screen lock or biometric enrolled. Set one up in device Settings to unlock.</string>
+    <string name="app_biometric_no_hardware_title">Authentication unavailable</string>
+    <string name="app_biometric_no_hardware_body">This device cannot authenticate (no biometric hardware and no device credential). Set up a PIN or password in Settings to unlock.</string>
 
     <!-- Desktop manager: app windows -->
     <string name="app_desktop_app_windows_title">Application windows</string>

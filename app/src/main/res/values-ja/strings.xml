@@ -132,4 +132,12 @@
     <string name="app_present_pause">一時停止</string>
     <string name="app_present_play">再生</string>
     <string name="app_present_preparing_audio">オーディオを準備中…</string>
+
+    <!-- i18n sweep #210 (follow-up batch) -->
+    <string name="app_biometric_blocked_no_activity_title">Haven はロックされています</string>
+    <string name="app_biometric_blocked_no_activity_body">この状況では認証プロンプトを表示できません。</string>
+    <string name="app_biometric_not_enrolled_title">画面ロックを設定</string>
+    <string name="app_biometric_not_enrolled_body">Haven のアプリロックは有効ですが、このデバイスには画面ロックも生体認証も登録されていません。ロック解除するには、デバイスの設定でいずれかを設定してください。</string>
+    <string name="app_biometric_no_hardware_title">認証を利用できません</string>
+    <string name="app_biometric_no_hardware_body">このデバイスは認証できません（生体認証ハードウェアもデバイス認証情報もありません）。ロック解除するには、設定で PIN またはパスワードを設定してください。</string>
 </resources>

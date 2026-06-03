@@ -18,4 +18,20 @@
     <string name="rdp_orientation_landscape_desc">가로 고정 (세로로 전환하려면 탭)</string>
     <string name="rdp_orientation_portrait_desc">세로 고정 (자동으로 전환하려면 탭)</string>
     <string name="rdp_orientation_auto_desc">자동 회전 (가로로 전환하려면 탭)</string>
+
+    <!-- i18n sweep #210 (follow-up batch) -->
+    <string name="rdp_hint_legacy_rdp_title">서버가 암호화되지 않은 구형 RDP를 사용 중입니다</string>
+    <string name="rdp_hint_legacy_rdp_body">Haven은 TLS로 암호화된 RDP만 지원합니다. 서버(Linux에서는 보통 xrdp)가 더 이상 사용되지 않는 STANDARD_RDP_SECURITY 프로토콜을 협상했습니다. 대개 서버의 TLS 인증서가 없거나 읽을 수 없기 때문입니다. 서버에서 /etc/xrdp/cert.pem과 /etc/xrdp/key.pem을 다시 생성한 다음 xrdp를 재시작하세요.</string>
+    <string name="rdp_hint_legacy_rdp_link">서버 측 해결 방법 안내</string>
+    <string name="rdp_hint_nla_internal_error_title">NLA 중 서버가 TLS 세션을 거부했습니다</string>
+    <string name="rdp_hint_nla_internal_error_body">이는 예전에 v5.24.37에서 수정된 Haven 버그의 증상이었습니다. 더 새로운 빌드를 사용 중인데도 이 메시지가 보인다면, 서버가 CredSSP를 전혀 지원하지 않을 수 있습니다. 연결 프로필에서 Network Level Authentication 체크를 해제하고 다시 연결해 보세요.</string>
+    <string name="rdp_hint_logon_failure_title">잘못된 사용자 이름 또는 비밀번호</string>
+    <string name="rdp_hint_logon_failure_body">서버가 CredSSP를 정상적으로 완료하고 자격 증명을 거부했습니다. 사용자 이름(계정이 도메인에 가입되어 있다면 DOMAIN\\User 시도)과 비밀번호를 확인하세요.</string>
+    <string name="rdp_hint_pubkey_hash_title">서버가 CredSSP 공개 키 해시를 거부했습니다</string>
+    <string name="rdp_hint_pubkey_hash_body">Linux gnome-remote-desktop과 일부 xrdp 빌드는 CredSSP pub_key_auth 해시를 Haven의 ironrdp/sspi-rs와 다르게 계산합니다. TLS 핸드셰이크는 성공하지만 한 계층 위에서 NLA가 실패합니다.\n\n해결 방법: 이 연결의 프로필을 편집하고 \"Network Level Authentication (NLA)\"의 체크를 해제하세요. 그러면 RDP는 채널 설정 후에 인증하는 방식으로 대체되어, 일치하지 않는 해시를 거치지 않습니다.</string>
+    <string name="rdp_hint_pubkey_hash_link">이슈 트래커</string>
+    <string name="rdp_hint_time_skew_title">기기 시계가 서버와 다릅니다</string>
+    <string name="rdp_hint_time_skew_body">기기 시계가 서버와 몇 분 이상 차이 나면 CredSSP가 세션을 거부합니다. 설정 → 날짜 및 시간 → 자동 설정을 확인하고 다시 연결하세요.</string>
+    <string name="rdp_hint_tls_ciphers_title">서버가 Haven이 지원하지 않는 TLS 암호를 요구합니다</string>
+    <string name="rdp_hint_tls_ciphers_body">Haven은 rustls/ring TLS 스택을 사용하며, Microsoft의 RDP 클라이언트(SChannel)나 OpenSSL보다 지원하는 암호 범위가 좁습니다. 가장 호환성이 좋은 서버 측 설정은 TLS 1.2 또는 1.3에서의 ECDHE-RSA + AES-GCM입니다.</string>
 </resources>
