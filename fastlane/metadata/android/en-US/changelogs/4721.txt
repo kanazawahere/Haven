@@ -1,0 +1,4 @@
+- Agent consent dialog: Allow/Deny are no longer hidden behind the keyboard
+- New: per-client "skip approval prompts" for paired MCP clients (Settings → Agent endpoint → Paired MCP clients), surviving restart
+- New MCP tools to list and un-pair paired clients
+- Fixed: connecting a session or tapping a tab could land on the wrong screen
