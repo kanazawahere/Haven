@@ -154,4 +154,13 @@
     <string name="keys_fido_touch_nfc_title">अपनी सुरक्षा कुंजी पकड़ें</string>
     <string name="keys_fido_touch_nfc_body">सुरक्षा कुंजी को डिवाइस के पीछे दो सेकंड तक रखें। इसे जल्दी हटाने से आदान-प्रदान रद्द हो जाता है।</string>
     <string name="keys_fido_cancel_hint">सुरक्षा कुंजी के जवाब देने तक खुला रहता है।</string>
+
+    <!-- i18n sweep #210 -->
+    <string name="keys_export_certificate">प्रमाणपत्र निर्यात करें</string>
+    <string name="keys_totp_section_header">Authenticator (TOTP) · %1$d</string>
+    <string name="keys_totp_delete_desc">Authenticator हटाएँ</string>
+    <string name="keys_totp_scan_qr">Authenticator QR स्कैन करें (TOTP)</string>
+    <string name="keys_totp_scan_qr_hint">otpauth:// QR code वाली छवि चुनें</string>
+    <string name="keys_totp_paste">Clipboard से authenticator जोड़ें (TOTP)</string>
+    <string name="keys_totp_paste_hint">otpauth:// URI या base32 secret पेस्ट करें</string>
 </resources>

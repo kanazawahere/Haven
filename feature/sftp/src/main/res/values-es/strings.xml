@@ -243,4 +243,44 @@
     <string name="sftp_filter_title">Filters</string>
     <string name="sftp_filter_rotation">Rotation</string>
 
+    <!-- i18n sweep #210 -->
+    <string name="sftp_open_with">Abrir con…</string>
+    <string name="sftp_saved_sync_label">Configuración guardada</string>
+    <string name="sftp_saved_sync_pick">Elegir una configuración guardada</string>
+    <string name="sftp_saved_sync_save">Guardar</string>
+    <string name="sftp_saved_sync_save_as">Guardar como…</string>
+    <string name="sftp_saved_sync_save_as_title">Guardar configuración de sincronización</string>
+    <string name="sftp_saved_sync_name">Nombre</string>
+    <string name="sftp_attach_choose_folder">Elegir carpeta para %1$s</string>
+    <string name="sftp_attach_pick_profile">Elige un perfil conectado a usar</string>
+    <string name="sftp_attach_local_no_upload">Elige un perfil remoto — el local no acepta subidas</string>
+    <string name="sftp_attach_will_upload_into">Se subirá a: %1$s</string>
+    <string name="sftp_attach_sending">Enviando %1$s…</string>
+    <string name="sftp_storage_permission_title">Se requiere acceso al almacenamiento</string>
+    <string name="sftp_storage_permission_body">Toca para conceder acceso a los archivos locales — las funciones de medios, exploración y transferencias necesitan este permiso.</string>
+    <string name="sftp_paste_unfinished">Pegado sin terminar</string>
+    <string name="sftp_agent_chip">Agente</string>
+    <string name="sftp_convert_dest_downloads">Descargas (este dispositivo)</string>
+    <string name="sftp_convert_dest_same_folder_local">Misma carpeta que el origen</string>
+    <string name="sftp_convert_dest_same_folder_cloud">De vuelta a la nube (misma carpeta)</string>
+    <string name="sftp_convert_dest_same_folder_server">De vuelta al servidor (misma carpeta)</string>
+    <string name="sftp_convert_download_first">Descargar primero</string>
+    <string name="sftp_convert_download_first_on">Descarga el archivo completo antes de transcodificar</string>
+    <string name="sftp_convert_download_first_off">Transmite desde la nube (más rápido para archivos grandes)</string>
+    <string name="sftp_preview_preparing_long">Preparando vista previa…</string>
+    <string name="sftp_preview_fetching_cloud">☁ Descargando de la nube…</string>
+    <string name="sftp_preview_tap_to_refresh">Toca Vista previa para actualizar</string>
+    <string name="sftp_filter_mode_glob">Glob</string>
+    <string name="sftp_filter_mode_regex">Regex</string>
+    <string name="sftp_saved_file">%1$s guardado</string>
+    <string name="sftp_saved_file_to">%1$s guardado en %2$s</string>
+    <string name="sftp_downloaded_file">%1$s descargado</string>
+    <string name="sftp_location_downloads">Descargas</string>
+    <string name="sftp_processing_perspective">Aplicando perspectiva…</string>
+    <string name="sftp_processing_crop">Recortando…</string>
+    <string name="sftp_processing_rotate">Rotando…</string>
+    <string name="sftp_conflict_size_summary">Existente: %1$s  ·  Nuevo: %2$s</string>
+    <string name="sftp_conflict_resume_hint">El archivo existente es más pequeño que el origen — reanudar continúa desde el desplazamiento actual.</string>
+    <string name="sftp_conflict_apply_to_all">Aplicar a todos los archivos restantes</string>
+
 </resources>

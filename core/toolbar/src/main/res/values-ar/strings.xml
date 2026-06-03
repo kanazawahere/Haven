@@ -20,4 +20,15 @@
     <string name="toolbar_snippet_dialog_title">Add snippet</string>
     <string name="toolbar_snippet_label">Label</string>
     <string name="toolbar_snippet_command">Command</string>
+
+    <!-- i18n sweep #210 -->
+    <string name="toolbar_snippet_title">المقتطفات</string>
+    <string name="toolbar_snippet_empty">لا توجد مقتطفات بعد. أضِف مفاتيح مخصصة إلى شريط الأدوات، أو اضغط + أعلاه.</string>
+    <string name="toolbar_snippet_empty_filtered">لا توجد مقتطفات مطابقة.</string>
+    <string name="toolbar_snippet_label_placeholder">مثال: نشر، إعادة تشغيل</string>
+    <string name="toolbar_keyboard_standard_desc">لوحة مفاتيح قياسية (الإدخال الصوتي والاقتراحات والتصحيح التلقائي مفعّلة)</string>
+    <string name="toolbar_keyboard_secure_desc">لوحة مفاتيح آمنة (بدون اقتراحات، بدون تصحيح تلقائي)</string>
+    <string name="toolbar_attach_desc">إرفاق ملف للإرسال إلى الجهاز البعيد</string>
+    <string name="toolbar_presets_label">الإعدادات المسبقة</string>
+    <string name="toolbar_custom_key_label_placeholder">مثال: ^C, Paste</string>
 </resources>

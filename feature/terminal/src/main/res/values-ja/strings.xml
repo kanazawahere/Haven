@@ -78,4 +78,39 @@
 
     <string name="terminal_enter_fullscreen">全画面表示にする</string>
     <string name="terminal_exit_fullscreen">全画面表示を終了</string>
+
+    <!-- i18n sweep #210 -->
+    <string name="terminal_link_open_failed">このリンクを開けるアプリがありません</string>
+    <string name="terminal_link_scheme_blocked">ブロックされたリンク（未対応のスキーム）</string>
+    <string name="terminal_local_vnc_failed">ローカルデスクトップを起動できませんでした</string>
+    <string name="terminal_attach_title">添付</string>
+    <string name="terminal_attach_send_file">ファイルを送信</string>
+    <string name="terminal_attach_send_file_desc">リモートにアップロードしてパスを貼り付け</string>
+    <string name="terminal_attach_scan_camera">コードをスキャン（カメラ）</string>
+    <string name="terminal_attach_scan_camera_desc">QR コードまたはバーコードを撮影して内容を貼り付け</string>
+    <string name="terminal_attach_scan_gallery">コードをスキャン（フォト）</string>
+    <string name="terminal_attach_scan_gallery_desc">QR コードまたはバーコードの写真を選択して内容を貼り付け</string>
+    <string name="terminal_attach_ocr_camera">テキストを認識（カメラ）</string>
+    <string name="terminal_attach_ocr_camera_desc">印刷テキストを撮影して検出内容を貼り付け</string>
+    <string name="terminal_attach_ocr_gallery">テキストを認識（フォト）</string>
+    <string name="terminal_attach_ocr_gallery_desc">印刷テキストの写真を選択して検出内容を貼り付け</string>
+    <string name="terminal_scan_no_code">画像にコードが検出されませんでした</string>
+    <string name="terminal_scan_no_text">画像にテキストが検出されませんでした</string>
+    <string name="terminal_scan_failed">スキャン失敗: %s</string>
+    <string name="terminal_scan_no_camera">カメラアプリがありません</string>
+    <string name="terminal_selection_copy">コピー</string>
+    <string name="terminal_selection_paste">貼り付け</string>
+    <string name="terminal_selection_open">開く</string>
+    <string name="terminal_selection_copied">コピーしました</string>
+    <string name="terminal_selection_no_url">URL が検出されませんでした</string>
+    <string name="terminal_selection_anchor_start">開始</string>
+    <string name="terminal_selection_anchor_end">終了</string>
+    <string name="terminal_selection_up">上</string>
+    <string name="terminal_selection_down">下</string>
+    <string name="terminal_selection_left">左</string>
+    <string name="terminal_selection_right">右</string>
+    <string name="terminal_selection_cancel">キャンセル</string>
+    <string name="terminal_vnc_depth_24bit">24 ビットカラー（最高品質）</string>
+    <string name="terminal_vnc_depth_16bit">16 ビットカラー（高速）</string>
+    <string name="terminal_vnc_depth_256">256 色（最小帯域幅）</string>
 </resources>

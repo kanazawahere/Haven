@@ -20,4 +20,15 @@
     <string name="toolbar_snippet_dialog_title">Add snippet</string>
     <string name="toolbar_snippet_label">Label</string>
     <string name="toolbar_snippet_command">Command</string>
+
+    <!-- #210 i18n sweep -->
+    <string name="toolbar_snippet_title">Сниппеты</string>
+    <string name="toolbar_snippet_empty">Сниппетов пока нет. Добавьте пользовательские клавиши на панель или нажмите + выше.</string>
+    <string name="toolbar_snippet_empty_filtered">Подходящих сниппетов не найдено.</string>
+    <string name="toolbar_snippet_label_placeholder">напр. Deploy, Restart</string>
+    <string name="toolbar_keyboard_standard_desc">Стандартная клавиатура (голос, подсказки, автокоррекция включены)</string>
+    <string name="toolbar_keyboard_secure_desc">Защищённая клавиатура (без подсказок, без автокоррекции)</string>
+    <string name="toolbar_attach_desc">Прикрепить файл для отправки на удалённый сервер</string>
+    <string name="toolbar_presets_label">Шаблоны</string>
+    <string name="toolbar_custom_key_label_placeholder">напр. ^C, Paste</string>
 </resources>

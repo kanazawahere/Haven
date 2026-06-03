@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rdp_status_connecting">Conectando…</string>
+    <string name="rdp_status_connecting_hint">Negociación en curso. Si se queda colgado, activa el registro detallado en Ajustes y reintenta para ver el error subyacente.</string>
+    <string name="rdp_status_waiting_for_frame">Conectado — esperando el primer fotograma…</string>
+    <string name="rdp_status_connection_failed">Conexión fallida</string>
+    <string name="rdp_action_close">Cerrar</string>
+    <string name="rdp_action_cancel">Cancelar</string>
+    <string name="rdp_action_retry">Reintentar</string>
+    <string name="rdp_cd_disconnect">Desconectar</string>
+    <string name="rdp_cd_toggle_keyboard">Mostrar/ocultar teclado</string>
+    <string name="rdp_cd_reset_zoom">Restablecer zoom</string>
+    <string name="rdp_cd_fullscreen">Pantalla completa</string>
+    <string name="rdp_cd_session_menu">Menú de sesión</string>
+    <string name="rdp_cd_exit_fullscreen">Salir de pantalla completa</string>
+    <string name="rdp_cd_input_mode_trackpad_on">Modo trackpad activado (toca para toque directo)</string>
+    <string name="rdp_cd_input_mode_direct">Modo de toque directo (toca para trackpad)</string>
+    <string name="rdp_orientation_landscape_desc">Bloquear horizontal (toca para cambiar a vertical)</string>
+    <string name="rdp_orientation_portrait_desc">Bloquear vertical (toca para cambiar a automático)</string>
+    <string name="rdp_orientation_auto_desc">Rotación automática (toca para cambiar a horizontal)</string>
+</resources>

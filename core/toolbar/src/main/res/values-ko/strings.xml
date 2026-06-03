@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="toolbar_add_custom_key">사용자 지정 키 추가</string>
+    <string name="toolbar_toggle_keyboard">키보드 전환</string>
+    <string name="toolbar_reorder_keys">도구 모음 키 순서 변경</string>
+    <string name="toolbar_done_reordering">순서 변경 완료</string>
+    <string name="toolbar_vnc_desktop">VNC 데스크톱</string>
+    <string name="toolbar_settings">도구 모음 설정</string>
+    <string name="toolbar_custom_key_dialog_title">사용자 지정 키 추가</string>
+    <string name="toolbar_custom_key_label">라벨</string>
+    <string name="toolbar_custom_key_sequence">시퀀스</string>
+    <string name="toolbar_custom_key_add">추가</string>
+    <string name="toolbar_custom_key_cancel">취소</string>
+    <string name="toolbar_snippet_add">스니펫 추가</string>
+    <string name="toolbar_snippet_search">스니펫 검색…</string>
+    <string name="toolbar_snippet_delete">삭제</string>
+    <string name="toolbar_snippet_dialog_title">스니펫 추가</string>
+    <string name="toolbar_snippet_label">라벨</string>
+    <string name="toolbar_snippet_command">명령</string>
+    <string name="toolbar_snippet_title">스니펫</string>
+    <string name="toolbar_snippet_empty">스니펫이 없습니다. 도구 모음에 사용자 지정 키를 추가하거나 위의 +를 누르세요.</string>
+    <string name="toolbar_snippet_empty_filtered">일치하는 스니펫이 없습니다.</string>
+    <string name="toolbar_snippet_label_placeholder">예: Deploy, Restart</string>
+    <string name="toolbar_keyboard_standard_desc">기본 키보드 (음성, 추천, 자동 교정 켜짐)</string>
+    <string name="toolbar_keyboard_secure_desc">보안 키보드 (추천 없음, 자동 교정 없음)</string>
+    <string name="toolbar_attach_desc">원격으로 보낼 파일 첨부</string>
+    <string name="toolbar_presets_label">프리셋</string>
+    <string name="toolbar_custom_key_label_placeholder">예: ^C, Paste</string>
+</resources>

@@ -243,4 +243,43 @@
     <string name="sftp_filter_title">Filters</string>
     <string name="sftp_filter_rotation">Rotation</string>
 
+    <!-- i18n sweep #210 -->
+    <string name="sftp_open_with">इससे खोलें…</string>
+    <string name="sftp_saved_sync_label">सहेजा गया configuration</string>
+    <string name="sftp_saved_sync_pick">सहेजा गया configuration चुनें</string>
+    <string name="sftp_saved_sync_save">सहेजें</string>
+    <string name="sftp_saved_sync_save_as">इस रूप में सहेजें…</string>
+    <string name="sftp_saved_sync_save_as_title">Sync configuration सहेजें</string>
+    <string name="sftp_saved_sync_name">नाम</string>
+    <string name="sftp_attach_choose_folder">%1$s के लिए फ़ोल्डर चुनें</string>
+    <string name="sftp_attach_pick_profile">उपयोग के लिए कनेक्टेड profile चुनें</string>
+    <string name="sftp_attach_local_no_upload">रिमोट profile चुनें — local uploads नहीं ले सकता</string>
+    <string name="sftp_attach_will_upload_into">इसमें upload होगा: %1$s</string>
+    <string name="sftp_attach_sending">%1$s भेजा जा रहा है…</string>
+    <string name="sftp_storage_permission_title">Storage access आवश्यक</string>
+    <string name="sftp_storage_permission_body">Local files तक पहुँच देने के लिए टैप करें — media features, browsing, और transfers के लिए यह अनुमति ज़रूरी है।</string>
+    <string name="sftp_paste_unfinished">अधूरा paste</string>
+    <string name="sftp_agent_chip">Agent</string>
+    <string name="sftp_convert_dest_downloads">Downloads (यह डिवाइस)</string>
+    <string name="sftp_convert_dest_same_folder_local">Source के समान फ़ोल्डर</string>
+    <string name="sftp_convert_dest_same_folder_cloud">Cloud पर वापस (समान फ़ोल्डर)</string>
+    <string name="sftp_convert_dest_same_folder_server">Server पर वापस (समान फ़ोल्डर)</string>
+    <string name="sftp_convert_download_first">पहले download करें</string>
+    <string name="sftp_convert_download_first_on">Transcode से पहले पूरी फ़ाइल download होती है</string>
+    <string name="sftp_convert_download_first_off">Cloud से stream करता है (बड़ी files के लिए तेज़)</string>
+    <string name="sftp_preview_preparing_long">Preview तैयार हो रहा है…</string>
+    <string name="sftp_preview_fetching_cloud">☁ Cloud से fetch हो रहा है…</string>
+    <string name="sftp_preview_tap_to_refresh">रिफ़्रेश करने के लिए Preview टैप करें</string>
+    <string name="sftp_filter_mode_glob">Glob</string>
+    <string name="sftp_filter_mode_regex">Regex</string>
+    <string name="sftp_saved_file">%1$s सहेजी गई</string>
+    <string name="sftp_saved_file_to">%1$s को %2$s में सहेजा गया</string>
+    <string name="sftp_downloaded_file">%1$s download हुई</string>
+    <string name="sftp_location_downloads">Downloads</string>
+    <string name="sftp_processing_perspective">Perspective लागू हो रहा है…</string>
+    <string name="sftp_processing_crop">Crop हो रहा है…</string>
+    <string name="sftp_processing_rotate">Rotate हो रहा है…</string>
+    <string name="sftp_conflict_size_summary">मौजूदा: %1$s  ·  नई: %2$s</string>
+    <string name="sftp_conflict_resume_hint">मौजूदा फ़ाइल source से छोटी है — resume वर्तमान offset से जारी रहती है।</string>
+    <string name="sftp_conflict_apply_to_all">शेष सभी फ़ाइलों पर लागू करें</string>
 </resources>

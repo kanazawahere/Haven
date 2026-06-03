@@ -20,4 +20,15 @@
     <string name="toolbar_snippet_dialog_title">Add snippet</string>
     <string name="toolbar_snippet_label">Label</string>
     <string name="toolbar_snippet_command">Command</string>
+
+    <!-- i18n sweep #210 -->
+    <string name="toolbar_snippet_title">Trechos</string>
+    <string name="toolbar_snippet_empty">Nenhum trecho ainda. Adicione teclas personalizadas à barra ou toque em + acima.</string>
+    <string name="toolbar_snippet_empty_filtered">Nenhum trecho encontrado.</string>
+    <string name="toolbar_snippet_label_placeholder">ex. Deploy, Reiniciar</string>
+    <string name="toolbar_keyboard_standard_desc">Teclado padrão (voz, sugestões e autocorreção ativos)</string>
+    <string name="toolbar_keyboard_secure_desc">Teclado seguro (sem sugestões, sem autocorreção)</string>
+    <string name="toolbar_attach_desc">Anexar arquivo para enviar ao remoto</string>
+    <string name="toolbar_presets_label">Predefinições</string>
+    <string name="toolbar_custom_key_label_placeholder">ex. ^C, Colar</string>
 </resources>

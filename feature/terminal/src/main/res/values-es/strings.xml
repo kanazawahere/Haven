@@ -78,4 +78,39 @@
 
     <string name="terminal_enter_fullscreen">Entrar en pantalla completa</string>
     <string name="terminal_exit_fullscreen">Salir de pantalla completa</string>
+
+    <!-- i18n sweep #210 -->
+    <string name="terminal_link_open_failed">Ninguna app puede abrir este enlace</string>
+    <string name="terminal_link_scheme_blocked">Enlace bloqueado (esquema no compatible)</string>
+    <string name="terminal_local_vnc_failed">No se pudo iniciar el escritorio local</string>
+    <string name="terminal_attach_title">Adjuntar</string>
+    <string name="terminal_attach_send_file">Enviar un archivo</string>
+    <string name="terminal_attach_send_file_desc">Sube al remoto y pega su ruta</string>
+    <string name="terminal_attach_scan_camera">Escanear código (Cámara)</string>
+    <string name="terminal_attach_scan_camera_desc">Fotografía un QR o código de barras y pega su contenido</string>
+    <string name="terminal_attach_scan_gallery">Escanear código (Fotos)</string>
+    <string name="terminal_attach_scan_gallery_desc">Elige una foto de un QR o código de barras y pega su contenido</string>
+    <string name="terminal_attach_ocr_camera">Reconocer texto (Cámara)</string>
+    <string name="terminal_attach_ocr_camera_desc">Fotografía texto impreso y pega lo detectado</string>
+    <string name="terminal_attach_ocr_gallery">Reconocer texto (Fotos)</string>
+    <string name="terminal_attach_ocr_gallery_desc">Elige una foto de texto impreso y pega lo detectado</string>
+    <string name="terminal_scan_no_code">No se detectó ningún código en la imagen</string>
+    <string name="terminal_scan_no_text">No se detectó texto en la imagen</string>
+    <string name="terminal_scan_failed">Escaneo fallido: %s</string>
+    <string name="terminal_scan_no_camera">No hay app de cámara disponible</string>
+    <string name="terminal_selection_copy">Copiar</string>
+    <string name="terminal_selection_paste">Pegar</string>
+    <string name="terminal_selection_open">Abrir</string>
+    <string name="terminal_selection_copied">Copiado</string>
+    <string name="terminal_selection_no_url">No se detectó ninguna URL</string>
+    <string name="terminal_selection_anchor_start">Inicio</string>
+    <string name="terminal_selection_anchor_end">Fin</string>
+    <string name="terminal_selection_up">Arriba</string>
+    <string name="terminal_selection_down">Abajo</string>
+    <string name="terminal_selection_left">Izquierda</string>
+    <string name="terminal_selection_right">Derecha</string>
+    <string name="terminal_selection_cancel">Cancelar</string>
+    <string name="terminal_vnc_depth_24bit">Color de 24 bits (mejor calidad)</string>
+    <string name="terminal_vnc_depth_16bit">Color de 16 bits (más rápido)</string>
+    <string name="terminal_vnc_depth_256">256 colores (menor ancho de banda)</string>
 </resources>

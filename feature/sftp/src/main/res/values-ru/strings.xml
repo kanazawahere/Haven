@@ -243,4 +243,44 @@
     <string name="sftp_filter_title">Filters</string>
     <string name="sftp_filter_rotation">Rotation</string>
 
+    <!-- #210 i18n sweep -->
+    <string name="sftp_open_with">Открыть в…</string>
+    <string name="sftp_saved_sync_label">Сохранённая конфигурация</string>
+    <string name="sftp_saved_sync_pick">Выбрать сохранённую конфигурацию</string>
+    <string name="sftp_saved_sync_save">Сохранить</string>
+    <string name="sftp_saved_sync_save_as">Сохранить как…</string>
+    <string name="sftp_saved_sync_save_as_title">Сохранить конфигурацию синхронизации</string>
+    <string name="sftp_saved_sync_name">Имя</string>
+    <string name="sftp_attach_choose_folder">Выбрать папку для %1$s</string>
+    <string name="sftp_attach_pick_profile">Выберите подключённый профиль</string>
+    <string name="sftp_attach_local_no_upload">Выберите удалённый профиль — локальный не принимает загрузки</string>
+    <string name="sftp_attach_will_upload_into">Будет загружено в: %1$s</string>
+    <string name="sftp_attach_sending">Отправка %1$s…</string>
+    <string name="sftp_storage_permission_title">Требуется доступ к хранилищу</string>
+    <string name="sftp_storage_permission_body">Нажмите для предоставления доступа к локальным файлам — для медиафункций, просмотра и передачи нужно это разрешение.</string>
+    <string name="sftp_paste_unfinished">Незавершённая вставка</string>
+    <string name="sftp_agent_chip">Агент</string>
+    <string name="sftp_convert_dest_downloads">Загрузки (это устройство)</string>
+    <string name="sftp_convert_dest_same_folder_local">Та же папка, что и источник</string>
+    <string name="sftp_convert_dest_same_folder_cloud">Обратно в облако (та же папка)</string>
+    <string name="sftp_convert_dest_same_folder_server">Обратно на сервер (та же папка)</string>
+    <string name="sftp_convert_download_first">Сначала скачать</string>
+    <string name="sftp_convert_download_first_on">Загружает весь файл перед перекодированием</string>
+    <string name="sftp_convert_download_first_off">Поток из облака (быстрее для больших файлов)</string>
+    <string name="sftp_preview_preparing_long">Подготовка предпросмотра…</string>
+    <string name="sftp_preview_fetching_cloud">☁ Загрузка из облака…</string>
+    <string name="sftp_preview_tap_to_refresh">Нажмите «Предпросмотр» для обновления</string>
+    <string name="sftp_filter_mode_glob">Glob</string>
+    <string name="sftp_filter_mode_regex">Regex</string>
+    <string name="sftp_saved_file">Сохранён %1$s</string>
+    <string name="sftp_saved_file_to">%1$s сохранён в %2$s</string>
+    <string name="sftp_downloaded_file">Скачан %1$s</string>
+    <string name="sftp_location_downloads">Загрузки</string>
+    <string name="sftp_processing_perspective">Применение перспективы…</string>
+    <string name="sftp_processing_crop">Обрезка…</string>
+    <string name="sftp_processing_rotate">Поворот…</string>
+    <string name="sftp_conflict_size_summary">Существующий: %1$s  ·  Новый: %2$s</string>
+    <string name="sftp_conflict_resume_hint">Существующий файл меньше источника — возобновление продолжится с текущего смещения.</string>
+    <string name="sftp_conflict_apply_to_all">Применить ко всем оставшимся файлам</string>
+
 </resources>

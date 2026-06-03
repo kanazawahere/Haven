@@ -17,4 +17,15 @@
     <string name="toolbar_snippet_dialog_title">添加片段</string>
     <string name="toolbar_snippet_label">标签</string>
     <string name="toolbar_snippet_command">命令</string>
+
+    <!-- i18n sweep #210 -->
+    <string name="toolbar_snippet_title">片段</string>
+    <string name="toolbar_snippet_empty">暂无片段。向工具栏添加自定义按键，或点击上方的 +。</string>
+    <string name="toolbar_snippet_empty_filtered">无匹配片段。</string>
+    <string name="toolbar_snippet_label_placeholder">例如 Deploy、Restart</string>
+    <string name="toolbar_keyboard_standard_desc">标准键盘（开启语音、建议和自动纠正）</string>
+    <string name="toolbar_keyboard_secure_desc">安全键盘（无建议，无自动纠正）</string>
+    <string name="toolbar_attach_desc">附加文件发送到远程</string>
+    <string name="toolbar_presets_label">预设</string>
+    <string name="toolbar_custom_key_label_placeholder">例如 ^C、Paste</string>
 </resources>

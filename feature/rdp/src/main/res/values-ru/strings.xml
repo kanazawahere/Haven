@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rdp_status_connecting">Подключение…</string>
+    <string name="rdp_status_connecting_hint">Выполняется рукопожатие. Если завис, включите подробный журнал подключений в Настройках и повторите попытку, чтобы увидеть причину ошибки.</string>
+    <string name="rdp_status_waiting_for_frame">Подключено — ожидание первого кадра…</string>
+    <string name="rdp_status_connection_failed">Ошибка подключения</string>
+    <string name="rdp_action_close">Закрыть</string>
+    <string name="rdp_action_cancel">Отмена</string>
+    <string name="rdp_action_retry">Повторить</string>
+    <string name="rdp_cd_disconnect">Отключить</string>
+    <string name="rdp_cd_toggle_keyboard">Показать/скрыть клавиатуру</string>
+    <string name="rdp_cd_reset_zoom">Сбросить масштаб</string>
+    <string name="rdp_cd_fullscreen">Полный экран</string>
+    <string name="rdp_cd_session_menu">Меню сессии</string>
+    <string name="rdp_cd_exit_fullscreen">Выйти из полного экрана</string>
+    <string name="rdp_cd_input_mode_trackpad_on">Режим трекпада включён (нажмите для прямого касания)</string>
+    <string name="rdp_cd_input_mode_direct">Режим прямого касания (нажмите для трекпада)</string>
+    <string name="rdp_orientation_landscape_desc">Заблокировать альбомную (нажмите для переключения на портретную)</string>
+    <string name="rdp_orientation_portrait_desc">Заблокировать портретную (нажмите для переключения на авто)</string>
+    <string name="rdp_orientation_auto_desc">Авто-поворот (нажмите для переключения на альбомную)</string>
+</resources>

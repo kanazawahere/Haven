@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- i18n sweep #210 -->
+    <string name="vnc_placeholder_title">VNC</string>
+    <string name="vnc_placeholder_hint">Verbindung im Tab „Verbindungen" hinzufügen</string>
+    <string name="vnc_action_close">Schließen</string>
+    <string name="vnc_action_retry">Erneut versuchen</string>
+    <string name="vnc_bandwidth_suggestion">Langsame Verbindung — für bessere Performance auf 256 Farben wechseln?</string>
+    <string name="vnc_action_switch">Wechseln</string>
+    <string name="vnc_action_dismiss">Schließen</string>
+    <string name="vnc_cd_disconnect">Trennen</string>
+    <string name="vnc_cd_toggle_keyboard">Tastatur ein-/ausblenden</string>
+    <string name="vnc_cd_background_to_edge">Hintergrund als Rand-Symbol</string>
+    <string name="vnc_cd_picture_in_picture">Bild-in-Bild</string>
+    <string name="vnc_cd_reset_zoom">Zoom zurücksetzen</string>
+    <string name="vnc_cd_fullscreen">Vollbild</string>
+    <string name="vnc_cd_session_menu">Sitzungsmenü</string>
+    <string name="vnc_cd_exit_fullscreen">Vollbild beenden</string>
+    <string name="vnc_cd_input_mode_trackpad_on">Trackpad-Modus aktiv (Tippen für direkte Berührung)</string>
+    <string name="vnc_cd_input_mode_direct">Direktberührungs-Modus (Tippen für Trackpad)</string>
+    <string name="vnc_orientation_landscape_desc">Querformat sperren (Tippen zum Wechsel in Hochformat)</string>
+    <string name="vnc_orientation_portrait_desc">Hochformat sperren (Tippen zum Wechsel in Automatik)</string>
+    <string name="vnc_orientation_auto_desc">Automatisch drehen (Tippen zum Wechsel in Querformat)</string>
+</resources>

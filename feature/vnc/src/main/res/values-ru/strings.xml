@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vnc_placeholder_title">VNC</string>
+    <string name="vnc_placeholder_hint">Добавьте подключение на вкладке «Подключения»</string>
+    <string name="vnc_action_close">Закрыть</string>
+    <string name="vnc_action_retry">Повторить</string>
+    <string name="vnc_bandwidth_suggestion">Медленное соединение — переключиться на 256 цветов для приемлемой скорости?</string>
+    <string name="vnc_action_switch">Переключить</string>
+    <string name="vnc_action_dismiss">Закрыть</string>
+    <string name="vnc_cd_disconnect">Отключить</string>
+    <string name="vnc_cd_toggle_keyboard">Показать/скрыть клавиатуру</string>
+    <string name="vnc_cd_background_to_edge">На фон (значок у края)</string>
+    <string name="vnc_cd_picture_in_picture">Картинка в картинке</string>
+    <string name="vnc_cd_reset_zoom">Сбросить масштаб</string>
+    <string name="vnc_cd_fullscreen">Полный экран</string>
+    <string name="vnc_cd_session_menu">Меню сессии</string>
+    <string name="vnc_cd_exit_fullscreen">Выйти из полного экрана</string>
+    <string name="vnc_cd_input_mode_trackpad_on">Режим трекпада включён (нажмите для прямого касания)</string>
+    <string name="vnc_cd_input_mode_direct">Режим прямого касания (нажмите для трекпада)</string>
+    <string name="vnc_orientation_landscape_desc">Заблокировать альбомную (нажмите для переключения на портретную)</string>
+    <string name="vnc_orientation_portrait_desc">Заблокировать портретную (нажмите для переключения на авто)</string>
+    <string name="vnc_orientation_auto_desc">Авто-поворот (нажмите для переключения на альбомную)</string>
+</resources>

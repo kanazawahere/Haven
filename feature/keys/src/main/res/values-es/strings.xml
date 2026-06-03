@@ -154,4 +154,13 @@
     <string name="keys_fido_touch_nfc_title">Mantén tu llave de seguridad</string>
     <string name="keys_fido_touch_nfc_body">Mantén la llave de seguridad contra la parte trasera del dispositivo durante dos segundos. Retirarla antes cancela el intercambio.</string>
     <string name="keys_fido_cancel_hint">Permanece abierto hasta que la llave de seguridad responda.</string>
+
+    <!-- i18n sweep #210 -->
+    <string name="keys_export_certificate">Exportar certificado</string>
+    <string name="keys_totp_section_header">Autenticador (TOTP) · %1$d</string>
+    <string name="keys_totp_delete_desc">Eliminar autenticador</string>
+    <string name="keys_totp_scan_qr">Escanear QR del autenticador (TOTP)</string>
+    <string name="keys_totp_scan_qr_hint">Elige una imagen con un código QR otpauth://</string>
+    <string name="keys_totp_paste">Agregar autenticador desde portapapeles (TOTP)</string>
+    <string name="keys_totp_paste_hint">Pega un URI otpauth:// o un secreto en base32</string>
 </resources>

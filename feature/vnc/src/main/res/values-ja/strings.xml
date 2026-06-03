@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- i18n sweep #210 -->
+    <string name="vnc_placeholder_title">VNC</string>
+    <string name="vnc_placeholder_hint">接続タブで接続を追加してください</string>
+    <string name="vnc_action_close">閉じる</string>
+    <string name="vnc_action_retry">再試行</string>
+    <string name="vnc_bandwidth_suggestion">接続が遅い — 使えるパフォーマンスのために 256 色に切り替えますか？</string>
+    <string name="vnc_action_switch">切り替え</string>
+    <string name="vnc_action_dismiss">閉じる</string>
+    <string name="vnc_cd_disconnect">切断</string>
+    <string name="vnc_cd_toggle_keyboard">キーボードを切り替え</string>
+    <string name="vnc_cd_background_to_edge">背景をエッジアイコンに</string>
+    <string name="vnc_cd_picture_in_picture">ピクチャインピクチャ</string>
+    <string name="vnc_cd_reset_zoom">ズームをリセット</string>
+    <string name="vnc_cd_fullscreen">全画面</string>
+    <string name="vnc_cd_session_menu">セッションメニュー</string>
+    <string name="vnc_cd_exit_fullscreen">全画面を終了</string>
+    <string name="vnc_cd_input_mode_trackpad_on">トラックパッドモード オン（タップでダイレクトタッチ）</string>
+    <string name="vnc_cd_input_mode_direct">ダイレクトタッチモード（タップでトラックパッド）</string>
+    <string name="vnc_orientation_landscape_desc">横向きにロック（タップで縦向きに切替）</string>
+    <string name="vnc_orientation_portrait_desc">縦向きにロック（タップで自動回転に切替）</string>
+    <string name="vnc_orientation_auto_desc">自動回転（タップで横向きに切替）</string>
+</resources>

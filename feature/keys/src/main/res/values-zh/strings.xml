@@ -156,4 +156,13 @@
     <string name="keys_fido_touch_nfc_title">按住您的安全密钥</string>
     <string name="keys_fido_touch_nfc_body">将安全密钥贴在设备背面保持两秒。过早移开会中止交换。</string>
     <string name="keys_fido_cancel_hint">在安全密钥响应之前保持打开。</string>
+
+    <!-- i18n sweep #210 -->
+    <string name="keys_export_certificate">导出证书</string>
+    <string name="keys_totp_section_header">身份验证器（TOTP）· %1$d</string>
+    <string name="keys_totp_delete_desc">删除身份验证器</string>
+    <string name="keys_totp_scan_qr">扫描身份验证器 QR（TOTP）</string>
+    <string name="keys_totp_scan_qr_hint">选取含有 otpauth:// QR 码的图片</string>
+    <string name="keys_totp_paste">从剪贴板添加身份验证器（TOTP）</string>
+    <string name="keys_totp_paste_hint">粘贴 otpauth:// URI 或 base32 密钥</string>
 </resources>

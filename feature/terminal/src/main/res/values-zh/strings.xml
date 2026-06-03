@@ -78,4 +78,39 @@
 
     <string name="terminal_enter_fullscreen">进入全屏</string>
     <string name="terminal_exit_fullscreen">退出全屏</string>
+
+    <!-- i18n sweep #210 -->
+    <string name="terminal_link_open_failed">没有应用可以打开此链接</string>
+    <string name="terminal_link_scheme_blocked">已拦截的链接（不支持的协议）</string>
+    <string name="terminal_local_vnc_failed">无法启动本地桌面</string>
+    <string name="terminal_attach_title">附加</string>
+    <string name="terminal_attach_send_file">发送文件</string>
+    <string name="terminal_attach_send_file_desc">上传到远程并粘贴其路径</string>
+    <string name="terminal_attach_scan_camera">扫描码（相机）</string>
+    <string name="terminal_attach_scan_camera_desc">拍摄 QR 码或条形码并粘贴其内容</string>
+    <string name="terminal_attach_scan_gallery">扫描码（相册）</string>
+    <string name="terminal_attach_scan_gallery_desc">从相册选取含 QR 码或条形码的图片并粘贴其内容</string>
+    <string name="terminal_attach_ocr_camera">识别文字（相机）</string>
+    <string name="terminal_attach_ocr_camera_desc">拍摄印刷文字并粘贴识别结果</string>
+    <string name="terminal_attach_ocr_gallery">识别文字（相册）</string>
+    <string name="terminal_attach_ocr_gallery_desc">从相册选取印刷文字图片并粘贴识别结果</string>
+    <string name="terminal_scan_no_code">图片中未检测到码</string>
+    <string name="terminal_scan_no_text">图片中未检测到文字</string>
+    <string name="terminal_scan_failed">扫描失败：%s</string>
+    <string name="terminal_scan_no_camera">无可用相机应用</string>
+    <string name="terminal_selection_copy">复制</string>
+    <string name="terminal_selection_paste">粘贴</string>
+    <string name="terminal_selection_open">打开</string>
+    <string name="terminal_selection_copied">已复制</string>
+    <string name="terminal_selection_no_url">未检测到 URL</string>
+    <string name="terminal_selection_anchor_start">起点</string>
+    <string name="terminal_selection_anchor_end">终点</string>
+    <string name="terminal_selection_up">上</string>
+    <string name="terminal_selection_down">下</string>
+    <string name="terminal_selection_left">左</string>
+    <string name="terminal_selection_right">右</string>
+    <string name="terminal_selection_cancel">取消</string>
+    <string name="terminal_vnc_depth_24bit">24 位色彩（最佳质量）</string>
+    <string name="terminal_vnc_depth_16bit">16 位色彩（更快）</string>
+    <string name="terminal_vnc_depth_256">256 色（最低带宽）</string>
 </resources>

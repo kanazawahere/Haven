@@ -243,4 +243,44 @@
     <string name="sftp_filter_title">Filters</string>
     <string name="sftp_filter_rotation">Rotation</string>
 
+    <!-- i18n sweep #210 -->
+    <string name="sftp_open_with">এই দিয়ে খুলুন…</string>
+    <string name="sftp_saved_sync_label">সংরক্ষিত কনফিগারেশন</string>
+    <string name="sftp_saved_sync_pick">একটি সংরক্ষিত কনফিগারেশন বেছে নিন</string>
+    <string name="sftp_saved_sync_save">সংরক্ষণ করুন</string>
+    <string name="sftp_saved_sync_save_as">এভাবে সংরক্ষণ করুন…</string>
+    <string name="sftp_saved_sync_save_as_title">Sync কনফিগারেশন সংরক্ষণ করুন</string>
+    <string name="sftp_saved_sync_name">নাম</string>
+    <string name="sftp_attach_choose_folder">%1$s-এর জন্য ফোল্ডার বেছে নিন</string>
+    <string name="sftp_attach_pick_profile">ব্যবহার করতে একটি সংযুক্ত প্রোফাইল বেছে নিন</string>
+    <string name="sftp_attach_local_no_upload">রিমোট প্রোফাইল বেছে নিন — local আপলোড গ্রহণ করতে পারে না</string>
+    <string name="sftp_attach_will_upload_into">আপলোড হবে: %1$s</string>
+    <string name="sftp_attach_sending">%1$s পাঠানো হচ্ছে…</string>
+    <string name="sftp_storage_permission_title">Storage অ্যাক্সেস প্রয়োজন</string>
+    <string name="sftp_storage_permission_body">স্থানীয় ফাইলে অ্যাক্সেস দিতে ট্যাপ করুন — মিডিয়া সুবিধা, ব্রাউজিং ও ট্রান্সফারের জন্য এই অনুমতি দরকার।</string>
+    <string name="sftp_paste_unfinished">অসম্পূর্ণ paste</string>
+    <string name="sftp_agent_chip">Agent</string>
+    <string name="sftp_convert_dest_downloads">Downloads (এই ডিভাইস)</string>
+    <string name="sftp_convert_dest_same_folder_local">উৎসের একই ফোল্ডারে</string>
+    <string name="sftp_convert_dest_same_folder_cloud">ক্লাউডে ফেরত (একই ফোল্ডার)</string>
+    <string name="sftp_convert_dest_same_folder_server">সার্ভারে ফেরত (একই ফোল্ডার)</string>
+    <string name="sftp_convert_download_first">আগে ডাউনলোড করুন</string>
+    <string name="sftp_convert_download_first_on">transcoding-এর আগে পুরো ফাইল ডাউনলোড করে</string>
+    <string name="sftp_convert_download_first_off">ক্লাউড থেকে stream করে (বড় ফাইলের জন্য দ্রুত)</string>
+    <string name="sftp_preview_preparing_long">প্রিভিউ প্রস্তুত হচ্ছে…</string>
+    <string name="sftp_preview_fetching_cloud">☁ ক্লাউড থেকে আনা হচ্ছে…</string>
+    <string name="sftp_preview_tap_to_refresh">রিফ্রেশ করতে Preview ট্যাপ করুন</string>
+    <string name="sftp_filter_mode_glob">Glob</string>
+    <string name="sftp_filter_mode_regex">Regex</string>
+    <string name="sftp_saved_file">%1$s সংরক্ষিত হয়েছে</string>
+    <string name="sftp_saved_file_to">%1$s সংরক্ষিত হয়েছে %2$s-এ</string>
+    <string name="sftp_downloaded_file">%1$s ডাউনলোড হয়েছে</string>
+    <string name="sftp_location_downloads">Downloads</string>
+    <string name="sftp_processing_perspective">Perspective প্রয়োগ হচ্ছে…</string>
+    <string name="sftp_processing_crop">ক্রপ হচ্ছে…</string>
+    <string name="sftp_processing_rotate">ঘোরানো হচ্ছে…</string>
+    <string name="sftp_conflict_size_summary">বিদ্যমান: %1$s  ·  নতুন: %2$s</string>
+    <string name="sftp_conflict_resume_hint">বিদ্যমান ফাইল উৎসের চেয়ে ছোট — resume বর্তমান offset থেকে চালিয়ে যায়।</string>
+    <string name="sftp_conflict_apply_to_all">বাকি সব ফাইলে প্রয়োগ করুন</string>
 </resources>
+

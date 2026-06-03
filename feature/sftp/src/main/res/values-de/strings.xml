@@ -243,4 +243,44 @@
     <string name="sftp_filter_title">Filters</string>
     <string name="sftp_filter_rotation">Rotation</string>
 
+    <!-- i18n sweep #210 -->
+    <string name="sftp_open_with">Öffnen mit…</string>
+    <string name="sftp_saved_sync_label">Gespeicherte Konfiguration</string>
+    <string name="sftp_saved_sync_pick">Gespeicherte Konfiguration auswählen</string>
+    <string name="sftp_saved_sync_save">Speichern</string>
+    <string name="sftp_saved_sync_save_as">Speichern unter…</string>
+    <string name="sftp_saved_sync_save_as_title">Sync-Konfiguration speichern</string>
+    <string name="sftp_saved_sync_name">Name</string>
+    <string name="sftp_attach_choose_folder">Ordner für %1$s auswählen</string>
+    <string name="sftp_attach_pick_profile">Verbundenes Profil auswählen</string>
+    <string name="sftp_attach_local_no_upload">Remote-Profil auswählen — lokal können keine Uploads empfangen werden</string>
+    <string name="sftp_attach_will_upload_into">Wird hochgeladen in: %1$s</string>
+    <string name="sftp_attach_sending">%1$s wird gesendet…</string>
+    <string name="sftp_storage_permission_title">Speicherzugriff erforderlich</string>
+    <string name="sftp_storage_permission_body">Tippen, um Zugriff auf lokale Dateien zu gewähren — Medienfunktionen, Durchsuchen und Übertragungen benötigen diese Berechtigung.</string>
+    <string name="sftp_paste_unfinished">Unvollständiges Einfügen</string>
+    <string name="sftp_agent_chip">Agent</string>
+    <string name="sftp_convert_dest_downloads">Downloads (dieses Gerät)</string>
+    <string name="sftp_convert_dest_same_folder_local">Gleicher Ordner wie Quelle</string>
+    <string name="sftp_convert_dest_same_folder_cloud">Zurück zur Cloud (gleicher Ordner)</string>
+    <string name="sftp_convert_dest_same_folder_server">Zurück zum Server (gleicher Ordner)</string>
+    <string name="sftp_convert_download_first">Zuerst herunterladen</string>
+    <string name="sftp_convert_download_first_on">Lädt die gesamte Datei vor der Transcodierung herunter</string>
+    <string name="sftp_convert_download_first_off">Streamt aus der Cloud (schneller bei großen Dateien)</string>
+    <string name="sftp_preview_preparing_long">Vorschau wird vorbereitet…</string>
+    <string name="sftp_preview_fetching_cloud">☁ Wird aus der Cloud abgerufen…</string>
+    <string name="sftp_preview_tap_to_refresh">Vorschau antippen zum Aktualisieren</string>
+    <string name="sftp_filter_mode_glob">Glob</string>
+    <string name="sftp_filter_mode_regex">Regex</string>
+    <string name="sftp_saved_file">%1$s gespeichert</string>
+    <string name="sftp_saved_file_to">%1$s gespeichert in %2$s</string>
+    <string name="sftp_downloaded_file">%1$s heruntergeladen</string>
+    <string name="sftp_location_downloads">Downloads</string>
+    <string name="sftp_processing_perspective">Perspektive wird angewendet…</string>
+    <string name="sftp_processing_crop">Wird zugeschnitten…</string>
+    <string name="sftp_processing_rotate">Wird gedreht…</string>
+    <string name="sftp_conflict_size_summary">Vorhanden: %1$s  ·  Neu: %2$s</string>
+    <string name="sftp_conflict_resume_hint">Die vorhandene Datei ist kleiner als die Quelle — Fortsetzen fährt ab dem aktuellen Offset fort.</string>
+    <string name="sftp_conflict_apply_to_all">Auf alle verbleibenden Dateien anwenden</string>
+
 </resources>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vnc_placeholder_title">VNC</string>
+    <string name="vnc_placeholder_hint">연결 탭에서 연결을 추가하세요</string>
+    <string name="vnc_action_close">닫기</string>
+    <string name="vnc_action_retry">재시도</string>
+    <string name="vnc_bandwidth_suggestion">느린 연결 — 성능 향상을 위해 256색으로 전환할까요?</string>
+    <string name="vnc_action_switch">전환</string>
+    <string name="vnc_action_dismiss">닫기</string>
+    <string name="vnc_cd_disconnect">연결 해제</string>
+    <string name="vnc_cd_toggle_keyboard">키보드 전환</string>
+    <string name="vnc_cd_background_to_edge">배경을 가장자리 아이콘으로</string>
+    <string name="vnc_cd_picture_in_picture">화면 속 화면</string>
+    <string name="vnc_cd_reset_zoom">확대/축소 초기화</string>
+    <string name="vnc_cd_fullscreen">전체 화면</string>
+    <string name="vnc_cd_session_menu">세션 메뉴</string>
+    <string name="vnc_cd_exit_fullscreen">전체 화면 종료</string>
+    <string name="vnc_cd_input_mode_trackpad_on">트랙패드 모드 켜짐 (직접 터치로 전환하려면 탭)</string>
+    <string name="vnc_cd_input_mode_direct">직접 터치 모드 (트랙패드로 전환하려면 탭)</string>
+    <string name="vnc_orientation_landscape_desc">가로 고정 (세로로 전환하려면 탭)</string>
+    <string name="vnc_orientation_portrait_desc">세로 고정 (자동으로 전환하려면 탭)</string>
+    <string name="vnc_orientation_auto_desc">자동 회전 (가로로 전환하려면 탭)</string>
+</resources>

@@ -154,4 +154,13 @@
     <string name="keys_fido_touch_nfc_title">セキュリティキーを保持</string>
     <string name="keys_fido_touch_nfc_body">セキュリティキーをデバイスの背面に2秒間当てたままにしてください。早く離すと交換が中止されます。</string>
     <string name="keys_fido_cancel_hint">セキュリティキーが応答するまで開いたままになります。</string>
+
+    <!-- i18n sweep #210 -->
+    <string name="keys_export_certificate">証明書をエクスポート</string>
+    <string name="keys_totp_section_header">認証アプリ (TOTP) · %1$d</string>
+    <string name="keys_totp_delete_desc">認証アプリを削除</string>
+    <string name="keys_totp_scan_qr">認証アプリの QR をスキャン (TOTP)</string>
+    <string name="keys_totp_scan_qr_hint">otpauth:// QR コードが含まれた画像を選択</string>
+    <string name="keys_totp_paste">クリップボードから認証アプリを追加 (TOTP)</string>
+    <string name="keys_totp_paste_hint">otpauth:// URI または base32 シークレットを貼り付け</string>
 </resources>

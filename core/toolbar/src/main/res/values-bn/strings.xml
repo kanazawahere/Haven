@@ -20,4 +20,15 @@
     <string name="toolbar_snippet_dialog_title">Add snippet</string>
     <string name="toolbar_snippet_label">Label</string>
     <string name="toolbar_snippet_command">Command</string>
+
+    <!-- i18n sweep #210 -->
+    <string name="toolbar_snippet_title">Snippets</string>
+    <string name="toolbar_snippet_empty">এখনো কোনো snippet নেই। টুলবারে কাস্টম কী যোগ করুন, বা উপরে + চাপুন।</string>
+    <string name="toolbar_snippet_empty_filtered">কোনো মেলানো snippet নেই।</string>
+    <string name="toolbar_snippet_label_placeholder">যেমন Deploy, Restart</string>
+    <string name="toolbar_keyboard_standard_desc">Standard কীবোর্ড (ভয়েস, সাজেশন, autocorrect চালু)</string>
+    <string name="toolbar_keyboard_secure_desc">Secure কীবোর্ড (কোনো সাজেশন নেই, কোনো autocorrect নেই)</string>
+    <string name="toolbar_attach_desc">রিমোটে পাঠাতে ফাইল সংযুক্ত করুন</string>
+    <string name="toolbar_presets_label">Presets</string>
+    <string name="toolbar_custom_key_label_placeholder">যেমন ^C, Paste</string>
 </resources>

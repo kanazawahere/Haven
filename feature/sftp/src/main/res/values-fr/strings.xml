@@ -243,4 +243,44 @@
     <string name="sftp_filter_title">Filters</string>
     <string name="sftp_filter_rotation">Rotation</string>
 
+    <!-- i18n sweep #210 -->
+    <string name="sftp_open_with">Ouvrir avec…</string>
+    <string name="sftp_saved_sync_label">Configuration enregistrée</string>
+    <string name="sftp_saved_sync_pick">Choisir une configuration enregistrée</string>
+    <string name="sftp_saved_sync_save">Enregistrer</string>
+    <string name="sftp_saved_sync_save_as">Enregistrer sous…</string>
+    <string name="sftp_saved_sync_save_as_title">Enregistrer la configuration de synchronisation</string>
+    <string name="sftp_saved_sync_name">Nom</string>
+    <string name="sftp_attach_choose_folder">Choisir le dossier pour %1$s</string>
+    <string name="sftp_attach_pick_profile">Choisir un profil connecté</string>
+    <string name="sftp_attach_local_no_upload">Choisissez un profil distant — le local ne peut pas recevoir de téléversements</string>
+    <string name="sftp_attach_will_upload_into">Sera téléversé dans : %1$s</string>
+    <string name="sftp_attach_sending">Envoi de %1$s…</string>
+    <string name="sftp_storage_permission_title">Accès au stockage requis</string>
+    <string name="sftp_storage_permission_body">Appuyez pour autoriser l\'accès aux fichiers locaux — les fonctionnalités médias, la navigation et les transferts nécessitent cette permission.</string>
+    <string name="sftp_paste_unfinished">Collage en cours</string>
+    <string name="sftp_agent_chip">Agent</string>
+    <string name="sftp_convert_dest_downloads">Téléchargements (cet appareil)</string>
+    <string name="sftp_convert_dest_same_folder_local">Même dossier que la source</string>
+    <string name="sftp_convert_dest_same_folder_cloud">Retour dans le cloud (même dossier)</string>
+    <string name="sftp_convert_dest_same_folder_server">Retour sur le serveur (même dossier)</string>
+    <string name="sftp_convert_download_first">Télécharger d\'abord</string>
+    <string name="sftp_convert_download_first_on">Télécharge le fichier entier avant le transcodage</string>
+    <string name="sftp_convert_download_first_off">Diffuse depuis le cloud (plus rapide pour les gros fichiers)</string>
+    <string name="sftp_preview_preparing_long">Préparation de l\'aperçu…</string>
+    <string name="sftp_preview_fetching_cloud">☁ Récupération depuis le cloud…</string>
+    <string name="sftp_preview_tap_to_refresh">Appuyer sur Aperçu pour actualiser</string>
+    <string name="sftp_filter_mode_glob">Glob</string>
+    <string name="sftp_filter_mode_regex">Regex</string>
+    <string name="sftp_saved_file">%1$s enregistré</string>
+    <string name="sftp_saved_file_to">%1$s enregistré dans %2$s</string>
+    <string name="sftp_downloaded_file">%1$s téléchargé</string>
+    <string name="sftp_location_downloads">Téléchargements</string>
+    <string name="sftp_processing_perspective">Application de la perspective…</string>
+    <string name="sftp_processing_crop">Recadrage…</string>
+    <string name="sftp_processing_rotate">Rotation…</string>
+    <string name="sftp_conflict_size_summary">Existant : %1$s  ·  Nouveau : %2$s</string>
+    <string name="sftp_conflict_resume_hint">Le fichier existant est plus petit que la source — la reprise continue depuis le décalage actuel.</string>
+    <string name="sftp_conflict_apply_to_all">Appliquer à tous les fichiers restants</string>
+
 </resources>

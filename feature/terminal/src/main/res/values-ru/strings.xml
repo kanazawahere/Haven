@@ -78,4 +78,39 @@
 
     <string name="terminal_enter_fullscreen">Полноэкранный режим</string>
     <string name="terminal_exit_fullscreen">Выйти из полноэкранного режима</string>
+
+    <!-- #210 i18n sweep -->
+    <string name="terminal_link_open_failed">Нет приложения для открытия этой ссылки</string>
+    <string name="terminal_link_scheme_blocked">Заблокированная ссылка (неподдерживаемая схема)</string>
+    <string name="terminal_local_vnc_failed">Не удалось запустить локальный рабочий стол</string>
+    <string name="terminal_attach_title">Прикрепить</string>
+    <string name="terminal_attach_send_file">Отправить файл</string>
+    <string name="terminal_attach_send_file_desc">Загрузить на удалённый сервер и вставить путь</string>
+    <string name="terminal_attach_scan_camera">Сканировать код (Камера)</string>
+    <string name="terminal_attach_scan_camera_desc">Сфотографировать QR-код или штрих-код и вставить его содержимое</string>
+    <string name="terminal_attach_scan_gallery">Сканировать код (Галерея)</string>
+    <string name="terminal_attach_scan_gallery_desc">Выбрать фото с QR-кодом или штрих-кодом и вставить его содержимое</string>
+    <string name="terminal_attach_ocr_camera">Распознать текст (Камера)</string>
+    <string name="terminal_attach_ocr_camera_desc">Сфотографировать печатный текст и вставить распознанное</string>
+    <string name="terminal_attach_ocr_gallery">Распознать текст (Галерея)</string>
+    <string name="terminal_attach_ocr_gallery_desc">Выбрать фото с печатным текстом и вставить распознанное</string>
+    <string name="terminal_scan_no_code">Код в изображении не обнаружен</string>
+    <string name="terminal_scan_no_text">Текст в изображении не обнаружен</string>
+    <string name="terminal_scan_failed">Ошибка сканирования: %s</string>
+    <string name="terminal_scan_no_camera">Нет доступного приложения камеры</string>
+    <string name="terminal_selection_copy">Копировать</string>
+    <string name="terminal_selection_paste">Вставить</string>
+    <string name="terminal_selection_open">Открыть</string>
+    <string name="terminal_selection_copied">Скопировано</string>
+    <string name="terminal_selection_no_url">URL не обнаружен</string>
+    <string name="terminal_selection_anchor_start">Начало</string>
+    <string name="terminal_selection_anchor_end">Конец</string>
+    <string name="terminal_selection_up">Вверх</string>
+    <string name="terminal_selection_down">Вниз</string>
+    <string name="terminal_selection_left">Влево</string>
+    <string name="terminal_selection_right">Вправо</string>
+    <string name="terminal_selection_cancel">Отмена</string>
+    <string name="terminal_vnc_depth_24bit">24-битный цвет (наилучшее качество)</string>
+    <string name="terminal_vnc_depth_16bit">16-битный цвет (быстрее)</string>
+    <string name="terminal_vnc_depth_256">256 цветов (минимальный трафик)</string>
 </resources>

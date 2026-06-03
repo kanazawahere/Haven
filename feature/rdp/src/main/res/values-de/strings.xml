@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- i18n sweep #210 -->
+    <string name="rdp_status_connecting">Verbindung wird hergestellt…</string>
+    <string name="rdp_status_connecting_hint">Handshake läuft. Falls dies hängt, ausführliches Verbindungsprotokoll in den Einstellungen aktivieren und erneut versuchen, um den genauen Fehler zu sehen.</string>
+    <string name="rdp_status_waiting_for_frame">Verbunden — warte auf ersten Frame…</string>
+    <string name="rdp_status_connection_failed">Verbindung fehlgeschlagen</string>
+    <string name="rdp_action_close">Schließen</string>
+    <string name="rdp_action_cancel">Abbrechen</string>
+    <string name="rdp_action_retry">Erneut versuchen</string>
+    <string name="rdp_cd_disconnect">Trennen</string>
+    <string name="rdp_cd_toggle_keyboard">Tastatur ein-/ausblenden</string>
+    <string name="rdp_cd_reset_zoom">Zoom zurücksetzen</string>
+    <string name="rdp_cd_fullscreen">Vollbild</string>
+    <string name="rdp_cd_session_menu">Sitzungsmenü</string>
+    <string name="rdp_cd_exit_fullscreen">Vollbild beenden</string>
+    <string name="rdp_cd_input_mode_trackpad_on">Trackpad-Modus aktiv (Tippen für direkte Berührung)</string>
+    <string name="rdp_cd_input_mode_direct">Direktberührungs-Modus (Tippen für Trackpad)</string>
+    <string name="rdp_orientation_landscape_desc">Querformat sperren (Tippen zum Wechsel in Hochformat)</string>
+    <string name="rdp_orientation_portrait_desc">Hochformat sperren (Tippen zum Wechsel in Automatik)</string>
+    <string name="rdp_orientation_auto_desc">Automatisch drehen (Tippen zum Wechsel in Querformat)</string>
+</resources>

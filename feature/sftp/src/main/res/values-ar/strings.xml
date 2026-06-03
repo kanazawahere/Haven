@@ -243,4 +243,43 @@
     <string name="sftp_filter_title">Filters</string>
     <string name="sftp_filter_rotation">Rotation</string>
 
+    <!-- i18n sweep #210 -->
+    <string name="sftp_open_with">فتح باستخدام…</string>
+    <string name="sftp_saved_sync_label">الإعداد المحفوظ</string>
+    <string name="sftp_saved_sync_pick">اختر إعدادًا محفوظًا</string>
+    <string name="sftp_saved_sync_save">حفظ</string>
+    <string name="sftp_saved_sync_save_as">حفظ باسم…</string>
+    <string name="sftp_saved_sync_save_as_title">حفظ إعداد المزامنة</string>
+    <string name="sftp_saved_sync_name">الاسم</string>
+    <string name="sftp_attach_choose_folder">اختر مجلدًا لـ %1$s</string>
+    <string name="sftp_attach_pick_profile">اختر ملف شخصي متصل للاستخدام</string>
+    <string name="sftp_attach_local_no_upload">اختر ملفًا شخصيًا بعيدًا — المحلي لا يقبل الرفع</string>
+    <string name="sftp_attach_will_upload_into">سيُرفع إلى: %1$s</string>
+    <string name="sftp_attach_sending">جارٍ إرسال %1$s…</string>
+    <string name="sftp_storage_permission_title">مطلوب الوصول إلى التخزين</string>
+    <string name="sftp_storage_permission_body">اضغط لمنح الوصول إلى الملفات المحلية — تحتاج ميزات الوسائط والتصفح والنقل إلى هذا الإذن.</string>
+    <string name="sftp_paste_unfinished">لصق غير مكتمل</string>
+    <string name="sftp_agent_chip">وكيل</string>
+    <string name="sftp_convert_dest_downloads">التنزيلات (هذا الجهاز)</string>
+    <string name="sftp_convert_dest_same_folder_local">نفس مجلد المصدر</string>
+    <string name="sftp_convert_dest_same_folder_cloud">رجوع إلى السحابة (نفس المجلد)</string>
+    <string name="sftp_convert_dest_same_folder_server">رجوع إلى الخادم (نفس المجلد)</string>
+    <string name="sftp_convert_download_first">تنزيل أولًا</string>
+    <string name="sftp_convert_download_first_on">ينزّل الملف كاملًا قبل الترميز</string>
+    <string name="sftp_convert_download_first_off">يبثّ من السحابة (أسرع للملفات الكبيرة)</string>
+    <string name="sftp_preview_preparing_long">جارٍ تحضير المعاينة…</string>
+    <string name="sftp_preview_fetching_cloud">☁ جارٍ الجلب من السحابة…</string>
+    <string name="sftp_preview_tap_to_refresh">اضغط على معاينة للتحديث</string>
+    <string name="sftp_filter_mode_glob">Glob</string>
+    <string name="sftp_filter_mode_regex">Regex</string>
+    <string name="sftp_saved_file">تم حفظ %1$s</string>
+    <string name="sftp_saved_file_to">تم حفظ %1$s في %2$s</string>
+    <string name="sftp_downloaded_file">تم تنزيل %1$s</string>
+    <string name="sftp_location_downloads">التنزيلات</string>
+    <string name="sftp_processing_perspective">جارٍ تطبيق المنظور…</string>
+    <string name="sftp_processing_crop">جارٍ الاقتصاص…</string>
+    <string name="sftp_processing_rotate">جارٍ التدوير…</string>
+    <string name="sftp_conflict_size_summary">الموجود: %1$s  ·  الجديد: %2$s</string>
+    <string name="sftp_conflict_resume_hint">الملف الموجود أصغر من المصدر — الاستئناف يتابع من الإزاحة الحالية.</string>
+    <string name="sftp_conflict_apply_to_all">تطبيق على جميع الملفات المتبقية</string>
 </resources>

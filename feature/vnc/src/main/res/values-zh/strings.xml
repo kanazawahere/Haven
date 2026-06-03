@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- i18n sweep #210 -->
+    <string name="vnc_placeholder_title">VNC</string>
+    <string name="vnc_placeholder_hint">在连接标签页添加连接</string>
+    <string name="vnc_action_close">关闭</string>
+    <string name="vnc_action_retry">重试</string>
+    <string name="vnc_bandwidth_suggestion">连接较慢——切换到 256 色以获得可用性能？</string>
+    <string name="vnc_action_switch">切换</string>
+    <string name="vnc_action_dismiss">关闭</string>
+    <string name="vnc_cd_disconnect">断开</string>
+    <string name="vnc_cd_toggle_keyboard">切换键盘</string>
+    <string name="vnc_cd_background_to_edge">后台至边缘图标</string>
+    <string name="vnc_cd_picture_in_picture">画中画</string>
+    <string name="vnc_cd_reset_zoom">重置缩放</string>
+    <string name="vnc_cd_fullscreen">全屏</string>
+    <string name="vnc_cd_session_menu">会话菜单</string>
+    <string name="vnc_cd_exit_fullscreen">退出全屏</string>
+    <string name="vnc_cd_input_mode_trackpad_on">触控板模式已开启（点击切换为直接触摸）</string>
+    <string name="vnc_cd_input_mode_direct">直接触摸模式（点击切换为触控板）</string>
+    <string name="vnc_orientation_landscape_desc">锁定横屏（点击切换为竖屏）</string>
+    <string name="vnc_orientation_portrait_desc">锁定竖屏（点击切换为自动）</string>
+    <string name="vnc_orientation_auto_desc">自动旋转（点击切换为横屏）</string>
+</resources>

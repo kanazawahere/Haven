@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vnc_placeholder_title">VNC</string>
+    <string name="vnc_placeholder_hint">Agrega una conexión en la pestaña Conexiones</string>
+    <string name="vnc_action_close">Cerrar</string>
+    <string name="vnc_action_retry">Reintentar</string>
+    <string name="vnc_bandwidth_suggestion">Conexión lenta — ¿cambiar a 256 colores para un rendimiento usable?</string>
+    <string name="vnc_action_switch">Cambiar</string>
+    <string name="vnc_action_dismiss">Descartar</string>
+    <string name="vnc_cd_disconnect">Desconectar</string>
+    <string name="vnc_cd_toggle_keyboard">Mostrar/ocultar teclado</string>
+    <string name="vnc_cd_background_to_edge">Icono de fondo al borde</string>
+    <string name="vnc_cd_picture_in_picture">Imagen en imagen</string>
+    <string name="vnc_cd_reset_zoom">Restablecer zoom</string>
+    <string name="vnc_cd_fullscreen">Pantalla completa</string>
+    <string name="vnc_cd_session_menu">Menú de sesión</string>
+    <string name="vnc_cd_exit_fullscreen">Salir de pantalla completa</string>
+    <string name="vnc_cd_input_mode_trackpad_on">Modo trackpad activado (toca para toque directo)</string>
+    <string name="vnc_cd_input_mode_direct">Modo de toque directo (toca para trackpad)</string>
+    <string name="vnc_orientation_landscape_desc">Bloquear horizontal (toca para cambiar a vertical)</string>
+    <string name="vnc_orientation_portrait_desc">Bloquear vertical (toca para cambiar a automático)</string>
+    <string name="vnc_orientation_auto_desc">Rotación automática (toca para cambiar a horizontal)</string>
+</resources>

@@ -256,4 +256,44 @@
     <string name="sftp_preview_play5s">5초 미리보기 재생</string>
     <string name="sftp_preview_preparing">준비 중…</string>
     <string name="sftp_preview_stop">정지</string>
+
+    <!-- #210 i18n sweep -->
+    <string name="sftp_open_with">다른 앱으로 열기…</string>
+    <string name="sftp_saved_sync_label">저장된 구성</string>
+    <string name="sftp_saved_sync_pick">저장된 구성 선택</string>
+    <string name="sftp_saved_sync_save">저장</string>
+    <string name="sftp_saved_sync_save_as">다른 이름으로 저장…</string>
+    <string name="sftp_saved_sync_save_as_title">동기화 구성 저장</string>
+    <string name="sftp_saved_sync_name">이름</string>
+    <string name="sftp_attach_choose_folder">%1$s의 폴더 선택</string>
+    <string name="sftp_attach_pick_profile">사용할 연결된 프로필 선택</string>
+    <string name="sftp_attach_local_no_upload">원격 프로필을 선택하세요 — 로컬은 업로드를 받을 수 없습니다</string>
+    <string name="sftp_attach_will_upload_into">업로드 위치: %1$s</string>
+    <string name="sftp_attach_sending">%1$s 전송 중…</string>
+    <string name="sftp_storage_permission_title">저장소 접근 권한 필요</string>
+    <string name="sftp_storage_permission_body">탭하여 로컬 파일 접근 권한 부여 — 미디어 기능, 파일 탐색 및 전송에 이 권한이 필요합니다.</string>
+    <string name="sftp_paste_unfinished">완료되지 않은 붙여넣기</string>
+    <string name="sftp_agent_chip">에이전트</string>
+    <string name="sftp_convert_dest_downloads">다운로드 (이 기기)</string>
+    <string name="sftp_convert_dest_same_folder_local">원본과 같은 폴더</string>
+    <string name="sftp_convert_dest_same_folder_cloud">클라우드로 (같은 폴더)</string>
+    <string name="sftp_convert_dest_same_folder_server">서버로 (같은 폴더)</string>
+    <string name="sftp_convert_download_first">먼저 다운로드</string>
+    <string name="sftp_convert_download_first_on">트랜스코딩 전에 전체 파일을 다운로드합니다</string>
+    <string name="sftp_convert_download_first_off">클라우드에서 스트리밍 (대용량 파일에 더 빠름)</string>
+    <string name="sftp_preview_preparing_long">미리보기 준비 중…</string>
+    <string name="sftp_preview_fetching_cloud">☁ 클라우드에서 가져오는 중…</string>
+    <string name="sftp_preview_tap_to_refresh">미리보기를 탭하여 새로고침</string>
+    <string name="sftp_filter_mode_glob">Glob</string>
+    <string name="sftp_filter_mode_regex">Regex</string>
+    <string name="sftp_saved_file">%1$s 저장됨</string>
+    <string name="sftp_saved_file_to">%1$s을(를) %2$s에 저장됨</string>
+    <string name="sftp_downloaded_file">%1$s 다운로드됨</string>
+    <string name="sftp_location_downloads">다운로드</string>
+    <string name="sftp_processing_perspective">원근 적용 중…</string>
+    <string name="sftp_processing_crop">자르는 중…</string>
+    <string name="sftp_processing_rotate">회전 중…</string>
+    <string name="sftp_conflict_size_summary">기존: %1$s  ·  새 파일: %2$s</string>
+    <string name="sftp_conflict_resume_hint">기존 파일이 원본보다 작습니다 — 재개 시 현재 오프셋에서 계속됩니다.</string>
+    <string name="sftp_conflict_apply_to_all">나머지 모든 파일에 적용</string>
 </resources>

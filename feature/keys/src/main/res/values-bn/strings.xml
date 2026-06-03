@@ -154,4 +154,13 @@
     <string name="keys_fido_touch_nfc_title">আপনার সিকিউরিটি কী ধরে রাখুন</string>
     <string name="keys_fido_touch_nfc_body">সিকিউরিটি কী ডিভাইসের পিছনে দুই সেকেন্ড ধরে রাখুন। তাড়াতাড়ি সরিয়ে নিলে আদান-প্রদান বাতিল হয়ে যায়।</string>
     <string name="keys_fido_cancel_hint">সিকিউরিটি কী সাড়া না দেওয়া পর্যন্ত খোলা থাকে।</string>
+
+    <!-- i18n sweep #210 -->
+    <string name="keys_export_certificate">সার্টিফিকেট এক্সপোর্ট</string>
+    <string name="keys_totp_section_header">Authenticator (TOTP) · %1$d</string>
+    <string name="keys_totp_delete_desc">Authenticator মুছুন</string>
+    <string name="keys_totp_scan_qr">Authenticator QR স্ক্যান করুন (TOTP)</string>
+    <string name="keys_totp_scan_qr_hint">otpauth:// QR কোড সহ একটি ছবি বেছে নিন</string>
+    <string name="keys_totp_paste">ক্লিপবোর্ড থেকে authenticator যোগ করুন (TOTP)</string>
+    <string name="keys_totp_paste_hint">একটি otpauth:// URI বা base32 সিক্রেট পেস্ট করুন</string>
 </resources>

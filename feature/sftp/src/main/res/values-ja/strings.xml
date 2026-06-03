@@ -243,4 +243,43 @@
     <string name="sftp_filter_title">Filters</string>
     <string name="sftp_filter_rotation">Rotation</string>
 
+    <!-- i18n sweep #210 -->
+    <string name="sftp_open_with">他のアプリで開く…</string>
+    <string name="sftp_saved_sync_label">保存済み設定</string>
+    <string name="sftp_saved_sync_pick">保存済み設定を選択</string>
+    <string name="sftp_saved_sync_save">保存</string>
+    <string name="sftp_saved_sync_save_as">名前を付けて保存…</string>
+    <string name="sftp_saved_sync_save_as_title">同期設定を保存</string>
+    <string name="sftp_saved_sync_name">名前</string>
+    <string name="sftp_attach_choose_folder">%1$s のフォルダを選択</string>
+    <string name="sftp_attach_pick_profile">使用する接続プロファイルを選択</string>
+    <string name="sftp_attach_local_no_upload">リモートプロファイルを選択してください — ローカルはアップロードを受け付けません</string>
+    <string name="sftp_attach_will_upload_into">アップロード先: %1$s</string>
+    <string name="sftp_attach_sending">%1$s を送信中…</string>
+    <string name="sftp_storage_permission_title">ストレージアクセスが必要です</string>
+    <string name="sftp_storage_permission_body">ローカルファイルへのアクセスを許可するにはタップしてください — メディア機能、ブラウズ、転送にこの権限が必要です。</string>
+    <string name="sftp_paste_unfinished">未完了の貼り付け</string>
+    <string name="sftp_agent_chip">エージェント</string>
+    <string name="sftp_convert_dest_downloads">ダウンロード（このデバイス）</string>
+    <string name="sftp_convert_dest_same_folder_local">ソースと同じフォルダ</string>
+    <string name="sftp_convert_dest_same_folder_cloud">クラウドに戻す（同じフォルダ）</string>
+    <string name="sftp_convert_dest_same_folder_server">サーバーに戻す（同じフォルダ）</string>
+    <string name="sftp_convert_download_first">先にダウンロード</string>
+    <string name="sftp_convert_download_first_on">トランスコード前にファイル全体をダウンロードします</string>
+    <string name="sftp_convert_download_first_off">クラウドからストリーミング（大きなファイルは高速）</string>
+    <string name="sftp_preview_preparing_long">プレビューを準備中…</string>
+    <string name="sftp_preview_fetching_cloud">☁ クラウドから取得中…</string>
+    <string name="sftp_preview_tap_to_refresh">プレビューをタップして更新</string>
+    <string name="sftp_filter_mode_glob">グロブ</string>
+    <string name="sftp_filter_mode_regex">正規表現</string>
+    <string name="sftp_saved_file">%1$s を保存しました</string>
+    <string name="sftp_saved_file_to">%1$s を %2$s に保存しました</string>
+    <string name="sftp_downloaded_file">%1$s をダウンロードしました</string>
+    <string name="sftp_location_downloads">ダウンロード</string>
+    <string name="sftp_processing_perspective">パースペクティブを適用中…</string>
+    <string name="sftp_processing_crop">切り抜き中…</string>
+    <string name="sftp_processing_rotate">回転中…</string>
+    <string name="sftp_conflict_size_summary">既存: %1$s  ·  新規: %2$s</string>
+    <string name="sftp_conflict_resume_hint">既存ファイルがソースより小さい — 再開すると現在のオフセットから続きます。</string>
+    <string name="sftp_conflict_apply_to_all">残りのすべてのファイルに適用</string>
 </resources>

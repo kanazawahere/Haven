@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- i18n sweep #210 -->
+    <string name="rdp_status_connecting">Conectando…</string>
+    <string name="rdp_status_connecting_hint">Handshake em andamento. Se travar, ative o registro detalhado em Configurações e tente novamente para ver o erro subjacente.</string>
+    <string name="rdp_status_waiting_for_frame">Conectado — aguardando primeiro quadro…</string>
+    <string name="rdp_status_connection_failed">Falha na conexão</string>
+    <string name="rdp_action_close">Fechar</string>
+    <string name="rdp_action_cancel">Cancelar</string>
+    <string name="rdp_action_retry">Tentar novamente</string>
+    <string name="rdp_cd_disconnect">Desconectar</string>
+    <string name="rdp_cd_toggle_keyboard">Alternar teclado</string>
+    <string name="rdp_cd_reset_zoom">Redefinir zoom</string>
+    <string name="rdp_cd_fullscreen">Tela cheia</string>
+    <string name="rdp_cd_session_menu">Menu de sessão</string>
+    <string name="rdp_cd_exit_fullscreen">Sair da tela cheia</string>
+    <string name="rdp_cd_input_mode_trackpad_on">Modo trackpad ativado (toque para toque direto)</string>
+    <string name="rdp_cd_input_mode_direct">Modo toque direto (toque para trackpad)</string>
+    <string name="rdp_orientation_landscape_desc">Fixar paisagem (toque para retrato)</string>
+    <string name="rdp_orientation_portrait_desc">Fixar retrato (toque para automático)</string>
+    <string name="rdp_orientation_auto_desc">Rotação automática (toque para paisagem)</string>
+</resources>

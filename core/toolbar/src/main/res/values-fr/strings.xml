@@ -20,4 +20,15 @@
     <string name="toolbar_snippet_dialog_title">Add snippet</string>
     <string name="toolbar_snippet_label">Label</string>
     <string name="toolbar_snippet_command">Command</string>
+
+    <!-- i18n sweep #210 -->
+    <string name="toolbar_snippet_title">Extraits</string>
+    <string name="toolbar_snippet_empty">Aucun extrait. Ajoutez des touches personnalisées à la barre ou appuyez sur + ci-dessus.</string>
+    <string name="toolbar_snippet_empty_filtered">Aucun extrait correspondant.</string>
+    <string name="toolbar_snippet_label_placeholder">ex. Déployer, Redémarrer</string>
+    <string name="toolbar_keyboard_standard_desc">Clavier standard (voix, suggestions, correction automatique activés)</string>
+    <string name="toolbar_keyboard_secure_desc">Clavier sécurisé (sans suggestions, sans correction automatique)</string>
+    <string name="toolbar_attach_desc">Joindre un fichier à envoyer au serveur distant</string>
+    <string name="toolbar_presets_label">Modèles</string>
+    <string name="toolbar_custom_key_label_placeholder">ex. ^C, Coller</string>
 </resources>

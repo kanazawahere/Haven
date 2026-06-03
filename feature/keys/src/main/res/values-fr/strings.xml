@@ -154,4 +154,13 @@
     <string name="keys_fido_touch_nfc_title">Maintenez votre clé de sécurité</string>
     <string name="keys_fido_touch_nfc_body">Maintenez la clé de sécurité contre l\'arrière de l\'appareil pendant deux secondes. La retirer trop tôt annule l\'échange.</string>
     <string name="keys_fido_cancel_hint">Reste ouvert jusqu\'à ce que la clé de sécurité réponde.</string>
+
+    <!-- i18n sweep #210 -->
+    <string name="keys_export_certificate">Exporter le certificat</string>
+    <string name="keys_totp_section_header">Authentificateur (TOTP) · %1$d</string>
+    <string name="keys_totp_delete_desc">Supprimer l\'authentificateur</string>
+    <string name="keys_totp_scan_qr">Scanner le QR de l\'authentificateur (TOTP)</string>
+    <string name="keys_totp_scan_qr_hint">Choisissez une image contenant un QR code otpauth://</string>
+    <string name="keys_totp_paste">Ajouter un authentificateur depuis le presse-papiers (TOTP)</string>
+    <string name="keys_totp_paste_hint">Collez un URI otpauth:// ou un secret base32</string>
 </resources>

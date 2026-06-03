@@ -20,4 +20,15 @@
     <string name="toolbar_snippet_dialog_title">Add snippet</string>
     <string name="toolbar_snippet_label">Label</string>
     <string name="toolbar_snippet_command">Command</string>
+
+    <!-- i18n sweep #210 -->
+    <string name="toolbar_snippet_title">Snippets</string>
+    <string name="toolbar_snippet_empty">अभी कोई snippet नहीं। टूलबार में कस्टम कुंजियाँ जोड़ें, या ऊपर + दबाएँ।</string>
+    <string name="toolbar_snippet_empty_filtered">कोई मिलता snippet नहीं।</string>
+    <string name="toolbar_snippet_label_placeholder">उदा. Deploy, Restart</string>
+    <string name="toolbar_keyboard_standard_desc">Standard keyboard (voice, सुझाव, autocorrect चालू)</string>
+    <string name="toolbar_keyboard_secure_desc">Secure keyboard (कोई सुझाव नहीं, कोई autocorrect नहीं)</string>
+    <string name="toolbar_attach_desc">रिमोट पर भेजने के लिए फ़ाइल संलग्न करें</string>
+    <string name="toolbar_presets_label">Presets</string>
+    <string name="toolbar_custom_key_label_placeholder">उदा. ^C, Paste</string>
 </resources>

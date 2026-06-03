@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- i18n sweep #210 -->
+    <string name="rdp_status_connecting">جارٍ الاتصال…</string>
+    <string name="rdp_status_connecting_hint">المصافحة جارية. إذا توقف، فعّل تسجيل الاتصال التفصيلي في الإعدادات وأعِد المحاولة لرؤية الخطأ الأساسي.</string>
+    <string name="rdp_status_waiting_for_frame">متصل — في انتظار الإطار الأول…</string>
+    <string name="rdp_status_connection_failed">فشل الاتصال</string>
+    <string name="rdp_action_close">إغلاق</string>
+    <string name="rdp_action_cancel">إلغاء</string>
+    <string name="rdp_action_retry">إعادة المحاولة</string>
+    <string name="rdp_cd_disconnect">قطع الاتصال</string>
+    <string name="rdp_cd_toggle_keyboard">تبديل لوحة المفاتيح</string>
+    <string name="rdp_cd_reset_zoom">إعادة ضبط التكبير</string>
+    <string name="rdp_cd_fullscreen">ملء الشاشة</string>
+    <string name="rdp_cd_session_menu">قائمة الجلسة</string>
+    <string name="rdp_cd_exit_fullscreen">الخروج من ملء الشاشة</string>
+    <string name="rdp_cd_input_mode_trackpad_on">وضع لوحة التتبع مفعّل (اضغط للمس المباشر)</string>
+    <string name="rdp_cd_input_mode_direct">وضع اللمس المباشر (اضغط للوحة التتبع)</string>
+    <string name="rdp_orientation_landscape_desc">تثبيت أفقي (اضغط للتبديل إلى عمودي)</string>
+    <string name="rdp_orientation_portrait_desc">تثبيت عمودي (اضغط للتبديل إلى تلقائي)</string>
+    <string name="rdp_orientation_auto_desc">دوران تلقائي (اضغط للتبديل إلى أفقي)</string>
+</resources>

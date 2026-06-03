@@ -20,4 +20,15 @@
     <string name="toolbar_snippet_dialog_title">Add snippet</string>
     <string name="toolbar_snippet_label">Label</string>
     <string name="toolbar_snippet_command">Command</string>
+
+    <!-- i18n sweep #210 -->
+    <string name="toolbar_snippet_title">スニペット</string>
+    <string name="toolbar_snippet_empty">スニペットはまだありません。ツールバーにカスタムキーを追加するか、上の + をタップしてください。</string>
+    <string name="toolbar_snippet_empty_filtered">一致するスニペットがありません。</string>
+    <string name="toolbar_snippet_label_placeholder">例: Deploy, Restart</string>
+    <string name="toolbar_keyboard_standard_desc">標準キーボード（音声入力・候補・自動修正 オン）</string>
+    <string name="toolbar_keyboard_secure_desc">セキュアキーボード（候補なし、自動修正なし）</string>
+    <string name="toolbar_attach_desc">ファイルをリモートに送信するために添付</string>
+    <string name="toolbar_presets_label">プリセット</string>
+    <string name="toolbar_custom_key_label_placeholder">例: ^C, Paste</string>
 </resources>

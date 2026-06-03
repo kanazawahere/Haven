@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- i18n sweep #210 -->
+    <string name="rdp_status_connecting">Connexion…</string>
+    <string name="rdp_status_connecting_hint">Poignée de main en cours. Si elle se bloque, activez la journalisation détaillée dans les Paramètres et réessayez pour voir l\'erreur sous-jacente.</string>
+    <string name="rdp_status_waiting_for_frame">Connecté — en attente de la première image…</string>
+    <string name="rdp_status_connection_failed">Échec de la connexion</string>
+    <string name="rdp_action_close">Fermer</string>
+    <string name="rdp_action_cancel">Annuler</string>
+    <string name="rdp_action_retry">Réessayer</string>
+    <string name="rdp_cd_disconnect">Déconnecter</string>
+    <string name="rdp_cd_toggle_keyboard">Afficher/masquer le clavier</string>
+    <string name="rdp_cd_reset_zoom">Réinitialiser le zoom</string>
+    <string name="rdp_cd_fullscreen">Plein écran</string>
+    <string name="rdp_cd_session_menu">Menu de session</string>
+    <string name="rdp_cd_exit_fullscreen">Quitter le plein écran</string>
+    <string name="rdp_cd_input_mode_trackpad_on">Mode pavé tactile activé (appuyer pour toucher direct)</string>
+    <string name="rdp_cd_input_mode_direct">Mode toucher direct (appuyer pour pavé tactile)</string>
+    <string name="rdp_orientation_landscape_desc">Bloquer en paysage (appuyer pour passer en portrait)</string>
+    <string name="rdp_orientation_portrait_desc">Bloquer en portrait (appuyer pour passer en automatique)</string>
+    <string name="rdp_orientation_auto_desc">Rotation automatique (appuyer pour passer en paysage)</string>
+</resources>

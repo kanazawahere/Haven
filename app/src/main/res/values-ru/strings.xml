@@ -65,4 +65,77 @@
     <string name="biometric_screen_lock_icon">Screen lock</string>
     <string name="desktop_screen_title">Desktop</string>
     <string name="agent_deny">Deny</string>
+
+    <!-- Biometric lock -->
+    <string name="app_biometric_locked_title">Haven заблокирован</string>
+    <string name="app_biometric_authenticate_prompt">Пройдите аутентификацию для продолжения</string>
+    <string name="app_biometric_open_device_settings">Открыть настройки устройства</string>
+
+    <!-- Desktop / app windows -->
+    <string name="app_desktop_app_windows_title">Окна приложений</string>
+    <string name="app_desktop_app_windows_description">Запуск одного приложения в плавающем окне поверх текущего экрана. Приложения выполняются в активном дистрибутиве Linux и должны быть в нём установлены.</string>
+    <string name="app_desktop_app_windows_empty">Окон приложений пока нет. Добавьте одно, чтобы запустить приложение в плавающем окне.</string>
+    <string name="app_desktop_app_window_launch_cd">Запустить %1$s</string>
+    <string name="app_desktop_app_window_edit_cd">Изменить %1$s</string>
+    <string name="app_desktop_app_window_delete_cd">Удалить %1$s</string>
+    <string name="app_desktop_add_app_window">Добавить окно приложения</string>
+    <string name="app_desktop_edit_app_window_title">Изменить окно приложения</string>
+    <string name="app_desktop_add_app_window_title">Добавить окно приложения</string>
+    <string name="app_desktop_app_window_label_placeholder">напр. Просмотрщик изображений</string>
+    <string name="app_desktop_app_window_command_label">Команда</string>
+    <string name="app_desktop_app_window_command_placeholder">напр. imv /root/board.png</string>
+    <string name="app_desktop_open_shell_cd">Открыть оболочку в %1$s</string>
+    <string name="app_desktop_delete_distro_cd">Удалить %1$s</string>
+    <string name="app_desktop_add_distro">+ %1$s  (~%2$d МБ)</string>
+    <string name="app_desktop_rootfs_downloading">Загрузка rootfs… %1$d%%</string>
+    <string name="app_desktop_rootfs_extracting">Распаковка rootfs…</string>
+    <string name="app_desktop_rootfs_initializing">Настройка rootfs… (%1$s)</string>
+    <string name="app_desktop_phase_download">Загрузка</string>
+    <string name="app_desktop_phase_extract">Распаковка</string>
+    <string name="app_desktop_phase_bootstrap_hook">Хук инициализации</string>
+    <string name="app_desktop_phase_baseline">Базовые пакеты</string>
+    <string name="app_desktop_setup_failed_phase">Сбой: %1$s</string>
+    <string name="app_desktop_proot_log_hint">Полная история по фазам: Настройки → Журнал установки PRoot.</string>
+    <string name="app_desktop_retry_wipe">Стереть и повторить</string>
+    <string name="app_desktop_retry_step">Повторить этот шаг</string>
+    <string name="app_desktop_experimental">экспериментально</string>
+    <string name="app_desktop_vnc_running">VNC :%1$d (порт %2$d)</string>
+    <string name="app_desktop_error">Ошибка</string>
+    <string name="app_desktop_install_distro_first">" · сначала установите дистрибутив"</string>
+    <string name="app_desktop_vnc_port_stored">Порт VNC %1$d</string>
+    <string name="app_desktop_de_with_size">%1$s (%2$s)</string>
+    <string name="app_desktop_experimental_on">Экспериментально на %1$s</string>
+    <string name="app_desktop_vnc_port_label">Порт VNC</string>
+    <string name="app_desktop_vnc_display">Дисплей :%1$d</string>
+    <string name="app_desktop_vnc_port_range">Диапазон 5901–5999</string>
+    <string name="app_desktop_phase_packages">Пакеты</string>
+    <string name="app_desktop_phase_vnc_config">Конфигурация VNC</string>
+    <string name="app_desktop_phase_marker">Файл-маркер</string>
+    <string name="app_desktop_addon_with_size">%1$s (%2$s)</string>
+    <string name="app_desktop_sessions_cd">Сессии</string>
+    <string name="app_desktop_manage_cd">Управление рабочими столами</string>
+    <string name="app_desktop_empty_hint">Подключитесь через VNC или RDP на вкладке «Подключения»</string>
+    <string name="app_desktop_tab_label">%1$s %2$s</string>
+    <string name="app_desktop_move_tab_left_cd">Переместить влево</string>
+    <string name="app_desktop_move_tab_right_cd">Переместить вправо</string>
+
+    <!-- Agent / MCP -->
+    <string name="app_agent_pair_title">Привязать MCP-клиент?</string>
+    <string name="app_agent_action_requested">Запрос действия агента</string>
+    <string name="app_agent_from_client">От: %1$s</string>
+    <string name="app_agent_tool">Инструмент: %1$s</string>
+    <string name="app_agent_bypass_label">Разрешить все MCP-запросы от \'%1$s\' до перезапуска Haven</string>
+    <string name="app_agent_bypass_description">Включает деструктивные операции (ввод в терминал, запись/удаление файлов, установка APK). Сбрасывается при закрытии приложения.</string>
+    <string name="app_agent_auto_allow_window">Окно автоодобрения:</string>
+    <string name="app_agent_minutes">%1$dм</string>
+    <string name="app_agent_allow_for_minutes">Разрешить на %1$dм</string>
+    <string name="app_agent_pair">Привязать</string>
+
+    <!-- Present / media overlay -->
+    <string name="app_present_app_missing_details">В окне приложения отсутствуют данные подключения.</string>
+    <string name="app_present_dismiss">Закрыть</string>
+    <string name="app_present_image_shared_cd">Изображение от агента</string>
+    <string name="app_present_pause">Пауза</string>
+    <string name="app_present_play">Воспроизвести</string>
+    <string name="app_present_preparing_audio">Подготовка аудио…</string>
 </resources>
