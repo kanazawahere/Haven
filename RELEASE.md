@@ -57,10 +57,45 @@ git tag v<x.y.z>
 git push origin main v<x.y.z>
 ```
 
-The `v*` tag triggers the **Release** workflow on GitHub Actions which:
+The `v*` tag triggers the **Release** workflow (`.github/workflows/release.yml`),
+a gated pipeline hardened under #211. It runs four jobs in sequence:
 
-- Builds a signed APK and AAB (keystore password from GitHub secrets)
-- Creates a GitHub release with the APK attached
+1. **`verify-ci`** — reads the combined commit status for the tagged SHA. If
+   `main` CI already went green for this exact commit, the test job is skipped
+   (same commit ⇒ same result); otherwise the pipeline runs the tests itself.
+2. **`test`** — `./gradlew testReleaseUnitTest`. The build is gated on this, so a
+   red test stops the release here. (This is why a broken `main` silently blocks
+   publishing — only ever tag a green commit.)
+3. **`build`** — signed APK **and** AAB for both ABIs (arm64 + x64); keystore +
+   passwords come from repo secrets.
+4. **`publish`** — ⏸ **reviewer sign-off gate (#211).** This job runs under the
+   protected **`signing` GitHub Environment**, which requires an explicit
+   approval from a designated reviewer (currently **@GlassOnTin**) and is
+   restricted to `v*` tags / `main`. **The run pauses here until the reviewer
+   approves** — so no single account can ship with the signing identity
+   unilaterally. On approval it writes a build-provenance attestation, generates
+   `SHA256SUMS`, and creates the GitHub Release with the signed APK/AAB attached
+   (release notes are auto-generated; step 4 below adds human context).
+
+### Approve the publish (the sign-off)
+
+Until the reviewer approves, the run sits at `publish` and **the release does not
+exist yet**. Approve it one of two ways:
+
+- **GitHub UI (simplest):** *Actions → Release → (this run)* shows a
+  **"Review deployments"** prompt → tick **signing** → **Approve and deploy**.
+  Rejecting cancels the publish without shipping anything.
+- **CLI:**
+  ```bash
+  RUN=$(gh run list --workflow=Release --limit 1 --json databaseId --jq '.[0].databaseId')
+  ENV=$(gh api repos/GlassHaven/Haven/actions/runs/$RUN/pending_deployments --jq '.[0].environment.id')
+  gh api repos/GlassHaven/Haven/actions/runs/$RUN/pending_deployments \
+    -F "environment_ids[]=$ENV" -f state=approved -f comment="release v<x.y.z>"
+  ```
+
+The same `signing` Environment also gates `extract-secrets.yml`, so exporting the
+keystore bundle needs the identical reviewer approval. Manage the reviewer list
+under *Settings → Environments → signing*.
 
 ## 4. Fill in the GitHub release body
 
@@ -127,9 +162,12 @@ The task set above is a superset of what CI and the release build resolve (no re
 
 ## 6. Verify
 
-- [ ] GitHub release page has APK and a non-empty body
+- [ ] CI workflow is green on the tagged commit (the `publish` sign-off gate
+      assumes it — see `verify-ci`)
+- [ ] `publish` deployment approved by a `signing`-environment reviewer (the
+      release won't exist until then — see "Approve the publish" above)
+- [ ] GitHub release page has the APK + AAB, `SHA256SUMS`, and a non-empty body
 - [ ] `fastlane/.../changelogs/<code>.txt` exists and is committed
-- [ ] CI workflow passes (lint + tests)
 
 ## Signing
 
@@ -138,6 +176,11 @@ The release keystore `haven-release.jks` is in the repo root. Passwords are stor
 - `KEYSTORE_PASSWORD`
 - `KEY_PASSWORD`
 - `KEY_ALIAS`
+
+The signing identity is **reviewer-gated** in CI (#211): the `publish` job and
+the `extract-secrets.yml` bundle export both run under the protected `signing`
+GitHub Environment, so neither ships/exports without an approval from a required
+reviewer. See "Approve the publish (the sign-off)" under step 3.
 
 Local release builds require these as environment variables:
 
