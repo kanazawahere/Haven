@@ -1,0 +1,2 @@
+- Terminal: in the keyboard toolbar's edit mode, the fixed controls (done / desktop on the left, add-key / settings on the right) are now separated from the draggable customizable keys by dividers, so it's clearer which buttons you can actually rearrange (#224).
+- Agent/MCP: new send_to_agent tool — delivers a message to another agent's REPL (or any raw-mode prompt) as one cleanly submitted turn (bracketed paste, a settle, then Enter) and returns the resulting screen, without hand-assembling the keystrokes.

@@ -917,6 +917,23 @@ internal class McpTools(
             },
         ) { args -> sendTerminalInput(args) },
 
+        "send_to_agent" to ToolHandler(
+            description = "Deliver one message to another agent's REPL (or any raw-mode prompt) as a single submitted turn: bracketed-paste the text, settle, then Enter — and return the resulting screen. A convenience wrapper over send_terminal_input tuned for agent↔agent / REPL conversation, so you don't hand-assemble the body-then-Enter sequence. Use list_sessions (chosenSessionName) to pick the target. Returns { sessionId, delivered, bytesSent, snapshot }.",
+            inputSchema = JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("sessionId", JSONObject().apply { put("type", "string"); put("description", "Active session ID (from list_sessions). Optional — defaults to the sole open terminal session.") })
+                    put("message", JSONObject().apply { put("type", "string"); put("description", "The message to deliver as one submitted prompt.") })
+                })
+                put("required", JSONArray().put("message"))
+            },
+            consentLevel = ConsentLevel.ONCE_PER_SESSION,
+            summarise = { args ->
+                val m = args.optString("message", "")
+                "Send to agent REPL: \"${if (m.length > 80) m.take(80) + "…" else m}\"?"
+            },
+        ) { args -> sendToAgent(args) },
+
         "feed_terminal_output" to ToolHandler(
             description = "Inject raw bytes into a terminal session's OUTPUT stream — as if they had arrived from the remote — running the exact pipeline the live data callback uses (OSC scan → mouse-mode scan → emulator). Distinct from send_terminal_input, which sends to the PTY input as if typed. Use this to deterministically exercise output-side parsing without a cooperating remote: e.g. feed an OSC 52 sequence to test the clipboard round-trip, a DECSET 1000/1002/1003 to flip mouseMode, an OSC 8 hyperlink, or a partial escape split across two calls (the OSC scanner keeps state between calls). Provide exactly one of `text` (UTF-8) or `bytesBase64` (for control bytes / ESC). Hard cap 65536 bytes per call. Not supported for headless agent shells (no UI tab) — returns an error. Returns { sessionId, bytesFed }.",
             inputSchema = JSONObject().apply {
@@ -4544,6 +4561,26 @@ internal class McpTools(
                 throw McpError(-32603, e.message ?: sshErr)
             }
         }
+    }
+
+    /**
+     * Deliver one message to a raw-mode REPL as a single submitted turn:
+     * bracketed paste + settle + Enter + snapshot. Thin wrapper over
+     * [sendTerminalInput] for agent↔agent conversation. #14/#19
+     */
+    private fun sendToAgent(args: JSONObject): JSONObject {
+        val message = args.optString("message").ifEmpty {
+            throw McpError(-32602, "Missing required argument: message")
+        }
+        return sendTerminalInput(
+            JSONObject().apply {
+                if (args.has("sessionId")) put("sessionId", args.optString("sessionId"))
+                put("text", message)
+                put("bracketedPaste", true)
+                put("keys", JSONArray().put("enter"))
+                put("returnSnapshot", true)
+            },
+        )
     }
 
     /** Map a named key to the control bytes a PTY expects. Null = unknown. */

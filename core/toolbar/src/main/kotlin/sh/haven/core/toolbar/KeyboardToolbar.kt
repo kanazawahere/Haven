@@ -39,6 +39,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -1346,6 +1347,13 @@ private fun ReorderToolbarContent(
                     null
                 },
             )
+            // Divider: fixed app controls (✓ / desktop) | draggable keys (#224)
+            VerticalDivider(
+                modifier = Modifier
+                    .padding(horizontal = 3.dp)
+                    .height(60.dp),
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
             Column(modifier = Modifier.width(IntrinsicSize.Max)) {
                 DraggableSegment(
                     items = row1,
@@ -1427,6 +1435,14 @@ private fun ReorderToolbarContent(
             }
         }
 
+        // Divider: draggable keys | fixed app controls (add-key / settings) (#224)
+        VerticalDivider(
+            modifier = Modifier
+                .align(Alignment.CenterVertically)
+                .padding(horizontal = 3.dp)
+                .height(60.dp),
+            color = MaterialTheme.colorScheme.outlineVariant,
+        )
         // Action buttons: add custom key + open full settings
         Column(
             modifier = Modifier
