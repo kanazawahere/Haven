@@ -888,14 +888,20 @@ internal class McpTools(
         ) { args -> deleteSftpFile(args) },
 
         "send_terminal_input" to ToolHandler(
-            description = "Send UTF-8 text to an active terminal session as if the user typed it. Newlines (\\n) execute the current command line — there is no separate \"send Enter\" mode. Hard cap 4096 bytes per call.",
+            description = "Send input to an active terminal session as if the user typed it. Provide `text` (UTF-8) and/or named `keys` — real control bytes (Enter/Esc/Ctrl-C/arrows) that `text` can't express (a \"\\r\" in text arrives as literal chars; a raw-mode REPL reads \"\\n\" as newline-insert, not submit). `text` is sent first, then `keys`, so a submit key lands after the body. Set `bracketedPaste` to wrap `text` in bracketed-paste markers so a raw-mode REPL (Claude Code, readline, vim) treats multi-line input as one paste instead of interleaved keystrokes that fight submit. Set `returnSnapshot` to get the resulting screen back without a follow-up read_terminal_snapshot. Hard cap 4096 bytes total.",
             inputSchema = JSONObject().apply {
                 put("type", "object")
                 put("properties", JSONObject().apply {
                     put("sessionId", JSONObject().apply { put("type", "string"); put("description", "Active session ID (from list_sessions). Optional — defaults to the sole open terminal session; required only when several are open. Must have an attached terminal.") })
-                    put("text", JSONObject().apply { put("type", "string"); put("description", "UTF-8 text to send. Include trailing \\n to execute.") })
+                    put("text", JSONObject().apply { put("type", "string"); put("description", "UTF-8 text to send (before keys). To submit into a raw-mode REPL, prefer keys:[\"enter\"] over a trailing \\n.") })
+                    put("keys", JSONObject().apply {
+                        put("type", "array")
+                        put("items", JSONObject().apply { put("type", "string") })
+                        put("description", "Named keys sent after text, e.g. [\"enter\"], [\"ctrl-c\"], [\"up\",\"enter\"]. Supported: enter, esc, tab, space, backspace, delete, up, down, left, right, home, end, pageup, pagedown, ctrl-a/c/d/e/l/u/w/z.")
+                    })
+                    put("bracketedPaste", JSONObject().apply { put("type", "boolean"); put("description", "Wrap text in bracketed-paste markers (ESC[200~ … ESC[201~). Default false. Use for multi-line input into a raw-mode REPL so it isn't folded into submit.") })
+                    put("returnSnapshot", JSONObject().apply { put("type", "boolean"); put("description", "Return the terminal snapshot after sending, so you see the result without a follow-up read. Default false.") })
                 })
-                put("required", JSONArray().put("text"))
             },
             // Once the user approves the agent typing into a session, per-call
             // re-approval is friction without added safety — the session is
@@ -4457,37 +4463,115 @@ internal class McpTools(
     private fun sendTerminalInput(args: JSONObject): JSONObject {
         val sessionId = resolveTerminalSessionId(args.optString("sessionId"))
         val text = args.optString("text", "")
-        if (text.isEmpty()) {
-            throw McpError(-32602, "Missing required argument: text")
+        val bracketed = args.optBoolean("bracketedPaste", false)
+        val returnSnapshot = args.optBoolean("returnSnapshot", false)
+
+        // Named keys → real control bytes the `text` param can't express
+        // cleanly (a "\r" in text arrives as two literal chars; a raw-mode REPL
+        // treats "\n" as newline-insert, not submit). #14
+        val keyBytes = StringBuilder()
+        args.optJSONArray("keys")?.let { keys ->
+            for (i in 0 until keys.length()) {
+                val name = keys.optString(i)
+                keyBytes.append(
+                    namedKeyToBytes(name) ?: throw McpError(
+                        -32602,
+                        "Unknown key '$name'. Supported: enter, esc, tab, space, backspace, " +
+                            "delete, up, down, left, right, home, end, pageup, pagedown, " +
+                            "ctrl-a/c/d/e/l/u/w/z.",
+                    ),
+                )
+            }
         }
-        // Hard cap to keep consent prompts reviewable and avoid an agent
-        // pasting megabytes through the terminal. 4 KiB is roughly two
-        // screens of dense text — plenty for any reasonable command.
-        val bytes = text.toByteArray(Charsets.UTF_8)
-        if (bytes.size > 4096) {
-            throw McpError(-32602, "text too long: ${bytes.size} bytes (max 4096)")
+        if (text.isEmpty() && keyBytes.isEmpty()) {
+            throw McpError(-32602, "Provide text and/or keys")
         }
-        // Try SSH first; if the SSH manager doesn't know the session,
-        // fall through to the local-shell manager. Whichever throws
-        // last with a "no session" / "no terminal" message is the one
-        // we surface — that error is the most informative.
+
+        // Wrap text in bracketed-paste markers when asked, so a raw-mode REPL
+        // (Claude Code, readline, vim) treats multi-line input as one paste
+        // rather than interleaved keystrokes that fight its submit handling.
+        val body = if (text.isNotEmpty() && bracketed) "\u001b[200~$text\u001b[201~" else text
+
+        // Hard cap (≈two screens) keeps consent reviewable and avoids an agent
+        // pasting megabytes through the terminal.
+        val totalBytes = body.toByteArray(Charsets.UTF_8).size +
+            keyBytes.toString().toByteArray(Charsets.UTF_8).size
+        if (totalBytes > 4096) {
+            throw McpError(-32602, "input too long: $totalBytes bytes (max 4096)")
+        }
+
+        // Send the body first, then the keys as a SEPARATE write after a brief
+        // settle — so a submit key (Enter) arrives in its own read() and is seen
+        // as a discrete keypress, not folded into the text burst by a raw-mode
+        // REPL's input batching (verified on Claude Code: text+\r in one burst
+        // stages without submitting; a separate \r submits). #14
+        if (body.isNotEmpty()) sendRawInput(sessionId, body)
+        if (body.isNotEmpty() && keyBytes.isNotEmpty()) {
+            try {
+                Thread.sleep(SUBMIT_SETTLE_MS)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+            }
+        }
+        if (keyBytes.isNotEmpty()) sendRawInput(sessionId, keyBytes.toString())
+
+        return JSONObject().apply {
+            put("sessionId", sessionId)
+            put("delivered", true)
+            put("bytesSent", totalBytes)
+            if (returnSnapshot) {
+                runCatching { readTerminalSnapshot(JSONObject().put("sessionId", sessionId)) }
+                    .getOrNull()?.let { put("snapshot", it) }
+            }
+        }
+    }
+
+    /**
+     * Write a raw string to a session's PTY. Tries SSH first, then the
+     * local-shell manager; surfaces the most informative "no session" error.
+     */
+    private fun sendRawInput(sessionId: String, s: String) {
         val sshErr = try {
-            sshSessionManager.sendInput(sessionId, text)
+            sshSessionManager.sendInput(sessionId, s)
             null
         } catch (e: IllegalStateException) {
             e.message
         }
         if (sshErr != null) {
             try {
-                localSessionManager.sendInput(sessionId, text)
+                localSessionManager.sendInput(sessionId, s)
             } catch (e: IllegalStateException) {
                 throw McpError(-32603, e.message ?: sshErr)
             }
         }
-        return JSONObject().apply {
-            put("sessionId", sessionId)
-            put("bytesSent", bytes.size)
-        }
+    }
+
+    /** Map a named key to the control bytes a PTY expects. Null = unknown. */
+    private fun namedKeyToBytes(name: String): String? = when (name.lowercase().trim()) {
+        "enter", "return", "cr" -> "\r"
+        "newline", "lf" -> "\n"
+        "esc", "escape" -> "\u001b"
+        "tab" -> "\t"
+        "space" -> " "
+        "backspace", "bs" -> "\u007f"
+        "delete", "del" -> "\u001b[3~"
+        "ctrl-a", "ctrl+a", "c-a" -> "\u0001"
+        "ctrl-c", "ctrl+c", "c-c" -> "\u0003"
+        "ctrl-d", "ctrl+d", "c-d" -> "\u0004"
+        "ctrl-e", "ctrl+e", "c-e" -> "\u0005"
+        "ctrl-l", "ctrl+l", "c-l" -> "\u000c"
+        "ctrl-u", "ctrl+u", "c-u" -> "\u0015"
+        "ctrl-w", "ctrl+w", "c-w" -> "\u0017"
+        "ctrl-z", "ctrl+z", "c-z" -> "\u001a"
+        "up" -> "\u001b[A"
+        "down" -> "\u001b[B"
+        "right" -> "\u001b[C"
+        "left" -> "\u001b[D"
+        "home" -> "\u001b[H"
+        "end" -> "\u001b[F"
+        "pageup", "pgup" -> "\u001b[5~"
+        "pagedown", "pgdn" -> "\u001b[6~"
+        else -> null
     }
 
     private fun feedTerminalOutput(args: JSONObject): JSONObject {
@@ -6401,6 +6485,14 @@ internal class McpTools(
          *   will edit further before pressing Enter themselves.
          */
         internal const val DEFAULT_SUBMIT_KEY = "\r"
+
+        /**
+         * Pause between sending the text body and a trailing submit key in
+         * send_terminal_input, so the submit lands in its own read() rather than
+         * folding into the text burst (a raw-mode REPL's input batching otherwise
+         * stages the text without submitting — verified on Claude Code). #14
+         */
+        internal const val SUBMIT_SETTLE_MS = 150L
     }
 
     // --- proot / desktop environment tool implementations (issue #162 Phase 3b) ---
