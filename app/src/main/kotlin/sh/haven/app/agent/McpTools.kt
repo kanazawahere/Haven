@@ -16,6 +16,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -4723,6 +4724,41 @@ internal class McpTools(
     /** Shared upper bound on staged APK size — 200 MiB; release APKs are ~80–100 MiB. */
     private val agentInstallMaxBytes: Long = 200L * 1024 * 1024
 
+    /** One copy of the Shizuku-missing hint, reused by [runShizukuOrThrow]. */
+    private val shizukuInstallHint =
+        "Install Shizuku from https://shizuku.rikka.app and grant Haven permission, then retry."
+
+    /**
+     * Shared Shizuku-exec wrapper for the privileged tools. Maps the two
+     * failure modes every caller used to handle identically — Shizuku
+     * unavailable (an [IllegalStateException], answered with
+     * [shizukuInstallHint]) and a generic exec failure — into [McpError].
+     * When [requireSuccess] is true (default) a non-zero exit is also
+     * surfaced, tagged with [label]; pass false when the caller inspects the
+     * output/exit itself (e.g. an exact readback or a tolerated empty result).
+     *
+     * Does NOT cover the install path ([installStagedApkBlocking]) — that one
+     * deliberately catches the unavailable case to fall back to the system
+     * installer rather than throw.
+     */
+    private fun runShizukuOrThrow(
+        cmd: String,
+        label: String,
+        requireSuccess: Boolean = true,
+    ): WaylandSocketHelper.ShizukuExecResult {
+        val result = try {
+            WaylandSocketHelper.execAsShizuku(cmd)
+        } catch (e: IllegalStateException) {
+            throw McpError(-32603, "${e.message}. $shizukuInstallHint")
+        } catch (e: Exception) {
+            throw McpError(-32603, "Shizuku exec failed: ${e.message}")
+        }
+        if (requireSuccess && result.exitCode != 0) {
+            throw McpError(-32603, "$label exited ${result.exitCode}: ${result.output.take(500)}")
+        }
+        return result
+    }
+
     /** Stage a fresh File handle under cacheDir/agent-install/. */
     private fun stageApkFile(): File {
         val dir = File(context.cacheDir, "agent-install").apply { mkdirs() }
@@ -4747,6 +4783,46 @@ internal class McpTools(
         }
     }
 
+    /**
+     * Stage an APK by copying [openInput]'s stream into a fresh cache file,
+     * enforcing [agentInstallMaxBytes]. Shared by [installApkFromUrl] and
+     * [installApkFromBackend]. [openInput] runs inside the guarded block so a
+     * failure to open the source maps through [onFailure] too. On any failure
+     * the partial file is deleted; the size-cap breach throws its own McpError.
+     * Returns (stagedFile, bytesWritten).
+     */
+    private suspend fun streamToStagedApk(
+        openInput: suspend () -> java.io.InputStream,
+        onFailure: (Exception) -> String,
+    ): Pair<File, Long> {
+        val target = stageApkFile()
+        val written = try {
+            openInput().use { input ->
+                target.outputStream().use { output ->
+                    val buf = ByteArray(64 * 1024)
+                    var total = 0L
+                    while (true) {
+                        val n = input.read(buf)
+                        if (n < 0) break
+                        total += n
+                        if (total > agentInstallMaxBytes) {
+                            target.delete()
+                            throw McpError(-32603, "APK exceeds ${agentInstallMaxBytes / (1024 * 1024)} MiB cap")
+                        }
+                        output.write(buf, 0, n)
+                    }
+                    total
+                }
+            }
+        } catch (e: McpError) {
+            throw e
+        } catch (e: Exception) {
+            target.delete()
+            throw McpError(-32603, onFailure(e))
+        }
+        return target to written
+    }
+
     private suspend fun installApkFromUrl(args: JSONObject): JSONObject = withContext(Dispatchers.IO) {
         val urlString = args.optString("url").ifEmpty {
             throw McpError(-32602, "Missing required argument: url")
@@ -4761,44 +4837,26 @@ internal class McpTools(
         }
         // Stage the APK in app cache, then pipe it into `pm install -S`
         // via Shizuku (or hand off to the system installer dialog).
-        val target = stageApkFile()
-        val written = try {
-            val conn = (url.openConnection() as java.net.HttpURLConnection).apply {
-                connectTimeout = 30_000
-                readTimeout = 60_000
-                instanceFollowRedirects = true
-                setRequestProperty("User-Agent", "Haven/1.0 (install_apk_from_url)")
-            }
-            conn.connect()
-            if (conn.responseCode !in 200..299) {
-                throw McpError(-32603, "HTTP ${conn.responseCode} from ${url.host}")
-            }
+        val conn = (url.openConnection() as java.net.HttpURLConnection).apply {
+            connectTimeout = 30_000
+            readTimeout = 60_000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "Haven/1.0 (install_apk_from_url)")
+        }
+        val (target, written) = try {
             try {
-                conn.inputStream.use { input ->
-                    target.outputStream().use { output ->
-                        val buf = ByteArray(64 * 1024)
-                        var total = 0L
-                        while (true) {
-                            val n = input.read(buf)
-                            if (n < 0) break
-                            total += n
-                            if (total > agentInstallMaxBytes) {
-                                target.delete()
-                                throw McpError(-32603, "APK exceeds ${agentInstallMaxBytes / (1024 * 1024)} MiB cap")
-                            }
-                            output.write(buf, 0, n)
-                        }
-                        total
-                    }
+                conn.connect()
+                if (conn.responseCode !in 200..299) {
+                    throw McpError(-32603, "HTTP ${conn.responseCode} from ${url.host}")
                 }
-            } finally {
-                conn.disconnect()
+            } catch (e: McpError) {
+                throw e
+            } catch (e: Exception) {
+                throw McpError(-32603, "Download failed: ${e.message}")
             }
-        } catch (e: McpError) {
-            throw e
-        } catch (e: Exception) {
-            target.delete()
-            throw McpError(-32603, "Download failed: ${e.message}")
+            streamToStagedApk({ conn.inputStream }) { "Download failed: ${it.message}" }
+        } finally {
+            conn.disconnect()
         }
         // Sanity check — APK is a zip, magic bytes 0x50 0x4B ("PK").
         // Reject HTML / plain-text bodies that 200'd despite being the
@@ -4806,6 +4864,44 @@ internal class McpTools(
         // wrong-URL failure mode.
         assertApkMagic(target, written)
         return@withContext installStagedApk(target, written)
+    }
+
+    /**
+     * Install a staged APK. For a foreign package this is synchronous and
+     * returns the install result. For a **self-update** (the APK's package is
+     * ours) the `pm install` commit replaces this very process, so a
+     * synchronous response would never reach the MCP client — it reads as a
+     * timeout (the friction repeatedly hit during agent-driven testing). So:
+     * detect a self-install from the APK manifest (no Shizuku needed), return
+     * an immediate `restarting` ack, and defer the install just long enough
+     * for the ack to flush over the (reverse) MCP tunnel.
+     */
+    private fun installStagedApk(target: File, written: Long): JSONObject {
+        val pkg = runCatching {
+            context.packageManager.getPackageArchiveInfo(target.absolutePath, 0)?.packageName
+        }.getOrNull()
+        if (pkg == context.packageName) {
+            backgroundScope.launch {
+                delay(800) // let the ack flush before pm install replaces us
+                runCatching { installStagedApkBlocking(target, written) }
+                    .onFailure {
+                        android.util.Log.w("McpTools", "deferred self-install failed: ${it.message}")
+                    }
+            }
+            return JSONObject().apply {
+                put("installed", false)
+                put("restarting", true)
+                put("bytesStaged", written)
+                put("package", pkg)
+                put(
+                    "note",
+                    "Installing Haven over itself — the MCP connection drops when the new " +
+                        "process starts. Reconnect (/mcp reconnect) and confirm the running " +
+                        "build with get_app_info.",
+                )
+            }
+        }
+        return installStagedApkBlocking(target, written)
     }
 
     /**
@@ -4819,7 +4915,7 @@ internal class McpTools(
      * survives long enough for the installer to read it and is
      * cleaned up by a delayed Handler.
      */
-    private fun installStagedApk(target: File, written: Long): JSONObject {
+    private fun installStagedApkBlocking(target: File, written: Long): JSONObject {
         // Hand off to Shizuku — `pm install -S <size>` reads APK bytes
         // from stdin. Working directory of the shell process doesn't
         // need to see our cache dir; we pipe FileInputStream directly.
@@ -4899,30 +4995,8 @@ internal class McpTools(
             )
         }
 
-        val target = stageApkFile()
-        val written = try {
-            backend.openInputStream(path, 0).use { input ->
-                target.outputStream().use { output ->
-                    val buf = ByteArray(64 * 1024)
-                    var total = 0L
-                    while (true) {
-                        val n = input.read(buf)
-                        if (n < 0) break
-                        total += n
-                        if (total > agentInstallMaxBytes) {
-                            target.delete()
-                            throw McpError(-32603, "APK exceeds ${agentInstallMaxBytes / (1024 * 1024)} MiB cap")
-                        }
-                        output.write(buf, 0, n)
-                    }
-                    total
-                }
-            }
-        } catch (e: McpError) {
-            throw e
-        } catch (e: Exception) {
-            target.delete()
-            throw McpError(-32603, "Read from ${backend.label} failed: ${e.message}")
+        val (target, written) = streamToStagedApk({ backend.openInputStream(path, 0) }) {
+            "Read from ${backend.label} failed: ${it.message}"
         }
         assertApkMagic(target, written)
         installStagedApk(target, written)
@@ -5040,22 +5114,7 @@ internal class McpTools(
             }
         }
 
-        val result = try {
-            WaylandSocketHelper.execAsShizuku(cmd)
-        } catch (e: IllegalStateException) {
-            throw McpError(
-                -32603,
-                "${e.message}. Install Shizuku from https://shizuku.rikka.app and grant Haven permission, then retry.",
-            )
-        } catch (e: Exception) {
-            throw McpError(-32603, "Shizuku exec failed: ${e.message}")
-        }
-        if (result.exitCode != 0) {
-            throw McpError(
-                -32603,
-                "logcat exited ${result.exitCode}: ${result.output.take(500)}",
-            )
-        }
+        val result = runShizukuOrThrow(cmd, "logcat")
 
         var output = result.output
         var truncatedByBytes = false
@@ -5094,16 +5153,12 @@ internal class McpTools(
         ) {
             throw McpError(-32602, "Invalid packageName: '$packageName'")
         }
-        val result = try {
-            WaylandSocketHelper.execAsShizuku("pm list packages -U $packageName")
-        } catch (e: IllegalStateException) {
-            throw McpError(
-                -32603,
-                "${e.message}. Install Shizuku from https://shizuku.rikka.app and grant Haven permission, then retry.",
-            )
-        } catch (e: Exception) {
-            throw McpError(-32603, "Shizuku exec failed: ${e.message}")
-        }
+        // `pm list packages -U <name>` returns exit 0 even when nothing
+        // matches (empty output), so don't fail on a non-zero exit here —
+        // the no-match case is handled by the parse below.
+        val result = runShizukuOrThrow(
+            "pm list packages -U $packageName", "pm list", requireSuccess = false,
+        )
         // `pm list packages -U <name>` substring-matches the filter, so we
         // re-anchor to an exact "package:<name> " (or tab) prefix. Output
         // lines look like: "package:com.example uid:10123"
@@ -5125,22 +5180,7 @@ internal class McpTools(
         // `service.adb.tcp.port` system property; we only target API
         // 26+ so the modern path is enough — older devices fall back
         // to the user toggling Developer Options by hand.
-        val result = try {
-            WaylandSocketHelper.execAsShizuku("cmd settings put global adb_wifi_enabled 1")
-        } catch (e: IllegalStateException) {
-            throw McpError(
-                -32603,
-                "${e.message}. Install Shizuku from https://shizuku.rikka.app and grant Haven permission, then retry.",
-            )
-        } catch (e: Exception) {
-            throw McpError(-32603, "Shizuku exec failed: ${e.message}")
-        }
-        if (result.exitCode != 0) {
-            throw McpError(
-                -32603,
-                "settings put exited ${result.exitCode}: ${result.output}",
-            )
-        }
+        runShizukuOrThrow("cmd settings put global adb_wifi_enabled 1", "settings put")
         // Read back the bound port so the agent can `adb connect <ip>:<port>` directly.
         val portReadback = try {
             WaylandSocketHelper.execAsShizuku("cmd settings get global adb_wifi_port")
@@ -5236,17 +5276,9 @@ internal class McpTools(
         val cmd = "setprop service.adb.tcp.port $port && " +
             "(setprop ctl.restart adbd 2>/dev/null || (stop adbd; start adbd)) && " +
             "echo ADBTCP port=\$(getprop service.adb.tcp.port)"
-        val result = try {
-            WaylandSocketHelper.execAsShizuku(cmd)
-        } catch (e: IllegalStateException) {
-            throw McpError(
-                -32603,
-                "${e.message}. Install Shizuku from https://shizuku.rikka.app and grant " +
-                    "Haven permission, then retry.",
-            )
-        } catch (e: Exception) {
-            throw McpError(-32603, "Shizuku exec failed: ${e.message}")
-        }
+        // requireSuccess=false: the precise success criterion is the port
+        // readback below (adbd restart can print noise yet still succeed).
+        val result = runShizukuOrThrow(cmd, "adb-over-TCP", requireSuccess = false)
         val readBack = Regex("port=(\\d+)").find(result.output)?.groupValues?.getOrNull(1)?.toIntOrNull()
         if (result.exitCode != 0 || readBack != port) {
             throw McpError(

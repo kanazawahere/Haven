@@ -253,17 +253,7 @@ class McpTunnelManager @Inject constructor(
             .toSet()
         val toAdd = guestServiceManager.runningPorts().distinct()
             .filter { it != currentPort && it !in already }
-            .map { p ->
-                SshSessionManager.PortForwardInfo(
-                    ruleId = "guest-mcp-$p",
-                    type = SshSessionManager.PortForwardType.REMOTE,
-                    bindAddress = "127.0.0.1",
-                    bindPort = p,
-                    targetHost = "127.0.0.1",
-                    targetPort = p,
-                    critical = false,
-                )
-            }
+            .map { guestForwardInfo(it) }
         if (toAdd.isNotEmpty()) {
             sshSessionManager.applyPortForwards(sid, toAdd)
             Log.i(TAG, "Multiplexed guest ports onto MCP tunnel: ${toAdd.map { it.bindPort }}")
@@ -317,6 +307,24 @@ class McpTunnelManager @Inject constructor(
 
     private fun adbForwardInfo(port: Int) = SshSessionManager.PortForwardInfo(
         ruleId = ADB_FORWARD_RULE_ID,
+        type = SshSessionManager.PortForwardType.REMOTE,
+        bindAddress = "127.0.0.1",
+        bindPort = port,
+        targetHost = "127.0.0.1",
+        targetPort = port,
+        critical = false,
+        selfHealOnBindFailure = true,
+    )
+
+    /**
+     * A non-critical REMOTE forward for a guest MCP service port (e.g. a KiCad
+     * MCP). Used both at [establish] time and by [refreshForwards] for a
+     * live-add, so the two paths can't drift. selfHealOnBindFailure mirrors the
+     * critical MCP forward and [adbForwardInfo]: a stale bind self-heals rather
+     * than silently failing.
+     */
+    private fun guestForwardInfo(port: Int) = SshSessionManager.PortForwardInfo(
+        ruleId = "guest-mcp-$port",
         type = SshSessionManager.PortForwardType.REMOTE,
         bindAddress = "127.0.0.1",
         bindPort = port,
@@ -454,20 +462,7 @@ class McpTunnelManager @Inject constructor(
             // so they inherit the tunnel's roam/restart durability for free.
             guestServiceManager.runningPorts().distinct()
                 .filter { it != mcpPort }
-                .forEach { p ->
-                    forwards.add(
-                        SshSessionManager.PortForwardInfo(
-                            ruleId = "guest-mcp-$p",
-                            type = SshSessionManager.PortForwardType.REMOTE,
-                            bindAddress = "127.0.0.1",
-                            bindPort = p,
-                            targetHost = "127.0.0.1",
-                            targetPort = p,
-                            critical = false,
-                            selfHealOnBindFailure = true,
-                        ),
-                    )
-                }
+                .forEach { forwards.add(guestForwardInfo(it)) }
             // Re-arm a previously exposed adb port (expose_adb) as a
             // non-critical forward, so adb-over-the-tunnel survives a full
             // tunnel rebuild (app restart / re-enable), not just the in-memory
