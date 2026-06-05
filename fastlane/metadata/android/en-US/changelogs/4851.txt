@@ -1,0 +1,1 @@
+- Agent/MCP: shared images (present_media) and web views (present_web — HTML/SVG and PDF) can now go into system Picture-in-Picture. Tap the new "Picture-in-picture" button on the sheet to float the content over other apps; PDFs show page 1, HTML/SVG render as a live WebView. The dismiss control is now a compact X. (#225)
