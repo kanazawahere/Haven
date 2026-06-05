@@ -1,0 +1,1 @@
+- Terminal: tmux/screen sessions run with the alternate screen disabled (for native scrollback) now reflow when the soft keyboard opens, instead of shifting the view up. The top status row — e.g. tmux's scroll/copy-mode indicator — no longer drops off the top of the screen. (#206)
