@@ -247,6 +247,49 @@ object DistroCatalog {
     )
 
     /**
+     * Ubuntu 24.04 LTS ("Noble Numbat") — APT, same package family
+     * and launch paths as Debian, so every DE that lists an APT
+     * package set (Openbox, Xfce4, Sway, Cage) is offered on Ubuntu
+     * with no per-distro wiring. Hyprland/niri stay greyed out here
+     * for the same reason as Debian: they aren't in noble's repos.
+     *
+     * Rootfs is proot-distro's `ubuntu-noble` tarball. proot-distro
+     * keeps the noble image pinned to its v4.11.0 release even on
+     * later proot-distro tags (the v4.17.3 plugin still points here),
+     * so v4.11.0 is the combination they publish a checksum for and
+     * test against. The SHA-256s below were verified by download:
+     * both match proot-distro's published `TARBALL_SHA256` exactly.
+     * Wrapped in a top-level `ubuntu-noble-<arch>/` directory like
+     * the other proot-distro tarballs, hence `stripComponents = 1`.
+     *
+     * The shipped sources.list already enables `universe` +
+     * `multiverse`, which is where the desktop packages live, so no
+     * post-extract hook is needed — the install path mirrors the
+     * verified Debian one.
+     */
+    val UBUNTU_NOBLE = Distro(
+        id = "ubuntu-noble",
+        label = "Ubuntu 24.04 LTS (Noble)",
+        family = PackageFamily.APT,
+        rootfsSources = mapOf(
+            Arch.AARCH64 to RootfsSource(
+                url = "https://github.com/termux/proot-distro/releases/download/v4.11.0/ubuntu-noble-aarch64-pd-v4.11.0.tar.xz",
+                sha256 = "a8883244a7031559a2bd8dc16b7d8afc947930b611819d8a28a09545097a6ba5",
+                format = RootfsFormat.TAR_XZ,
+                stripComponents = 1,
+            ),
+            Arch.X86_64 to RootfsSource(
+                url = "https://github.com/termux/proot-distro/releases/download/v4.11.0/ubuntu-noble-x86_64-pd-v4.11.0.tar.xz",
+                sha256 = "f024b1e17413737d8b385d22736d2e3eb2af9ba665fdbda1277bcca8f397e5a2",
+                format = RootfsFormat.TAR_XZ,
+                stripComponents = 1,
+            ),
+        ),
+        baselinePackages = listOf("bash", "curl", "ca-certificates", "openssh-client", "tmux"),
+        sizeEstimateMb = 150,
+    )
+
+    /**
      * Arch Linux ARM — rolling-release, pacman, popular among
      * power users and the only mainstream distro with first-class
      * Hyprland/niri/Sway packaging out of the box. The tarball
@@ -442,7 +485,7 @@ object DistroCatalog {
         sizeEstimateMb = 100,
     )
 
-    val all: List<Distro> = listOf(ALPINE_3_21, DEBIAN_BOOKWORM, ARCH_LINUX, VOID_LINUX)
+    val all: List<Distro> = listOf(ALPINE_3_21, DEBIAN_BOOKWORM, UBUNTU_NOBLE, ARCH_LINUX, VOID_LINUX)
 
     fun lookup(id: String): Distro? = all.firstOrNull { it.id == id }
 

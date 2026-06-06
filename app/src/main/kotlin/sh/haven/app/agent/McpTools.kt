@@ -1434,7 +1434,7 @@ internal class McpTools(
                 put("properties", JSONObject().apply {
                     put("distroId", JSONObject().apply {
                         put("type", "string")
-                        put("description", "Distro id from DistroCatalog (e.g. \"alpine-3.21\", \"debian-bookworm\", \"archlinux\", \"void-musl\").")
+                        put("description", "Distro id from DistroCatalog (e.g. \"alpine-3.21\", \"debian-bookworm\", \"ubuntu-noble\", \"archlinux\", \"void\").")
                     })
                 })
                 put("required", JSONArray().put("distroId"))

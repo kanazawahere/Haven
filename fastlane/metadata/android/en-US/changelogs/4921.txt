@@ -1,0 +1,1 @@
+- New distro: Ubuntu 24.04 LTS (Noble) in Desktop → Manage, alongside Alpine, Debian, Arch and Void. Uses the same APT path as Debian, so Openbox, Xfce4, Sway and Cage all install on it; Hyprland/niri stay GPU-blocked as on every distro. (#162)
