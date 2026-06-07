@@ -538,6 +538,12 @@ fun TerminalScreen(
                 fontSize = fontSize,
                 backgroundColor = terminalBg,
                 foregroundColor = terminalFg,
+                // Carry the page-swipe override so the empty Terminal page can
+                // still be swiped to an adjacent tab. The pager's built-in
+                // scroll is disabled on the Terminal page (see HavenNavHost
+                // userScrollEnabled), so without this the empty state would be
+                // un-swipeable.
+                swipeModifier = terminalModifier,
             )
         } else {
             // Tab row — can be hidden via Settings when the user wants more terminal space
@@ -1211,10 +1217,12 @@ private fun EmptyTerminalState(
     fontSize: Int,
     backgroundColor: Color,
     foregroundColor: Color,
+    swipeModifier: Modifier = Modifier,
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .then(swipeModifier)
             .background(backgroundColor)
             .padding(16.dp),
         contentAlignment = Alignment.Center,

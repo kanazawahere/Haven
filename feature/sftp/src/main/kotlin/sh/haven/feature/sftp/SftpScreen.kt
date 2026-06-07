@@ -96,7 +96,11 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.RadioButton
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
+import androidx.compose.foundation.layout.ime
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
@@ -423,6 +427,16 @@ fun SftpScreen(
 
     Scaffold(
         modifier = sftpModifier,
+        // The outer pager already has .imePadding() on its modifier; letting
+        // this inner Scaffold's contentWindowInsets also include WindowInsets.ime
+        // (the default) creates a double-source: both the outer imePadding and
+        // the inner Scaffold track the same IME animation, generating redundant
+        // IME-driven nested-scroll events. Those events reach the pager's
+        // DefaultPagerNestedScrollConnection (which is active even with
+        // userScrollEnabled=false) and amplify a horizontal swipe by ~1 IME-height
+        // when the keyboard dismisses mid-drag. Excluding the IME here removes
+        // the second source and restores 1:1 swipe tracking.
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.exclude(WindowInsets.ime),
         topBar = {
             if (selectionMode) {
                 SelectionTopBar(

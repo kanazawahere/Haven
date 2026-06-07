@@ -52,6 +52,10 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
@@ -208,6 +212,28 @@ fun HavenNavHost(
     val navStateViewModel: NavStateViewModel = hiltViewModel()
     val selectedScreen by navStateViewModel.selectedScreen.collectAsState()
     fun requestScreen(screen: Screen) { navStateViewModel.select(screen) }
+    // True while a manual page-swipe (pagerSwipeOverride, on the Terminal/SFTP
+    // pages) owns the pager. While set, the settledPage→selection sync below is
+    // suppressed: the override adopts the settled page explicitly on release, so
+    // a settledPage value observed mid-gesture (or in the one-frame gap between
+    // the drag scroll session and the release animation) can't flip the
+    // selection underneath the gesture. Never set on the built-in-pager pages.
+    var isUserSwiping by remember { mutableStateOf(false) }
+    // During an override-driven swipe (Terminal/SFTP), stop child scrollables
+    // (e.g. the SFTP file list) from forwarding their unconsumed HORIZONTAL
+    // drag up to the pager's built-in DefaultPagerNestedScrollConnection. That
+    // connection scrolls the pager even with userScrollEnabled=false (it only
+    // needs currentPageOffsetFraction != 0), so with the IME up it amplified a
+    // swipe by a whole page (the overshoot/bounce). Applied OUTER to the pager
+    // so its onPreScroll runs before the pager's; vertical passes through so the
+    // list still scrolls. Gated on isUserSwiping so built-in-pager pages are
+    // unaffected.
+    val consumeHorizontalNestedScroll = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset =
+                if (isUserSwiping) Offset(available.x, 0f) else Offset.Zero
+        }
+    }
     // RENDER follows SELECTION: re-scroll whenever the selection changes OR
     // the available screens change (filter/reorder), so the visible page is
     // always the selected Screen. Instant scroll (not animated) so a tap
@@ -226,8 +252,15 @@ fun HavenNavHost(
     // (not `screens`) so a pending requestScreen to a not-yet-present tab is
     // never clobbered by a screens-list change before the scroll lands.
     LaunchedEffect(pagerState.settledPage) {
+        // While a manual swipe owns the pager the override is the authority on
+        // the settled page (it calls requestScreen on release); skip here so a
+        // transient settledPage can't flip the selection mid-gesture. The
+        // built-in-pager pages never set this flag, so they still sync here.
+        if (isUserSwiping) return@LaunchedEffect
         screens.getOrNull(pagerState.settledPage)?.let { settled ->
-            if (settled != selectedScreen) requestScreen(settled)
+            if (settled != selectedScreen) {
+                requestScreen(settled)
+            }
         }
     }
 
@@ -440,8 +473,18 @@ fun HavenNavHost(
     val pagerContent: @Composable (Modifier) -> Unit = { modifier ->
         HorizontalPager(
             state = pagerState,
-            userScrollEnabled = !desktopFullscreen && !terminalFullscreen && !desktopConnected && !terminalSelectionActive && !sftpEditorOpen && !sftpImageToolOpen,
-            modifier = modifier,
+            // The Terminal and SFTP pages drive the pager themselves through
+            // pagerSwipeOverride (so they can co-exist with the terminal's own
+            // gestures and SFTP's flick-to-navigate-up). Disable the pager's
+            // BUILT-IN scrollable on those pages so it can't also move the
+            // pager — otherwise two controllers fight: the override scrolls a
+            // little while the built-in flings the pager a couple of pages on,
+            // leaving the page and the nav selection inconsistent. The
+            // built-in stays enabled on the other pages (Connections/Desktop/
+            // Keys/Settings), which have no override and rely on it.
+            userScrollEnabled = !desktopFullscreen && !terminalFullscreen && !desktopConnected && !terminalSelectionActive && !sftpEditorOpen && !sftpImageToolOpen &&
+                selectedScreen != Screen.Terminal && selectedScreen != Screen.Sftp,
+            modifier = modifier.nestedScroll(consumeHorizontalNestedScroll),
         ) { page ->
             when (screens[page]) {
                 Screen.Connections -> ConnectionsScreen(
@@ -557,6 +600,8 @@ fun HavenNavHost(
                         terminalModifier = Modifier.pagerSwipeOverride(
                             pagerState, coroutineScope,
                             isSelectionActive = { terminalSelectionActive || terminalReorderMode },
+                            onSwipeActiveChange = { isUserSwiping = it },
+                            onAdoptPage = { page -> screens.getOrNull(page)?.let { requestScreen(it) } },
                         ),
                     )
                     // Clear pending IDs after the terminal has had a chance to consume them.
@@ -615,6 +660,8 @@ fun HavenNavHost(
                             pagerState = pagerState,
                             scope = coroutineScope,
                             isSelectionActive = { sftpSelectedPaths.isNotEmpty() || sftpEditorOpen || sftpImageToolOpen },
+                            onSwipeActiveChange = { isUserSwiping = it },
+                            onAdoptPage = { page -> screens.getOrNull(page)?.let { requestScreen(it) } },
                             onFlick = { rightward ->
                                 // Fast rightward flick inside a subdirectory
                                 // navigates up one level instead of switching
@@ -871,6 +918,19 @@ private fun Modifier.pagerSwipeOverride(
     scope: CoroutineScope,
     isSelectionActive: () -> Boolean = { false },
     /**
+     * Called with true when a horizontal swipe starts driving the pager and
+     * false once the release-settle animation completes. The host raises a
+     * flag from this that suppresses the settledPage→selection sync for the
+     * duration of the gesture (see isUserSwiping in HavenNavHost).
+     */
+    onSwipeActiveChange: (Boolean) -> Unit = {},
+    /**
+     * Called once on a normal (non-flick) release with the page index the
+     * swipe settled on, so the host can adopt it as the selection. This is the
+     * single authoritative selection update for an override-driven swipe.
+     */
+    onAdoptPage: (Int) -> Unit = {},
+    /**
      * Optional per-page flick handler. Called at gesture release if the
      * horizontal drag qualifies as a fast flick (velocity past the
      * internal threshold). Return true if the flick was handled
@@ -890,15 +950,31 @@ private fun Modifier.pagerSwipeOverride(
         var decided = false
         var isHorizontal = false
 
-        // Anchor the gesture to the page we started on. During the drag we
-        // call dispatchRawDelta, which moves the pager progressively and
-        // may tick pagerState.currentPage over to the next page before the
-        // finger lifts. Computing the release target from currentPage would
-        // then cause a two-page jump. Use startPage as the stable anchor.
+        // Anchor the gesture to the page we started on. During the drag the
+        // pager scrolls progressively and pagerState.currentPage may tick over
+        // to the next page before the finger lifts; computing the release
+        // target from currentPage would then cause a two-page jump. Use
+        // startPage as the stable anchor.
         val startPage = pagerState.currentPage
         var selectionInterrupted = false
         val velocityTracker = VelocityTracker().also {
             it.addPosition(down.uptimeMillis, down.position)
+        }
+
+        // Drive the drag with dispatchRawDelta — a direct 1:1 scroll that
+        // tracks the finger. The settledPage→selection feedback this would
+        // otherwise trigger mid-drag (dispatchRawDelta never raises
+        // isScrollInProgress, so settledPage tracks currentPage) is instead
+        // suppressed by the isUserSwiping flag, which gates BOTH settledPage
+        // effects for the whole gesture. NOTE: an earlier attempt drove a real
+        // pagerState.scroll{} session here to keep isScrollInProgress true —
+        // but the pager snap-FLINGS on scroll-session-end using the built-up
+        // velocity, hurling a fast flick a full page in one frame (an "instant
+        // jump", no slide). dispatchRawDelta has no fling-on-end, so the page
+        // tracks the finger and the release animation is the only motion.
+        var swiping = false
+        fun beginSwipe() {
+            if (!swiping) { swiping = true; onSwipeActiveChange(true) }
         }
 
         var change: PointerInputChange? = down
@@ -924,13 +1000,14 @@ private fun Modifier.pagerSwipeOverride(
                 change.consume()
             }
 
-            // Forward horizontal drags to pager (unless selection active)
+            // Forward horizontal drags straight to the pager (unless selection
+            // is active).
             if (isHorizontal && !selectionInterrupted) {
                 if (isSelectionActive()) {
-                    // Selection activated mid-swipe — snap pager back
+                    // Selection activated mid-swipe — snap back after the loop.
                     selectionInterrupted = true
-                    scope.launch { pagerState.animateScrollToPage(pagerState.currentPage) }
                 } else {
+                    beginSwipe()
                     pagerState.dispatchRawDelta(-delta.x)
                 }
             }
@@ -938,29 +1015,64 @@ private fun Modifier.pagerSwipeOverride(
 
         if (isHorizontal && !selectionInterrupted && !isSelectionActive()) {
             // Release decision — fast flick first (per-page hook gets a
-            // chance to claim it), then fall back to standard page-threshold
-            // behaviour.
+            // chance to claim it), then fall back to the standard
+            // page-threshold behaviour.
             val releaseVelocity = velocityTracker.calculateVelocity().x
             val isFlick = abs(releaseVelocity) >= flickVelocityPx
             val flickHandled = if (isFlick) onFlick(totalX > 0) else false
 
-            if (flickHandled) {
-                // Caller took over — snap pager back to the page we
-                // started on (we forwarded some delta to it during the
-                // drag, so currentPage may already have ticked over).
-                scope.launch { pagerState.animateScrollToPage(startPage) }
-            } else {
-                val threshold = size.width / 4
-                val target = when {
-                    totalX < -threshold -> startPage + 1
-                    totalX > threshold -> startPage - 1
-                    else -> startPage
-                }.coerceIn(0, pagerState.pageCount - 1)
-                scope.launch { pagerState.animateScrollToPage(target) }
+            scope.launch {
+                try {
+                    // Decide the settle target from where the pager ACTUALLY
+                    // scrolled to (currentPage + offset), NOT from net finger
+                    // displacement (totalX). totalX can diverge from the real
+                    // scroll position on a fast/curved flick or an IME-dismiss
+                    // relayout mid-drag — which made the pager visibly reach the
+                    // next page yet snap back to the start page (the "bounce").
+                    // Deciding from the real position keeps the settle
+                    // consistent with what the user sees.
+                    val target = if (flickHandled) {
+                        // Caller took over (e.g. SFTP navigated up) — settle
+                        // back on the page we started on.
+                        startPage
+                    } else {
+                        val pos = pagerState.currentPage + pagerState.currentPageOffsetFraction
+                        val moved = pos - startPage
+                        // Commit to the neighbour once the pager has travelled a
+                        // quarter page from the start (a flick commits sooner).
+                        val commit = if (isFlick) 0.1f else 0.25f
+                        when {
+                            moved <= -commit -> startPage - 1
+                            moved >= commit -> startPage + 1
+                            else -> startPage
+                        }
+                    }.coerceIn(0, pagerState.pageCount - 1)
+                    // The selection sync stays suppressed (isUserSwiping still
+                    // set) across the gap between sessions; we adopt the final
+                    // page explicitly, then release the flag in finally.
+                    pagerState.animateScrollToPage(target)
+                    if (!flickHandled) {
+                        onAdoptPage(target)
+                    }
+                } finally {
+                    // ALWAYS release the swipe flag, even if the settle
+                    // animation was cancelled — otherwise the selection sync
+                    // stays suppressed and the nav highlight sticks on the page
+                    // we started from.
+                    onSwipeActiveChange(false)
+                }
             }
-        } else if (selectionInterrupted) {
-            // Ensure pager settles on the page we started on
-            scope.launch { pagerState.animateScrollToPage(startPage) }
+        } else if (swiping) {
+            // The drag was interrupted by selection (or released while
+            // selection active) — snap back to where we began and release the
+            // flag. Selection never changed during the swipe, so no adopt.
+            scope.launch {
+                try {
+                    pagerState.animateScrollToPage(startPage)
+                } finally {
+                    onSwipeActiveChange(false)
+                }
+            }
         }
     }
 }
