@@ -47,6 +47,34 @@ Goal: add an **EMAIL** connection type that, instead of a file view, opens a **K
 - **Polish:** wire `WithUserAgent` in the Go bridge (ToS-fingerprint hygiene); fix MCP `list_connections` to report `hasStoredPassword` for EMAIL (it only checks `sshPassword`); locale translations for the new strings; consider a Proton system-label de-dup (the API returns two "All Mail" entries).
 - **Standing risk:** unofficial reverse-engineered API — ToS/account-lock risk on any tier; disclosed in the connect dialog. Keep request pacing conservative (reinforces deferring push/Stage 4).
 
+## Stage 2a — Generic IMAP/SMTP (the second engine) — plan (2026-06-07)
+
+**Chosen as the next block** (over Proton send/compose and a harden-v1 block) to *prove the hybrid two-engine architecture*: today `MailClient`/`MailBackend`/`MailSessionManager`/`MailTransportSelector` have exactly one implementation, so they're unproven abstractions. This block stands up the JVM IMAP/SMTP engine **next to** the Go/Proton engine. Payoff: (1) the Gateway security chain composes for *any* provider — IMAP/SMTP ride `TunnelResolver.socketFactory`, proving "hybrid routes two ways" (Go→SOCKS, JVM→SocketFactory); (2) **both engines converge on RFC822 bytes → one `MimeParser` → `ParsedMessage`**, so a single `MailBackend` serves both; (3) IMAP sessions register in `SessionManagerRegistry`, so `list_sessions`/`disconnect_profile` + the three MCP read tools work with **zero per-engine MCP code**. After this, **Gmail/Outlook (Stage 2b) is only an auth delta** (app-password → XOAUTH2) on the same engine.
+
+**Scope:** generic IMAP/SMTP with **password / app-password** (Fastmail, iCloud, Yahoo, Dovecot, self-hosted). OAuth = Stage 2b. Proton `send` stays a 501 stub (we add the *seam*, not the Proton impl). **No DB migration** — every EMAIL field already exists; `emailProvider="imap"` is just populated.
+
+### The central refactor (this *is* the abstraction proof)
+- `MailSessionManager`: stop injecting one `MailClient`/exposing `.mailClient`. Inject a **map of engines** (PROTON, IMAP); `SessionState` gains `engine`; expose `clientForProfile/Session(id)`.
+- `MailClient.login(…, socks)` → engine-neutral `connectSession(id, params: MailConnectParams)` where `MailConnectParams` is sealed: `Proton(…, socks)` / `Imap(username, password, server, port, smtpPort, tls, socketFactory)`. Transport generalised: SOCKS endpoint **or** `SocketFactory`.
+- `MailTransportSelector`: pick the client by the session's engine → **one `RfcMailBackend` for both** (rename of `ProtonMailBackend`, already engine-neutral: `getMessageRaw → MimeParser.parse`).
+- MCP tools: call `clientForProfile(profileId)`, not the global `.mailClient`.
+- Proton happy-path stays **byte-identical**; existing host live test + device read flow are the regression gates.
+
+### Checkpoints (each gates the next)
+- **CP-0 — Library spike gate (do first).** The Jakarta/Angus Android story shifted (old `com.sun.mail` obsolete; `org.eclipse.angus:angus-mail:2.0.4` uses `jakarta.*`+`java.beans` which Android lacks). Try **`com.sun.mail:android-mail:1.6.7` + `android-activation:1.6.7`** first (last Android-targeted build, `javax.mail`, no `java.beans`); fallback `org.eclipse.angus:angus-mail:2.0.4` (+desugaring/shim). **Acceptance:** on a real device (minSdk 26) connect to a real IMAP server over TLS via `socketFactory`, list INBOX, fetch one message's RFC822, parse via `MimeParser` → subject/from/body. Lock dep, **write sha256 verification-metadata** (else build fails — known gotcha), add packaging excludes, confirm EPL-2.0/EDL-1.0 (AGPL-compatible).
+- **CP-1 — Engine-routing refactor, no IMAP.** The refactor above. Gate: Proton live test + device read flow green; routing unit tests.
+- **CP-2 — `ImapMailClient` (read).** `login` (open `Store` via socketFactory+auth), `listFolders`, `listMessages` (envelopes→`MailMessage`, ids `folderId:UID`), `getMessageRaw` (`message.writeTo`→RFC822), `logout`. IMAP/auth errors → `MailException`. Gate: host integration test vs local Dovecot-in-proot (or env-gated real account) — **no account in CI**.
+- **CP-3 — `connectEmail` IMAP branch.** Resolve `socketFactory` (not socksEndpoint), **fail-closed if tunnel set but factory null**, `MailConnectParams.Imap`, register `engine=IMAP`, nav `Screen.Mail`; SPA/knock retained.
+- **CP-4 — `ConnectionEditDialog` generic-IMAP fields.** Provider picker + **provider-gated collapsible** section (server, port 993, SMTP port 465/587, TLS, username, app-password). Portrait: hidden unless type=EMAIL ∧ provider=imap; app-password help = single trailing-icon tooltip.
+- **CP-5 — Verify read e2e + MCP (release gate).** One backend, two engines; MCP read tools drive an IMAP session; `list_sessions` shows it; disconnect closes the Store. **Negative:** IMAP profile on blackhole tunnel → connect fails via socketFactory, no clearnet fallback.
+- **CP-6 — SMTP send seam + `ImapMailClient.send`.** `MailClient.send(...)` added (**Proton keeps 501**). IMAP: build `MimeMessage`, `Transport.send` over SMTP socketFactory (implicit 465 / STARTTLS 587), append to Sent. Gate: send-to-self over an env-gated real account.
+- **CP-7 — Compose UI + reply/forward + `send_mail` MCP.** Portrait: **full-screen compose destination, no FAB** — Compose/reply/forward as top-app-bar icon actions; recipient chips wrap/collapse. MCP `send_mail` **consent-gated + audit-logged**, IMAP-only until Proton send lands.
+
+**Milestone split:** CP-0→CP-5 is the gating, independently-shippable abstraction proof (two engines, read path); CP-6→CP-7 add send.
+
+### Risks (ranked)
+- **R1 (crit)** JVM mail lib Android compat (`java.beans`/activation) → CP-0 spike. **R2 (high)** refactoring verified Proton code → CP-1 pure refactor, Proton-identical, gated before IMAP. **R3 (high)** clearnet leak when socketFactory null but tunnel set → symmetric fail-closed + negative test. **R4 (med)** IMAP identity/folder state (UID vs message-id) → encode `folderId:UID`. **R5 (med)** SMTP send safety → explicit From, consent-gated MCP, compose confirms recipients. **R6 (med, portrait)** dialog/compose density → gated collapsible fields, full-screen compose, no FAB.
+
 ## Architecture (mapped to existing seams)
 
 ```
