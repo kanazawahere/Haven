@@ -2258,13 +2258,13 @@ internal class McpTools(
         ) { args -> setProfileRouting(args) },
 
         "create_connection" to ToolHandler(
-            description = "Create a saved connection profile. Supports connectionType=SSH, SMB, VNC, RDP. SSH-family fields: username (required), password (optional, stored), keyId (optional — references list_ssh_keys), ignoreSavedKeys (force password-only auth, never offer saved keys), useMosh (turn an SSH profile into a Mosh profile). SMB: smbShare (required), username + password, smbDomain. VNC: vncUsername, vncPassword, vncPort, and vncSshForward + vncSshProfileId to tunnel VNC through a saved SSH profile. RDP: rdpUsername (required), rdpPassword, rdpDomain, rdpPort. The new profile id is returned for follow-up calls (set_profile_routing, connect_profile). For Reticulum / rclone / local create the profile in the UI — those paths need OAuth / destination-hash flows the agent can't drive.",
+            description = "Create a saved connection profile. Supports connectionType=SSH, SMB, VNC, RDP, EMAIL. SSH-family fields: username (required), password (optional, stored), keyId (optional — references list_ssh_keys), ignoreSavedKeys (force password-only auth, never offer saved keys), useMosh (turn an SSH profile into a Mosh profile). SMB: smbShare (required), username + password, smbDomain. VNC: vncUsername, vncPassword, vncPort, and vncSshForward + vncSshProfileId to tunnel VNC through a saved SSH profile. RDP: rdpUsername (required), rdpPassword, rdpDomain, rdpPort. EMAIL: emailProvider (\"imap\" default, or \"proton\"); username = the email address; password = the account/app-password; for IMAP set emailServer (required) + emailPort (993) + emailSmtpPort (465) + emailTls (true); for Proton add emailMailboxPassword if two-password mode. EMAIL host is optional (the tunnel-ingress/bastion SPA/knock guards), not the mail server. The new profile id is returned for follow-up calls (set_profile_routing, connect_profile). For Reticulum / rclone / local create the profile in the UI — those paths need OAuth / destination-hash flows the agent can't drive.",
             inputSchema = JSONObject().apply {
                 put("type", "object")
                 put("properties", JSONObject().apply {
                     put("label", JSONObject().apply { put("type", "string"); put("description", "User-facing label.") })
-                    put("connectionType", JSONObject().apply { put("type", "string"); put("description", "SSH | SMB | VNC | RDP.") })
-                    put("host", JSONObject().apply { put("type", "string"); put("description", "Target hostname or IP.") })
+                    put("connectionType", JSONObject().apply { put("type", "string"); put("description", "SSH | SMB | VNC | RDP | EMAIL.") })
+                    put("host", JSONObject().apply { put("type", "string"); put("description", "Target hostname or IP. For EMAIL this is the optional tunnel ingress/bastion (SPA/knock target), NOT the mail server — leave blank for a direct IMAP connection.") })
                     put("port", JSONObject().apply { put("type", "integer"); put("description", "TCP port. Defaults: SSH 22, SMB 445, VNC 5900, RDP 3389.") })
                     put("username", JSONObject().apply { put("type", "string"); put("description", "Username for SSH/SMB.") })
                     put("password", JSONObject().apply { put("type", "string"); put("description", "Password (stored). Optional for SSH if a key is used; some VNC/SMB setups allow guest.") })
@@ -2277,6 +2277,12 @@ internal class McpTools(
                     put("rdpUsername", JSONObject().apply { put("type", "string"); put("description", "Windows username (RDP). Required when connectionType=RDP.") })
                     put("rdpPassword", JSONObject().apply { put("type", "string"); put("description", "Windows password (RDP).") })
                     put("rdpDomain", JSONObject().apply { put("type", "string"); put("description", "AD domain (RDP). Optional.") })
+                    put("emailProvider", JSONObject().apply { put("type", "string"); put("description", "EMAIL only: \"imap\" (generic IMAP/SMTP, default) or \"proton\".") })
+                    put("emailServer", JSONObject().apply { put("type", "string"); put("description", "EMAIL/imap only: IMAP server hostname (required for imap). Reached through the tunnel when one is set.") })
+                    put("emailPort", JSONObject().apply { put("type", "integer"); put("description", "EMAIL/imap only: IMAP port. Default 993.") })
+                    put("emailSmtpPort", JSONObject().apply { put("type", "integer"); put("description", "EMAIL/imap only: SMTP port. Default 465.") })
+                    put("emailTls", JSONObject().apply { put("type", "boolean"); put("description", "EMAIL/imap only: implicit TLS (SSL). Default true.") })
+                    put("emailMailboxPassword", JSONObject().apply { put("type", "string"); put("description", "EMAIL/proton only: separate mailbox password for two-password-mode accounts.") })
                     put("tunnelConfigId", JSONObject().apply { put("type", "string"); put("description", "Optional: route the new profile through this tunnel (from list_tunnels). Equivalent to follow-up set_profile_routing.") })
                     put("tunnelOnly", JSONObject().apply { put("type", "boolean"); put("description", "SSH only: tunnel-only mode (#150). When true, the profile brings up the SSH transport and registers port forwards but does not open a terminal. Default false. Pair with auto_reconnect for autossh-style keepalive.") })
                     put("useMosh", JSONObject().apply { put("type", "boolean"); put("description", "SSH only: when true, the profile uses Mosh on top of the SSH bootstrap. SSH execs `mosh-server new -s`, parses MOSH CONNECT, then the UDP transport takes over. Default false.") })
@@ -6495,10 +6501,13 @@ internal class McpTools(
         val type = args.optString("connectionType").uppercase().ifBlank {
             throw IllegalArgumentException("connectionType required")
         }
-        if (type !in setOf("SSH", "SMB", "VNC", "RDP")) {
-            throw IllegalArgumentException("connectionType must be SSH, SMB, VNC, or RDP (use the UI for LOCAL / RCLONE / RETICULUM)")
+        if (type !in setOf("SSH", "SMB", "VNC", "RDP", "EMAIL")) {
+            throw IllegalArgumentException("connectionType must be SSH, SMB, VNC, RDP, or EMAIL (use the UI for LOCAL / RCLONE / RETICULUM)")
         }
-        val host = args.optString("host").ifBlank { throw IllegalArgumentException("host required") }
+        // EMAIL's host is the optional tunnel-ingress/bastion (SPA/knock target),
+        // not the mail server — so it may be blank; every other type requires it.
+        val host = args.optString("host")
+        if (type != "EMAIL" && host.isBlank()) throw IllegalArgumentException("host required")
         val username = args.optString("username")
         val password = args.optString("password")
         val tunnelConfigId = if (args.has("tunnelConfigId")) args.optString("tunnelConfigId") else null
@@ -6512,6 +6521,7 @@ internal class McpTools(
             "SMB" -> 445
             "VNC" -> 5900
             "RDP" -> 3389
+            "EMAIL" -> 0
             else -> 22
         }
         val port = if (args.has("port")) args.optInt("port", defaultPort) else defaultPort
@@ -6624,6 +6634,34 @@ internal class McpTools(
                     rdpPassword = args.optString("rdpPassword").ifBlank { null },
                     rdpDomain = args.optString("rdpDomain").ifBlank { null },
                     rdpSshForward = false,
+                    tunnelConfigId = tunnelConfigId,
+                    portKnockSequence = knockSequence,
+                    portKnockDelayMs = knockDelay,
+                )
+            }
+            "EMAIL" -> {
+                val provider = args.optString("emailProvider").ifBlank { "imap" }.lowercase()
+                val emailUser = username.ifBlank {
+                    throw IllegalArgumentException("username (email address) required for EMAIL")
+                }
+                val server = args.optString("emailServer").ifBlank { null }
+                if (provider == "imap" && server == null) {
+                    throw IllegalArgumentException("emailServer required for an IMAP EMAIL profile")
+                }
+                ConnectionProfile(
+                    label = label,
+                    host = host, // optional tunnel ingress that SPA/knock guards
+                    port = 0,
+                    username = emailUser,
+                    connectionType = "EMAIL",
+                    emailProvider = provider,
+                    emailUsername = emailUser,
+                    emailPassword = password.ifBlank { null },
+                    emailMailboxPassword = args.optString("emailMailboxPassword").ifBlank { null },
+                    emailServer = server,
+                    emailPort = if (args.has("emailPort")) args.optInt("emailPort", 993) else 993,
+                    emailSmtpPort = if (args.has("emailSmtpPort")) args.optInt("emailSmtpPort", 465) else 465,
+                    emailTls = args.optBoolean("emailTls", true),
                     tunnelConfigId = tunnelConfigId,
                     portKnockSequence = knockSequence,
                     portKnockDelayMs = knockDelay,

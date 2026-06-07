@@ -175,11 +175,20 @@ class ImapMailClient @Inject constructor() : MailClient {
             if (sf != null) {
                 // Layer TLS over the tunneled plain socket.
                 this["mail.imaps.ssl.socketFactory"] = TunnelingSSLSocketFactory(sf)
+                // CRITICAL (no clearnet leak): JavaMail's socketFactory.fallback
+                // defaults to TRUE — if our tunnel factory can't connect it
+                // silently retries with a DIRECT java.net.Socket, leaking past the
+                // tunnel. Force false so a dead/blocked tunnel fails the connect.
+                this["mail.imaps.ssl.socketFactory.fallback"] = "false"
+                this["mail.imaps.socketFactory.fallback"] = "false"
                 this["mail.imaps.ssl.checkserveridentity"] = "true"
             }
         } else {
             this["mail.store.protocol"] = "imap"
-            if (sf != null) this["mail.imap.socketFactory"] = sf
+            if (sf != null) {
+                this["mail.imap.socketFactory"] = sf
+                this["mail.imap.socketFactory.fallback"] = "false"
+            }
         }
     }
 
