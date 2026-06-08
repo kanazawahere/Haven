@@ -146,8 +146,17 @@ sealed class AgentUiCommand {
      * way for the agent to drive a connect, since this re-uses the
      * existing UI password-prompt fallback when neither a stored
      * password nor a key is configured.
+     *
+     * [sessionName], when non-null, pre-selects a session-manager
+     * (tmux/zellij/screen) session by name instead of surfacing the
+     * interactive session picker — the agent can't tap that picker, so a
+     * connect to a profile with existing sessions would otherwise stall.
+     * The name is attached if it already exists or created otherwise
+     * (`new-session -A -s <name>`). Ignored for transports / profiles with
+     * no session manager.
      */
     data class ConnectProfile(
         val profileId: String,
+        val sessionName: String? = null,
     ) : AgentUiCommand()
 }

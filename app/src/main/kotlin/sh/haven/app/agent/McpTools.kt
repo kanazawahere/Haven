@@ -2499,13 +2499,17 @@ internal class McpTools(
         ) { args -> deleteConnection(args) },
 
         "connect_profile" to ToolHandler(
-            description = "Initiate a connection for a saved profile via the same code path a UI tap uses (route-through, stored password, key auth all apply). Posts an AgentUiCommand.ConnectProfile that ConnectionsViewModel observes — the actual connect happens asynchronously. Use list_sessions afterwards to confirm the session reached CONNECTED. If the profile needs a password that isn't stored and isn't a key, the UI password prompt will surface to the user.",
+            description = "Initiate a connection for a saved profile via the same code path a UI tap uses (route-through, stored password, key auth all apply). Posts an AgentUiCommand.ConnectProfile that ConnectionsViewModel observes — the actual connect happens asynchronously. Use list_sessions afterwards to confirm the session reached CONNECTED. If the profile needs a password that isn't stored and isn't a key, the UI password prompt will surface to the user. For an SSH profile that uses a session manager (tmux/zellij/screen), pass sessionName to attach or create a named session non-interactively; without it, a connect to a profile that has existing sessions surfaces the interactive picker (which the agent can't tap) and stalls.",
             inputSchema = JSONObject().apply {
                 put("type", "object")
                 put("properties", JSONObject().apply {
                     put("profileId", JSONObject().apply {
                         put("type", "string")
                         put("description", "Profile id from list_connections.")
+                    })
+                    put("sessionName", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Optional. SSH session-manager (tmux/zellij/screen) session to attach or create — attaches if it already exists, creates it otherwise. Skips the interactive session picker. Ignored for transports/profiles without a session manager.")
                     })
                 })
                 put("required", JSONArray().put("profileId"))
@@ -6946,10 +6950,11 @@ internal class McpTools(
         val profileId = args.optString("profileId").ifBlank {
             throw IllegalArgumentException("profileId required")
         }
+        val sessionName = args.optString("sessionName").ifBlank { null }
         val profile = connectionRepository.getById(profileId)
             ?: throw IllegalArgumentException("profile $profileId not found")
         agentUiCommandBus.emit(
-            sh.haven.core.data.agent.AgentUiCommand.ConnectProfile(profileId)
+            sh.haven.core.data.agent.AgentUiCommand.ConnectProfile(profileId, sessionName)
         )
         return JSONObject().apply {
             put("profileId", profileId)

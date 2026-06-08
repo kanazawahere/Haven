@@ -157,7 +157,7 @@ class ConnectionsViewModel @Inject constructor(
                 if (command is sh.haven.core.data.agent.AgentUiCommand.ConnectProfile) {
                     val profile = repository.getById(command.profileId)
                     if (profile != null) {
-                        connect(profile, password = profile.sshPassword.orEmpty())
+                        connect(profile, password = profile.sshPassword.orEmpty(), sessionName = command.sessionName)
                     } else {
                         Log.w(TAG, "ConnectProfile: profile ${command.profileId} not found")
                     }
@@ -1371,6 +1371,7 @@ class ConnectionsViewModel @Inject constructor(
         keyOnly: Boolean = false,
         rememberPassword: Boolean? = null,
         usernameOverride: String? = null,
+        sessionName: String? = null,
     ) {
         if (profile.isLocal) {
             connectLocal(profile)
@@ -1418,7 +1419,7 @@ class ConnectionsViewModel @Inject constructor(
             connectMosh(profile, password, keyOnly, usernameOverride = runtimeUsername)
             return
         }
-        connectSsh(profile, password, keyOnly, rememberPassword, usernameOverride = runtimeUsername)
+        connectSsh(profile, password, keyOnly, rememberPassword, usernameOverride = runtimeUsername, preselectedSessionName = sessionName)
     }
 
     private fun connectVnc(profile: ConnectionProfile) {
@@ -2150,6 +2151,7 @@ class ConnectionsViewModel @Inject constructor(
         keyOnly: Boolean,
         rememberPassword: Boolean? = null,
         usernameOverride: String? = null,
+        preselectedSessionName: String? = null,
     ) {
         val effectiveUsername = usernameOverride?.takeIf { it.isNotBlank() } ?: profile.username
         viewModelScope.launch {
@@ -2273,9 +2275,17 @@ class ConnectionsViewModel @Inject constructor(
                 // Drain verbose log now (before session picker might return from the coroutine)
                 verboseLogger?.drain()?.let { pendingVerboseLogs[sessionId] = it }
 
+                // Agent-supplied session name (connect_profile sessionName): attach
+                // or create it directly and skip the interactive picker, which the
+                // agent can't tap. tmux/zellij "new-session -A -s <name>" attaches
+                // if the session exists and creates it otherwise.
+                if (preselectedSessionName != null) {
+                    sshSessionManager.setChosenSessionName(sessionId, preselectedSessionName)
+                }
+
                 // If session manager supports listing, check for existing sessions
                 val listCmd = sshSessionMgr.listCommand
-                if (listCmd != null) {
+                if (preselectedSessionName == null && listCmd != null) {
                     val existingSessions = withContext(Dispatchers.IO) {
                         try {
                             val result = client.execCommand(listCmd)
