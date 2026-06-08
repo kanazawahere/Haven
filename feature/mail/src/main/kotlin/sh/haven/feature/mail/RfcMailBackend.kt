@@ -1,5 +1,7 @@
 package sh.haven.feature.mail
 
+import sh.haven.core.data.db.entities.ConnectionLog
+import sh.haven.core.data.repository.ConnectionLogRepository
 import sh.haven.core.mail.MailClient
 import sh.haven.core.mail.MailFolder
 import sh.haven.core.mail.MailMessage
@@ -16,6 +18,8 @@ import sh.haven.core.mail.SendResult
 class RfcMailBackend(
     private val client: MailClient,
     private val sessionId: String,
+    private val profileId: String,
+    private val connectionLog: ConnectionLogRepository,
 ) : MailBackend {
 
     override suspend fun listFolders(): List<MailFolder> = client.listFolders(sessionId)
@@ -28,6 +32,18 @@ class RfcMailBackend(
         return MimeParser.parse(raw)
     }
 
-    override suspend fun sendMessage(mail: OutgoingMail): SendResult =
-        client.send(sessionId, mail)
+    override suspend fun sendMessage(mail: OutgoingMail): SendResult {
+        val result = client.send(sessionId, mail)
+        // Audit-log a successful send so it shows in Settings → connection log,
+        // matching the send_mail MCP tool's row. Logging must never fail the send.
+        runCatching {
+            connectionLog.logEvent(
+                profileId,
+                ConnectionLog.Status.CONNECTED,
+                details = "Sent mail to ${mail.to.size} recipient(s)" +
+                    (if (mail.subject.isNotBlank()) " — \"${mail.subject}\"" else ""),
+            )
+        }
+        return result
+    }
 }
