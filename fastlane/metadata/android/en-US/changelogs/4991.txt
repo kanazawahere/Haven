@@ -1,0 +1,3 @@
+Fixes the terminal "bounce": connecting a shell could flash the Terminal tab and then jump straight back to Connections whenever the session briefly dropped (common over a tunnelled or mobile link). It now stays on the Terminal — you only return to Connections when you close the last tab yourself.
+
+More of the UI is now translated — the Cloudflare-Access tunnel fields — across all supported languages.
