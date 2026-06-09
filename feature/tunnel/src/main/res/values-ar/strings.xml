@@ -20,4 +20,26 @@
     <string name="tunnel_tailscale_authkey_label">مفتاح المصادقة (tskey-auth-…)</string>
     <string name="tunnel_tailscale_control_url_label">رابط مستوى التحكم (اختياري)</string>
     <string name="tunnel_tailscale_control_url_help">اتركه فارغًا لمستوى التحكم المستضاف من Tailscale. اضبطه على رابط Headscale لخادم تنسيق ذاتي الاستضافة.</string>
+
+    <!-- Cloudflare Access SSH tunnel (#154) -->
+    <string name="cf_experimental_banner">تجريبي — ينفّذ Haven بروتوكول WebSocket السلكي نفسه الذي يستخدمه `cloudflared access ssh`. اختُبر مع مجموعة صغيرة من المستأجرين؛ يُرجى الإبلاغ عن أي تباين عبر GitHub #154.</string>
+    <string name="cf_intro_blurb">توجيه SSH عبر اسم مضيف منشور لـ Cloudflare Tunnel — المكافئ داخل التطبيق لـ `cloudflared access ssh --hostname &lt;host&gt;`. تحتاج مسارات Tunnel العامة إلى اسم مضيف فقط. أما المسارات المحمية بـ Access فتتطلب إضافةً JWT — اضغط تسجيل الدخول لالتقاط واحد عبر IdP الخاص بفريقك.</string>
+    <string name="cf_field_hostname">اسم المضيف (مثل ssh.example.com)</string>
+    <string name="cf_jwt_none">بلا JWT — يعمل فقط مع مسارات Tunnel غير المحمية</string>
+    <string name="cf_jwt_expired">انتهت صلاحية JWT — سجّل الدخول مجددًا</string>
+    <string name="cf_jwt_expires_hours">مُسجَّل الدخول · تنتهي الصلاحية خلال ~%1$d س</string>
+    <string name="cf_jwt_expires_soon">مُسجَّل الدخول · تنتهي الصلاحية خلال &lt;1 س</string>
+    <string name="cf_jwt_signed_in">مُسجَّل الدخول</string>
+    <string name="cf_test_running">جارٍ الاختبار…</string>
+    <string name="cf_test_connection">اختبار الاتصال</string>
+    <string name="cf_advanced_hide">إخفاء الخيارات المتقدمة</string>
+    <string name="cf_advanced_show">متقدّم (مصادقة Access، بوابة، لصق JWT)</string>
+    <string name="cf_sign_in">تسجيل الدخول عبر Cloudflare Access</string>
+    <string name="cf_reauthenticate">إعادة المصادقة</string>
+    <string name="cf_field_team_domain">نطاق الفريق (اختياري)</string>
+    <string name="cf_team_domain_help">مطلوب فقط للمسارات المحمية بـ Access؛ يتيح لنا التقاط ملف تعريف ارتباط نطاق الفريق كحل احتياطي إذا كان ملف التطبيق المحدد مفقودًا.</string>
+    <string name="cf_field_jump_destination">وجهة القفز (اختياري)</string>
+    <string name="cf_jump_destination_help">أنفاق متعددة الأهداف بوضع البوابة: تُمرَّر باسم `Cf-Access-Jump-Destination`. اتركها فارغة للمسارات أحادية الهدف.</string>
+    <string name="cf_jwt_paste_help">للإعدادات بلا واجهة: شغّل `cloudflared access token --app https://&lt;hostname&gt;` على جهاز آخر والصق JWT هنا. يُحلَّل انتهاء الصلاحية من الرمز تلقائيًا.</string>
+    <string name="cf_field_jwt">‏JWT الخاص بـ Cloudflare Access (اختياري)</string>
 </resources>

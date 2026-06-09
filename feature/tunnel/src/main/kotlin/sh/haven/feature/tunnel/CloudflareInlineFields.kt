@@ -14,6 +14,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -68,7 +69,7 @@ fun CloudflareInlineFields(
                 shape = MaterialTheme.shapes.small,
             ) {
                 Text(
-                    "Experimental — Haven implements the same WebSocket wire protocol as `cloudflared access ssh`. Tested against a small set of tenants; please report mismatches via GitHub #154.",
+                    stringResource(R.string.cf_experimental_banner),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onTertiaryContainer,
@@ -78,8 +79,7 @@ fun CloudflareInlineFields(
 
         if (showIntroBlurb) {
             Text(
-                "Route SSH through a Cloudflare Tunnel published hostname — the in-app equivalent of `cloudflared access ssh --hostname <host>`. " +
-                    "Public Tunnel routes need only a hostname. Access-protected routes additionally require a JWT — tap Sign in to capture one via your team's IdP.",
+                stringResource(R.string.cf_intro_blurb),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -89,7 +89,7 @@ fun CloudflareInlineFields(
             OutlinedTextField(
                 value = hostname,
                 onValueChange = onHostnameChange,
-                label = { Text("Hostname (e.g. ssh.example.com)") },
+                label = { Text(stringResource(R.string.cf_field_hostname)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -100,14 +100,15 @@ fun CloudflareInlineFields(
 
         val now = remember { System.currentTimeMillis() / 1000 }
         val jwtStatus = when {
-            jwt.isBlank() -> "No JWT — only works for unprotected Tunnel routes"
-            jwtExpiresAt in 1 until now -> "JWT expired — sign in again"
+            jwt.isBlank() -> stringResource(R.string.cf_jwt_none)
+            jwtExpiresAt in 1 until now -> stringResource(R.string.cf_jwt_expired)
             jwtExpiresAt > 0 -> {
                 val secs = jwtExpiresAt - now
                 val hours = secs / 3600
-                if (hours > 0) "Signed in · expires in ~${hours}h" else "Signed in · expires in <1h"
+                if (hours > 0) stringResource(R.string.cf_jwt_expires_hours, hours.toInt())
+                else stringResource(R.string.cf_jwt_expires_soon)
             }
-            else -> "Signed in"
+            else -> stringResource(R.string.cf_jwt_signed_in)
         }
         Text(
             jwtStatus,
@@ -127,9 +128,9 @@ fun CloudflareInlineFields(
         ) {
             Text(
                 if (testResult is CloudflareTunnelTestResult.Running) {
-                    "Testing…"
+                    stringResource(R.string.cf_test_running)
                 } else {
-                    "Test connection"
+                    stringResource(R.string.cf_test_connection)
                 },
             )
         }
@@ -169,7 +170,7 @@ fun CloudflareInlineFields(
         }
 
         TextButton(onClick = onAdvancedToggle) {
-            Text(if (advancedOpen) "Hide advanced" else "Advanced (Access auth, bastion, paste JWT)")
+            Text(if (advancedOpen) stringResource(R.string.cf_advanced_hide) else stringResource(R.string.cf_advanced_show))
         }
         if (advancedOpen) {
             OutlinedButton(
@@ -177,12 +178,12 @@ fun CloudflareInlineFields(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = hostname.isNotBlank(),
             ) {
-                Text(if (jwt.isBlank()) "Sign in via Cloudflare Access" else "Re-authenticate")
+                Text(if (jwt.isBlank()) stringResource(R.string.cf_sign_in) else stringResource(R.string.cf_reauthenticate))
             }
             OutlinedTextField(
                 value = teamDomain,
                 onValueChange = onTeamDomainChange,
-                label = { Text("Team domain (optional)") },
+                label = { Text(stringResource(R.string.cf_field_team_domain)) },
                 placeholder = {
                     Text(
                         "myteam.cloudflareaccess.com",
@@ -191,7 +192,7 @@ fun CloudflareInlineFields(
                 },
                 supportingText = {
                     Text(
-                        "Only needed for Access-protected routes; lets us capture the team-domain cookie as a fallback if the per-app one is missing.",
+                        stringResource(R.string.cf_team_domain_help),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 },
@@ -204,7 +205,7 @@ fun CloudflareInlineFields(
             OutlinedTextField(
                 value = jumpDestination,
                 onValueChange = onJumpDestinationChange,
-                label = { Text("Jump destination (optional)") },
+                label = { Text(stringResource(R.string.cf_field_jump_destination)) },
                 placeholder = {
                     Text(
                         "internal-host:22",
@@ -213,7 +214,7 @@ fun CloudflareInlineFields(
                 },
                 supportingText = {
                     Text(
-                        "Bastion-mode multi-target tunnels: forwarded as `Cf-Access-Jump-Destination`. Leave blank for one-target routes.",
+                        stringResource(R.string.cf_jump_destination_help),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 },
@@ -224,7 +225,7 @@ fun CloudflareInlineFields(
                 ),
             )
             Text(
-                "For headless setups: run `cloudflared access token --app https://<hostname>` on another machine and paste the JWT here. Expiry is parsed from the token automatically.",
+                stringResource(R.string.cf_jwt_paste_help),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -235,7 +236,7 @@ fun CloudflareInlineFields(
                         ?.expiresAtSeconds ?: 0L
                     onJwtPaste(pasted, expiry)
                 },
-                label = { Text("Cloudflare Access JWT (optional)") },
+                label = { Text(stringResource(R.string.cf_field_jwt)) },
                 singleLine = false,
                 minLines = 3,
                 modifier = Modifier

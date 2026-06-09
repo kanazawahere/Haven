@@ -287,7 +287,7 @@ private fun MessageList(
         return
     }
     if (messages.isEmpty()) {
-        CenterText("No messages")
+        CenterText(stringResource(R.string.mail_no_messages))
         return
     }
     val fs = fontSize.sp

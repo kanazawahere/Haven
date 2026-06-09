@@ -20,4 +20,26 @@
     <string name="tunnel_tailscale_authkey_label">认证密钥（tskey-auth-…）</string>
     <string name="tunnel_tailscale_control_url_label">控制平面 URL（可选）</string>
     <string name="tunnel_tailscale_control_url_help">留空则使用 Tailscale 托管的控制平面。设为 Headscale URL 可使用自托管的协调服务器。</string>
+
+    <!-- Cloudflare Access SSH tunnel (#154) -->
+    <string name="cf_experimental_banner">实验性功能——Haven 实现了与 `cloudflared access ssh` 相同的 WebSocket 线路协议。已针对少量租户测试；如遇不匹配请通过 GitHub #154 反馈。</string>
+    <string name="cf_intro_blurb">将 SSH 经由 Cloudflare Tunnel 发布的主机名路由——等同于应用内的 `cloudflared access ssh --hostname &lt;host&gt;`。公开的 Tunnel 路由只需主机名。受 Access 保护的路由还需 JWT——点按登录，通过您团队的 IdP 获取。</string>
+    <string name="cf_field_hostname">主机名（例如 ssh.example.com）</string>
+    <string name="cf_jwt_none">无 JWT——仅适用于未受保护的 Tunnel 路由</string>
+    <string name="cf_jwt_expired">JWT 已过期——请重新登录</string>
+    <string name="cf_jwt_expires_hours">已登录 · 约 %1$d 小时后过期</string>
+    <string name="cf_jwt_expires_soon">已登录 · 不到 1 小时后过期</string>
+    <string name="cf_jwt_signed_in">已登录</string>
+    <string name="cf_test_running">测试中…</string>
+    <string name="cf_test_connection">测试连接</string>
+    <string name="cf_advanced_hide">隐藏高级选项</string>
+    <string name="cf_advanced_show">高级（Access 认证、堡垒机、粘贴 JWT）</string>
+    <string name="cf_sign_in">通过 Cloudflare Access 登录</string>
+    <string name="cf_reauthenticate">重新认证</string>
+    <string name="cf_field_team_domain">团队域名（可选）</string>
+    <string name="cf_team_domain_help">仅受 Access 保护的路由需要；当缺少按应用的 cookie 时，可借此获取团队域名 cookie 作为回退。</string>
+    <string name="cf_field_jump_destination">跳转目标（可选）</string>
+    <string name="cf_jump_destination_help">堡垒机模式的多目标隧道：作为 `Cf-Access-Jump-Destination` 转发。单目标路由请留空。</string>
+    <string name="cf_jwt_paste_help">无界面场景：在另一台机器上运行 `cloudflared access token --app https://&lt;hostname&gt;`，并将 JWT 粘贴于此。过期时间会自动从令牌中解析。</string>
+    <string name="cf_field_jwt">Cloudflare Access JWT（可选）</string>
 </resources>

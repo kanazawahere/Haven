@@ -34,4 +34,5 @@
     <!-- "On <date>, <sender> wrote:" -->
     <string name="mail_reply_quote_header">%1$s-এ, %2$s লিখেছেন:</string>
     <string name="mail_forward_header">---------- ফরোয়ার্ড করা বার্তা ----------</string>
+    <string name="mail_no_messages">কোনো বার্তা নেই</string>
 </resources>

@@ -20,4 +20,24 @@
     <string name="tunnel_tailscale_authkey_label">Clave de autenticación (tskey-auth-…)</string>
     <string name="tunnel_tailscale_control_url_label">URL del plano de control (opcional)</string>
     <string name="tunnel_tailscale_control_url_help">Déjalo en blanco para el controlplane alojado de Tailscale. Indica una URL de Headscale para un servidor de coordinación autoalojado.</string>
+    <string name="cf_experimental_banner">Experimental — Haven implementa el mismo protocolo WebSocket de transporte que `cloudflared access ssh`. Probado con un pequeño conjunto de tenants; informa de incompatibilidades en GitHub #154.</string>
+    <string name="cf_intro_blurb">Enruta SSH a través de un nombre de host publicado de Cloudflare Tunnel — el equivalente en la app de `cloudflared access ssh --hostname &lt;host&gt;`. Las rutas de Tunnel públicas solo necesitan un nombre de host. Las rutas protegidas con Access requieren además un JWT — toca Iniciar sesión para capturar uno mediante el IdP de tu equipo.</string>
+    <string name="cf_field_hostname">Nombre de host (p. ej. ssh.example.com)</string>
+    <string name="cf_jwt_none">Sin JWT — solo funciona en rutas de Tunnel desprotegidas</string>
+    <string name="cf_jwt_expired">JWT caducado — vuelve a iniciar sesión</string>
+    <string name="cf_jwt_expires_hours">Sesión iniciada · caduca en ~%1$dh</string>
+    <string name="cf_jwt_expires_soon">Sesión iniciada · caduca en &lt;1h</string>
+    <string name="cf_jwt_signed_in">Sesión iniciada</string>
+    <string name="cf_test_running">Probando…</string>
+    <string name="cf_test_connection">Probar conexión</string>
+    <string name="cf_advanced_hide">Ocultar avanzado</string>
+    <string name="cf_advanced_show">Avanzado (autenticación Access, bastión, pegar JWT)</string>
+    <string name="cf_sign_in">Iniciar sesión mediante Cloudflare Access</string>
+    <string name="cf_reauthenticate">Volver a autenticar</string>
+    <string name="cf_field_team_domain">Dominio del equipo (opcional)</string>
+    <string name="cf_team_domain_help">Solo se necesita para rutas protegidas con Access; permite capturar la cookie del dominio del equipo como alternativa si falta la específica de la app.</string>
+    <string name="cf_field_jump_destination">Destino de salto (opcional)</string>
+    <string name="cf_jump_destination_help">Túneles multidestino en modo bastión: se reenvía como `Cf-Access-Jump-Destination`. Déjalo en blanco para rutas de un solo destino.</string>
+    <string name="cf_jwt_paste_help">Para configuraciones headless: ejecuta `cloudflared access token --app https://&lt;hostname&gt;` en otra máquina y pega el JWT aquí. La caducidad se obtiene automáticamente del token.</string>
+    <string name="cf_field_jwt">JWT de Cloudflare Access (opcional)</string>
 </resources>

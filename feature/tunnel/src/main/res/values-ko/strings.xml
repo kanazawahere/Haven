@@ -20,4 +20,24 @@
     <string name="tunnel_tailscale_authkey_label">Auth 키 (tskey-auth-…)</string>
     <string name="tunnel_tailscale_control_url_label">제어 평면 URL (선택 사항)</string>
     <string name="tunnel_tailscale_control_url_help">Tailscale의 호스팅 제어 평면을 사용하려면 비워 두세요. 자체 호스팅 조정 서버를 사용하려면 Headscale URL을 입력하세요.</string>
+    <string name="cf_experimental_banner">실험적 기능 — Haven은 `cloudflared access ssh`와 동일한 WebSocket 와이어 프로토콜을 구현합니다. 소수의 테넌트에 대해 테스트되었습니다. 일치하지 않는 경우 GitHub #154로 보고해 주세요.</string>
+    <string name="cf_intro_blurb">Cloudflare Tunnel에 게시된 호스트 이름을 통해 SSH를 라우팅합니다 — 앱 내에서 `cloudflared access ssh --hostname &lt;host&gt;`에 해당합니다. 공개 Tunnel 경로에는 호스트 이름만 있으면 됩니다. Access로 보호된 경로에는 JWT가 추가로 필요합니다 — 로그인을 눌러 팀의 IdP를 통해 JWT를 받으세요.</string>
+    <string name="cf_field_hostname">호스트 이름 (예: ssh.example.com)</string>
+    <string name="cf_jwt_none">JWT 없음 — 보호되지 않은 Tunnel 경로에서만 작동합니다</string>
+    <string name="cf_jwt_expired">JWT 만료됨 — 다시 로그인하세요</string>
+    <string name="cf_jwt_expires_hours">로그인됨 · 약 %1$d시간 후 만료</string>
+    <string name="cf_jwt_expires_soon">로그인됨 · 1시간 이내 만료</string>
+    <string name="cf_jwt_signed_in">로그인됨</string>
+    <string name="cf_test_running">테스트 중…</string>
+    <string name="cf_test_connection">연결 테스트</string>
+    <string name="cf_advanced_hide">고급 설정 숨기기</string>
+    <string name="cf_advanced_show">고급 (Access 인증, 배스천, JWT 붙여넣기)</string>
+    <string name="cf_sign_in">Cloudflare Access를 통해 로그인</string>
+    <string name="cf_reauthenticate">재인증</string>
+    <string name="cf_field_team_domain">팀 도메인 (선택 사항)</string>
+    <string name="cf_team_domain_help">Access로 보호된 경로에만 필요합니다. 앱별 쿠키가 없을 때 대체 수단으로 팀 도메인 쿠키를 받을 수 있게 합니다.</string>
+    <string name="cf_field_jump_destination">점프 대상 (선택 사항)</string>
+    <string name="cf_jump_destination_help">배스천 모드 다중 대상 터널: `Cf-Access-Jump-Destination`으로 전달됩니다. 단일 대상 경로에서는 비워 두세요.</string>
+    <string name="cf_jwt_paste_help">헤드리스 설정용: 다른 머신에서 `cloudflared access token --app https://&lt;hostname&gt;`을 실행하고 여기에 JWT를 붙여넣으세요. 만료 시각은 토큰에서 자동으로 파싱됩니다.</string>
+    <string name="cf_field_jwt">Cloudflare Access JWT (선택 사항)</string>
 </resources>

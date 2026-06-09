@@ -20,4 +20,24 @@
     <string name="tunnel_tailscale_authkey_label">Auth কী (tskey-auth-…)</string>
     <string name="tunnel_tailscale_control_url_label">কন্ট্রোল প্লেন URL (ঐচ্ছিক)</string>
     <string name="tunnel_tailscale_control_url_help">Tailscale-এর হোস্ট করা controlplane-এর জন্য খালি রাখুন। একটি স্ব-হোস্ট করা সমন্বয় সার্ভারের জন্য একটি Headscale URL সেট করুন।</string>
+    <string name="cf_experimental_banner">পরীক্ষামূলক — Haven `cloudflared access ssh`-এর মতো একই WebSocket ওয়্যার প্রোটোকল প্রয়োগ করে। অল্প কিছু টেন্যান্টের বিপরীতে পরীক্ষিত; অমিল থাকলে GitHub #154-এর মাধ্যমে জানান।</string>
+    <string name="cf_intro_blurb">একটি Cloudflare Tunnel প্রকাশিত হোস্টনেমের মাধ্যমে SSH রুট করুন — অ্যাপের ভেতরে `cloudflared access ssh --hostname &lt;host&gt;`-এর সমতুল্য। পাবলিক Tunnel রুটে শুধু একটি হোস্টনেম দরকার। Access-সুরক্ষিত রুটে অতিরিক্তভাবে একটি JWT দরকার — আপনার টিমের IdP-এর মাধ্যমে একটি ধরতে সাইন ইন ট্যাপ করুন।</string>
+    <string name="cf_field_hostname">হোস্টনেম (যেমন ssh.example.com)</string>
+    <string name="cf_jwt_none">কোনো JWT নেই — শুধু অসুরক্ষিত Tunnel রুটে কাজ করে</string>
+    <string name="cf_jwt_expired">JWT-এর মেয়াদ শেষ — আবার সাইন ইন করুন</string>
+    <string name="cf_jwt_expires_hours">সাইন ইন করা হয়েছে · মেয়াদ শেষ ~%1$d ঘণ্টায়</string>
+    <string name="cf_jwt_expires_soon">সাইন ইন করা হয়েছে · মেয়াদ শেষ &lt;1 ঘণ্টায়</string>
+    <string name="cf_jwt_signed_in">সাইন ইন করা হয়েছে</string>
+    <string name="cf_test_running">পরীক্ষা করা হচ্ছে…</string>
+    <string name="cf_test_connection">সংযোগ পরীক্ষা করুন</string>
+    <string name="cf_advanced_hide">অ্যাডভান্সড লুকান</string>
+    <string name="cf_advanced_show">অ্যাডভান্সড (Access auth, bastion, JWT পেস্ট)</string>
+    <string name="cf_sign_in">Cloudflare Access-এর মাধ্যমে সাইন ইন করুন</string>
+    <string name="cf_reauthenticate">পুনরায় প্রমাণীকরণ</string>
+    <string name="cf_field_team_domain">টিম ডোমেইন (ঐচ্ছিক)</string>
+    <string name="cf_team_domain_help">শুধু Access-সুরক্ষিত রুটের জন্য দরকার; প্রতি-অ্যাপ কুকি অনুপস্থিত থাকলে ফলব্যাক হিসেবে টিম-ডোমেইন কুকি ধরতে এটি আমাদের সাহায্য করে।</string>
+    <string name="cf_field_jump_destination">জাম্প গন্তব্য (ঐচ্ছিক)</string>
+    <string name="cf_jump_destination_help">Bastion-মোড মাল্টি-টার্গেট টানেল: `Cf-Access-Jump-Destination` হিসেবে ফরওয়ার্ড করা হয়। একক-টার্গেট রুটের জন্য খালি রাখুন।</string>
+    <string name="cf_jwt_paste_help">হেডলেস সেটআপের জন্য: অন্য একটি মেশিনে `cloudflared access token --app https://&lt;hostname&gt;` চালান এবং এখানে JWT পেস্ট করুন। মেয়াদ টোকেন থেকে স্বয়ংক্রিয়ভাবে নির্ণয় করা হয়।</string>
+    <string name="cf_field_jwt">Cloudflare Access JWT (ঐচ্ছিক)</string>
 </resources>

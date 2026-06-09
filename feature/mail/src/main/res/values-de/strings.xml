@@ -34,4 +34,5 @@
     <!-- "On <date>, <sender> wrote:" -->
     <string name="mail_reply_quote_header">Am %1$s schrieb %2$s:</string>
     <string name="mail_forward_header">---------- Weitergeleitete Nachricht ----------</string>
+    <string name="mail_no_messages">Keine Nachrichten</string>
 </resources>

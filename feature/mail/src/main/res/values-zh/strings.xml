@@ -34,4 +34,5 @@
     <!-- "On <date>, <sender> wrote:" -->
     <string name="mail_reply_quote_header">在 %1$s，%2$s 写道：</string>
     <string name="mail_forward_header">---------- 转发的邮件 ----------</string>
+    <string name="mail_no_messages">暂无邮件</string>
 </resources>

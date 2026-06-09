@@ -27,4 +27,26 @@
     <string name="tunnel_tailscale_authkey_label">Ключ аутентификации (tskey-auth-…)</string>
     <string name="tunnel_tailscale_control_url_label">URL управляющего сервера (необязательно)</string>
     <string name="tunnel_tailscale_control_url_help">Оставьте пустым для размещённого управляющего сервера Tailscale. Укажите URL Headscale для самостоятельно размещённого сервера координации.</string>
+
+    <!-- Cloudflare Access SSH tunnel (#154) -->
+    <string name="cf_experimental_banner">Экспериментально — Haven реализует тот же сетевой протокол WebSocket, что и `cloudflared access ssh`. Протестировано на небольшом наборе тенантов; сообщайте о несоответствиях через GitHub #154.</string>
+    <string name="cf_intro_blurb">Направьте SSH через опубликованное имя хоста Cloudflare Tunnel — внутриприложенческий эквивалент `cloudflared access ssh --hostname &lt;host&gt;`. Для публичных маршрутов Tunnel нужно только имя хоста. Маршрутам, защищённым Access, дополнительно требуется JWT — нажмите «Войти», чтобы получить его через IdP вашей команды.</string>
+    <string name="cf_field_hostname">Имя хоста (напр. ssh.example.com)</string>
+    <string name="cf_jwt_none">Без JWT — работает только для незащищённых маршрутов Tunnel</string>
+    <string name="cf_jwt_expired">Срок действия JWT истёк — войдите снова</string>
+    <string name="cf_jwt_expires_hours">Выполнен вход · истекает через ~%1$d ч</string>
+    <string name="cf_jwt_expires_soon">Выполнен вход · истекает менее чем через 1 ч</string>
+    <string name="cf_jwt_signed_in">Выполнен вход</string>
+    <string name="cf_test_running">Проверка…</string>
+    <string name="cf_test_connection">Проверить подключение</string>
+    <string name="cf_advanced_hide">Скрыть дополнительно</string>
+    <string name="cf_advanced_show">Дополнительно (аутентификация Access, бастион, вставка JWT)</string>
+    <string name="cf_sign_in">Войти через Cloudflare Access</string>
+    <string name="cf_reauthenticate">Повторная аутентификация</string>
+    <string name="cf_field_team_domain">Домен команды (необязательно)</string>
+    <string name="cf_team_domain_help">Нужен только для маршрутов, защищённых Access; позволяет получить cookie домена команды как запасной вариант, если cookie для конкретного приложения отсутствует.</string>
+    <string name="cf_field_jump_destination">Целевой узел перехода (необязательно)</string>
+    <string name="cf_jump_destination_help">Многоцелевые туннели в режиме бастиона: передаётся как `Cf-Access-Jump-Destination`. Оставьте пустым для одноцелевых маршрутов.</string>
+    <string name="cf_jwt_paste_help">Для headless-настроек: запустите `cloudflared access token --app https://&lt;hostname&gt;` на другой машине и вставьте JWT сюда. Срок действия определяется из токена автоматически.</string>
+    <string name="cf_field_jwt">Cloudflare Access JWT (необязательно)</string>
 </resources>

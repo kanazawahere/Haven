@@ -27,4 +27,26 @@
     <string name="tunnel_tailscale_authkey_label">Auth key (tskey-auth-…)</string>
     <string name="tunnel_tailscale_control_url_label">Control plane URL (वैकल्पिक)</string>
     <string name="tunnel_tailscale_control_url_help">Tailscale के होस्टेड controlplane के लिए खाली छोड़ें। स्व-होस्टेड coordination सर्वर के लिए Headscale URL पर सेट करें।</string>
+
+    <!-- Cloudflare Access SSH tunnel -->
+    <string name="cf_experimental_banner">प्रयोगात्मक — Haven वही WebSocket वायर प्रोटोकॉल लागू करता है जो `cloudflared access ssh` करता है। कुछ tenants के एक छोटे सेट पर परखा गया; कृपया बेमेल की रिपोर्ट GitHub #154 के माध्यम से करें।</string>
+    <string name="cf_intro_blurb">किसी Cloudflare Tunnel के प्रकाशित होस्टनाम के माध्यम से SSH रूट करें — यह `cloudflared access ssh --hostname &lt;host&gt;` के ऐप-भीतरी समकक्ष है। सार्वजनिक Tunnel मार्गों को केवल एक होस्टनाम चाहिए। Access-संरक्षित मार्गों को अतिरिक्त रूप से एक JWT चाहिए — अपनी टीम के IdP के माध्यम से एक कैप्चर करने के लिए साइन इन पर टैप करें।</string>
+    <string name="cf_field_hostname">होस्टनाम (उदा. ssh.example.com)</string>
+    <string name="cf_jwt_none">कोई JWT नहीं — केवल असुरक्षित Tunnel मार्गों के लिए काम करता है</string>
+    <string name="cf_jwt_expired">JWT समाप्त हो गया — फिर से साइन इन करें</string>
+    <string name="cf_jwt_expires_hours">साइन इन किया · ~%1$d घंटे में समाप्त</string>
+    <string name="cf_jwt_expires_soon">साइन इन किया · &lt;1 घंटे में समाप्त</string>
+    <string name="cf_jwt_signed_in">साइन इन किया</string>
+    <string name="cf_test_running">परख रहे हैं…</string>
+    <string name="cf_test_connection">कनेक्शन परखें</string>
+    <string name="cf_advanced_hide">उन्नत छिपाएँ</string>
+    <string name="cf_advanced_show">उन्नत (Access auth, bastion, JWT पेस्ट करें)</string>
+    <string name="cf_sign_in">Cloudflare Access के माध्यम से साइन इन करें</string>
+    <string name="cf_reauthenticate">फिर से प्रमाणित करें</string>
+    <string name="cf_field_team_domain">टीम डोमेन (वैकल्पिक)</string>
+    <string name="cf_team_domain_help">केवल Access-संरक्षित मार्गों के लिए आवश्यक; यदि प्रति-ऐप कुकी अनुपस्थित हो तो हमें fallback के रूप में टीम-डोमेन कुकी कैप्चर करने देता है।</string>
+    <string name="cf_field_jump_destination">Jump destination (वैकल्पिक)</string>
+    <string name="cf_jump_destination_help">Bastion-मोड बहु-लक्ष्य टनल: `Cf-Access-Jump-Destination` के रूप में फ़ॉरवर्ड किया जाता है। एकल-लक्ष्य मार्गों के लिए खाली छोड़ें।</string>
+    <string name="cf_jwt_paste_help">Headless सेटअप के लिए: किसी अन्य मशीन पर `cloudflared access token --app https://&lt;hostname&gt;` चलाएँ और JWT यहाँ पेस्ट करें। समाप्ति टोकन से स्वतः पार्स की जाती है।</string>
+    <string name="cf_field_jwt">Cloudflare Access JWT (वैकल्पिक)</string>
 </resources>

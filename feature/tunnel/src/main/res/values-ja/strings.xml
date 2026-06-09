@@ -27,4 +27,26 @@
     <string name="tunnel_tailscale_authkey_label">認証キー (tskey-auth-…)</string>
     <string name="tunnel_tailscale_control_url_label">コントロールプレーン URL（任意）</string>
     <string name="tunnel_tailscale_control_url_help">Tailscale のホスト型コントロールプレーンを使う場合は空欄にしてください。セルフホストの調整サーバーを使う場合は Headscale の URL を設定してください。</string>
+
+    <!-- Cloudflare Access SSH tunnel (#154) -->
+    <string name="cf_experimental_banner">実験的機能 — Haven は `cloudflared access ssh` と同じ WebSocket ワイヤープロトコルを実装しています。少数のテナントでのみ検証済みです。不一致があれば GitHub #154 で報告してください。</string>
+    <string name="cf_intro_blurb">Cloudflare Tunnel で公開されたホスト名経由で SSH をルーティングします — アプリ内での `cloudflared access ssh --hostname &lt;host&gt;` 相当です。パブリックな Tunnel ルートにはホスト名のみが必要です。Access で保護されたルートには JWT も必要です — 「サインイン」をタップしてチームの IdP 経由で取得してください。</string>
+    <string name="cf_field_hostname">ホスト名（例: ssh.example.com）</string>
+    <string name="cf_jwt_none">JWT なし — 保護されていない Tunnel ルートでのみ動作します</string>
+    <string name="cf_jwt_expired">JWT の有効期限が切れました — 再度サインインしてください</string>
+    <string name="cf_jwt_expires_hours">サインイン済み · 約 %1$d 時間で期限切れ</string>
+    <string name="cf_jwt_expires_soon">サインイン済み · 1 時間以内に期限切れ</string>
+    <string name="cf_jwt_signed_in">サインイン済み</string>
+    <string name="cf_test_running">テスト中…</string>
+    <string name="cf_test_connection">接続をテスト</string>
+    <string name="cf_advanced_hide">詳細設定を隠す</string>
+    <string name="cf_advanced_show">詳細設定（Access 認証、踏み台、JWT の貼り付け）</string>
+    <string name="cf_sign_in">Cloudflare Access でサインイン</string>
+    <string name="cf_reauthenticate">再認証</string>
+    <string name="cf_field_team_domain">チームドメイン（任意）</string>
+    <string name="cf_team_domain_help">Access で保護されたルートにのみ必要です。アプリごとの Cookie がない場合のフォールバックとして、チームドメインの Cookie を取得できるようにします。</string>
+    <string name="cf_field_jump_destination">ジャンプ先（任意）</string>
+    <string name="cf_jump_destination_help">踏み台モードのマルチターゲットトンネル: `Cf-Access-Jump-Destination` として転送されます。単一ターゲットのルートでは空欄にしてください。</string>
+    <string name="cf_jwt_paste_help">ヘッドレス環境向け: 別のマシンで `cloudflared access token --app https://&lt;hostname&gt;` を実行し、JWT をここに貼り付けてください。有効期限はトークンから自動的に解析されます。</string>
+    <string name="cf_field_jwt">Cloudflare Access JWT（任意）</string>
 </resources>
