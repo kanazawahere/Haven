@@ -4,7 +4,7 @@ go 1.26.1
 
 require (
 	github.com/ProtonMail/gopenpgp/v2 v2.9.0
-	github.com/rclone/go-proton-api v1.0.1-0.20260127173028-eb465cac3b18
+	github.com/rclone/go-proton-api v1.0.2
 	github.com/rclone/rclone v1.73.5
 	golang.zx2c4.com/wireguard v0.0.0-20250521234502-f333402bd9cb
 	tailscale.com v1.96.5
@@ -239,7 +239,6 @@ require (
 	golang.org/x/crypto v0.49.0 // indirect
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
 	golang.org/x/image v0.38.0 // indirect
-	golang.org/x/mobile v0.0.0-20251021151156-188f512ec823 // indirect
 	golang.org/x/mod v0.34.0 // indirect
 	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/oauth2 v0.34.0 // indirect
