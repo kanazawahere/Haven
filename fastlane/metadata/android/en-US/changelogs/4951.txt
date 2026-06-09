@@ -1,0 +1,3 @@
+A Local (PRoot) connection can now open directly in a specific installed Linux distro. Edit a Local profile → "Open in OS" → pick Debian, Alpine, Arch, etc. (or leave it on the active distro). Each distro has its own rootfs, so you can keep a Debian shell and an Alpine shell as separate profiles and run them side by side.
+
+Desktop installs on Debian/Ubuntu now install without Recommends, so a desktop like Xfce4 no longer pulls a gigabyte-plus of optional extras — the download matches what's advertised. The core desktop (the metapackage's hard dependencies, a terminal, the VNC server, fonts) still installs.
