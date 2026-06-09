@@ -172,6 +172,10 @@ fun ConnectionsScreen(
     val sshKeys by viewModel.sshKeys.collectAsState()
     val totpSecrets by viewModel.totpSecrets.collectAsState()
     val tunnelConfigs by viewModel.tunnelConfigs.collectAsState()
+    // Installed distros for a LOCAL profile's "open in" picker. Snapshotted
+    // for this screen's lifetime — installs are rare and re-entering the
+    // screen refreshes it.
+    val availableLocalDistros = remember { viewModel.installedLocalDistros() }
     var showTunnelsScreen by remember { mutableStateOf(false) }
     // When the user picks "+ New WireGuard tunnel" from a profile's
     // Route-through dropdown, navigate to the Tunnels screen with the
@@ -440,6 +444,7 @@ fun ConnectionsScreen(
             sshKeys = sshKeys,
             totpSecrets = totpSecrets,
             tunnelConfigs = tunnelConfigs,
+            availableDistros = availableLocalDistros,
             onManageTunnels = { preselect ->
                 pendingTunnelAddType = preselect
                 showTunnelsScreen = true
@@ -564,6 +569,7 @@ fun ConnectionsScreen(
             sshKeys = sshKeys,
             totpSecrets = totpSecrets,
             tunnelConfigs = tunnelConfigs,
+            availableDistros = availableLocalDistros,
             embeddedCloudflareTunnel = embeddedCf.value,
             mcpReverseTunnelEnabled = mcpReverseTunnel.value,
             onManageTunnels = { preselect ->

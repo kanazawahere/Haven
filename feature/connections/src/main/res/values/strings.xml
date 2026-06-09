@@ -405,6 +405,8 @@
     <string name="connections_section_reconnect">Reconnect</string>
     <string name="connections_local_shell_android_desc">Runs the native Android shell (/system/bin/sh). Access Android commands, file system, and root (if available).</string>
     <string name="connections_local_shell_proot_desc">Runs an Alpine Linux shell locally via PRoot. Downloads a minimal rootfs (~4MB) on first use. No root or network connection needed.</string>
+    <string name="connections_local_distro_label">Open in OS</string>
+    <string name="connections_local_distro_active_default">Active distro (default)</string>
     <string name="connections_dropdown_select_provider">Select provider…</string>
     <string name="connections_helper_rclone_signin">Sign in via your browser when you first connect.</string>
     <string name="connections_helper_rclone_credentials">Enter the account details for this provider, then tap Configure to save and verify the remote.</string>

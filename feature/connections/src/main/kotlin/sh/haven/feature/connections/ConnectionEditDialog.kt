@@ -114,6 +114,8 @@ fun ConnectionEditDialog(
     sshKeys: List<sh.haven.core.data.db.entities.SshKey> = emptyList(),
     totpSecrets: List<sh.haven.core.data.db.entities.TotpSecret> = emptyList(),
     tunnelConfigs: List<sh.haven.core.data.db.entities.TunnelConfig> = emptyList(),
+    /** Installed distros `(id, label)` for a LOCAL profile's "open in" picker. */
+    availableDistros: List<Pair<String, String>> = emptyList(),
     /**
      * The Cloudflare Tunnel transport row owned by [existing], if any
      * (GH #154). When non-null, the SSH profile editor renders inline CF
@@ -292,6 +294,9 @@ fun ConnectionEditDialog(
     var postLoginBeforeSessionManager by rememberSaveable { mutableStateOf(existing?.postLoginBeforeSessionManager ?: true) }
     var disableAltScreen by rememberSaveable { mutableStateOf(existing?.disableAltScreen ?: false) }
     var useAndroidShell by rememberSaveable { mutableStateOf(existing?.useAndroidShell ?: false) }
+    // null = follow the active distro (the default). Set to a distro id to
+    // pin this LOCAL profile to a specific OS. (#per-distro-local)
+    var prootDistroId by rememberSaveable { mutableStateOf(existing?.prootDistroId) }
     // Backed by a port-forward rule, not a profile field — see onSave's
     // third argument and ConnectionsViewModel.reconcileMcpReverseTunnel.
     // The caller queries hasMcpReverseTunnel asynchronously and the value
@@ -1133,6 +1138,52 @@ fun ConnectionEditDialog(
                             stringResource(R.string.connections_use_android_shell),
                             style = MaterialTheme.typography.bodyMedium,
                         )
+                    }
+                    // Pin this Local profile to a specific OS (proot only).
+                    // Default "Active distro" = follow the global active one.
+                    if (!useAndroidShell && availableDistros.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        var distroExpanded by remember { mutableStateOf(false) }
+                        val activeDefault = stringResource(R.string.connections_local_distro_active_default)
+                        val selectedDistroLabel = availableDistros
+                            .firstOrNull { it.first == prootDistroId }?.second
+                            ?: activeDefault
+                        ExposedDropdownMenuBox(
+                            expanded = distroExpanded,
+                            onExpandedChange = { distroExpanded = it },
+                        ) {
+                            OutlinedTextField(
+                                value = selectedDistroLabel,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(stringResource(R.string.connections_local_distro_label)) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(distroExpanded) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                            )
+                            ExposedDropdownMenu(
+                                expanded = distroExpanded,
+                                onDismissRequest = { distroExpanded = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(activeDefault) },
+                                    onClick = {
+                                        prootDistroId = null
+                                        distroExpanded = false
+                                    },
+                                )
+                                availableDistros.forEach { (id, distroLabel) ->
+                                    DropdownMenuItem(
+                                        text = { Text(distroLabel) },
+                                        onClick = {
+                                            prootDistroId = id
+                                            distroExpanded = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
                     }
                 } else if (connectionType == "RCLONE") {
                     ConnectionSection(stringResource(R.string.connections_section_cloud_storage))
@@ -2869,6 +2920,7 @@ fun ConnectionEditDialog(
                             username = "",
                             connectionType = "LOCAL",
                             useAndroidShell = useAndroidShell,
+                            prootDistroId = if (useAndroidShell) null else prootDistroId,
                             colorTag = colorTag,
                             groupId = groupId,
                         )
@@ -3102,6 +3154,7 @@ fun ConnectionEditDialog(
                             disableAltScreen = disableAltScreen,
                             terminalColorScheme = terminalColorScheme,
                             useAndroidShell = useAndroidShell,
+                            prootDistroId = if (useAndroidShell) null else prootDistroId,
                             forwardAgent = forwardAgent,
                             addressFamily = addressFamily,
                             autoReconnect = autoReconnect,

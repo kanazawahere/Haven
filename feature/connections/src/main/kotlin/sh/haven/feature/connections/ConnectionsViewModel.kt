@@ -138,6 +138,13 @@ class ConnectionsViewModel @Inject constructor(
 ) : ViewModel() {
 
     /**
+     * Installed distros `(id, label)` for the LOCAL profile editor's
+     * "open in" distro picker. Empty when no rootfs is installed.
+     */
+    fun installedLocalDistros(): List<Pair<String, String>> =
+        localSessionManager.installedDistros()
+
+    /**
      * Re-exposed from [CertRenewalGate] so the Connections screen can
      * render a status banner ("Renewing cert via step-ca…") while a
      * connect-time renewal is in flight. (#133 phase 2b)
@@ -2126,7 +2133,7 @@ class ConnectionsViewModel @Inject constructor(
                 }
             }
 
-            val sessionId = localSessionManager.registerSession(profile.id, profile.label, profile.useAndroidShell)
+            val sessionId = localSessionManager.registerSession(profile.id, profile.label, profile.useAndroidShell, profile.prootDistroId)
             try {
                 localSessionManager.connectSession(sessionId)
                 repository.markConnected(profile.id)

@@ -445,4 +445,6 @@
     <string name="connections_vm_copied_short">已复制</string>
     <string name="connections_vm_terminal_not_found">未找到终端应用</string>
     <string name="connections_mcp_badge">MCP</string>
+    <string name="connections_local_distro_label">在系统中打开</string>
+    <string name="connections_local_distro_active_default">活动发行版（默认）</string>
 </resources>

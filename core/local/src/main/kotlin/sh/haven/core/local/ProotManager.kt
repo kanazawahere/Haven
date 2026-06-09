@@ -215,10 +215,17 @@ class ProotManager @Inject constructor(
         get() = activeRootfsDir
 
     val isRootfsInstalled: Boolean
-        get() = java.nio.file.Files.exists(
-            File(activeRootfsDir, "bin/sh").toPath(),
-            java.nio.file.LinkOption.NOFOLLOW_LINKS,
-        )
+        get() = isRootfsInstalledFor(activeDistroId)
+
+    /**
+     * Whether [distroId]'s rootfs is present, independent of the active
+     * distro — lets a LOCAL profile target a specific distro's shell
+     * (`ConnectionProfile.prootDistroId`) without switching the active one.
+     */
+    fun isRootfsInstalledFor(distroId: String): Boolean = java.nio.file.Files.exists(
+        File(rootfsDirFor(distroId), "bin/sh").toPath(),
+        java.nio.file.LinkOption.NOFOLLOW_LINKS,
+    )
 
     val prootBinary: String?
         get() {

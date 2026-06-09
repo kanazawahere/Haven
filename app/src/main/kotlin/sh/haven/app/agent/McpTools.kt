@@ -5879,7 +5879,7 @@ internal class McpTools(
         val sessionId = if (alive != null) {
             alive.sessionId
         } else {
-            val sid = localSessionManager.registerSession(profile.id, profile.label, profile.useAndroidShell)
+            val sid = localSessionManager.registerSession(profile.id, profile.label, profile.useAndroidShell, profile.prootDistroId)
             try {
                 localSessionManager.connectSession(sid)
             } catch (e: Exception) {

@@ -447,4 +447,6 @@
     <string name="connections_vm_copied_short">Copiado</string>
     <string name="connections_vm_terminal_not_found">App Terminal não encontrado</string>
     <string name="connections_mcp_badge">MCP</string>
+    <string name="connections_local_distro_label">Abrir no SO</string>
+    <string name="connections_local_distro_active_default">Distro ativa (padrão)</string>
 </resources>

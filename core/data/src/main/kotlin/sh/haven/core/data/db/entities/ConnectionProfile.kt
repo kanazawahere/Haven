@@ -159,6 +159,15 @@ data class ConnectionProfile(
     val emailAuthMethods: String = "",
     /** Use native Android shell instead of PRoot for local connections. */
     val useAndroidShell: Boolean = false,
+    /**
+     * For LOCAL profiles: open the proot shell directly in this distro
+     * (e.g. `debian-bookworm`, `alpine-3.21`) instead of the global active
+     * distro. Null = follow the active distro (the original behaviour, so
+     * existing profiles are unchanged). Ignored when [useAndroidShell] is
+     * true. Each distro has its own rootfs, so distinct profiles can run
+     * different OSes side by side.
+     */
+    val prootDistroId: String? = null,
     /** Custom mosh-server command (overrides the default `mosh-server new -s -c 256 -l LANG=en_US.UTF-8`). */
     val moshServerCommand: String? = null,
     /** Enable SSH agent forwarding (OpenSSH `ForwardAgent`) — exposes non-encrypted stored SSH keys to the remote session. */

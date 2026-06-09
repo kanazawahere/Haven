@@ -447,4 +447,6 @@
     <string name="connections_vm_copied_short">Copié</string>
     <string name="connections_vm_terminal_not_found">Application Terminal introuvable</string>
     <string name="connections_mcp_badge">MCP</string>
+    <string name="connections_local_distro_label">Ouvrir dans l\'OS</string>
+    <string name="connections_local_distro_active_default">Distribution active (par défaut)</string>
 </resources>

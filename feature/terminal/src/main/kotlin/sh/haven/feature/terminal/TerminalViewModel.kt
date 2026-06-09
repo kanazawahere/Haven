@@ -1824,12 +1824,14 @@ class TerminalViewModel @Inject constructor(
             try {
                 val existingSession = localSessionManager.sessions.value.values
                     .find { it.profileId == profileId }
+                val profile = connectionRepository.getById(profileId)
                 val resolvedLabel = label
-                    ?: connectionRepository.getById(profileId)?.label
+                    ?: profile?.label
                     ?: profileId.take(8)
                 val sessionId = localSessionManager.registerSession(
                     profileId, resolvedLabel,
-                    useAndroidShell = existingSession?.useAndroidShell ?: false,
+                    useAndroidShell = existingSession?.useAndroidShell ?: profile?.useAndroidShell ?: false,
+                    prootDistroId = existingSession?.prootDistroId ?: profile?.prootDistroId,
                 )
                 localSessionManager.connectSession(sessionId)
                 syncSessions()

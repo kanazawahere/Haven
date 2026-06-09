@@ -38,7 +38,7 @@ import sh.haven.core.data.db.entities.WorkspaceProfile
         ProotInstallLog::class,
         TotpSecret::class,
     ],
-    version = 61,
+    version = 62,
     exportSchema = true,
 )
 abstract class HavenDatabase : RoomDatabase() {
@@ -970,6 +970,14 @@ abstract class HavenDatabase : RoomDatabase() {
                 addColumnIfMissing(db, "connection_profiles", "emailPassword", "TEXT")
                 addColumnIfMissing(db, "connection_profiles", "emailMailboxPassword", "TEXT")
                 addColumnIfMissing(db, "connection_profiles", "emailAuthMethods", "TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        // Per-distro LOCAL connections: a Local profile can open its proot
+        // shell in a chosen distro instead of the global active one.
+        val MIGRATION_61_62 = object : Migration(61, 62) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                addColumnIfMissing(db, "connection_profiles", "prootDistroId", "TEXT")
             }
         }
 

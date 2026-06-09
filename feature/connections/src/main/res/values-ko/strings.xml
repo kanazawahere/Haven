@@ -439,4 +439,6 @@
     <string name="connections_vm_copied_short">복사됨</string>
     <string name="connections_vm_terminal_not_found">Terminal 앱을 찾을 수 없습니다</string>
     <string name="connections_mcp_badge">MCP</string>
+    <string name="connections_local_distro_label">OS에서 열기</string>
+    <string name="connections_local_distro_active_default">활성 배포판 (기본값)</string>
 </resources>

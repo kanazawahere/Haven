@@ -67,6 +67,8 @@ class LocalSessionManager @Inject constructor(
         val status: Status,
         val localSession: LocalSession? = null,
         val useAndroidShell: Boolean = false,
+        /** Distro to open the proot shell in; null = the active distro. */
+        val prootDistroId: String? = null,
     ) {
         enum class Status { CONNECTING, CONNECTED, DISCONNECTED, ERROR }
     }
@@ -84,7 +86,12 @@ class LocalSessionManager @Inject constructor(
                 it.status == SessionState.Status.CONNECTING
         }
 
-    fun registerSession(profileId: String, label: String, useAndroidShell: Boolean = false): String {
+    fun registerSession(
+        profileId: String,
+        label: String,
+        useAndroidShell: Boolean = false,
+        prootDistroId: String? = null,
+    ): String {
         val sessionId = UUID.randomUUID().toString()
         _sessions.update { map ->
             map + (sessionId to SessionState(
@@ -93,6 +100,7 @@ class LocalSessionManager @Inject constructor(
                 label = label,
                 status = SessionState.Status.CONNECTING,
                 useAndroidShell = useAndroidShell,
+                prootDistroId = prootDistroId,
             ))
         }
         return sessionId
@@ -156,12 +164,29 @@ class LocalSessionManager @Inject constructor(
      * is skipped and a bare login shell is execed — see
      * [sessionManagerShellArgs].
      */
-    fun buildCommand(useAndroidShell: Boolean = false, plain: Boolean = false): Triple<String, Array<String>, Array<String>> {
-        val prootBinary = prootManager.prootBinary
+    /**
+     * `(id, label)` for every installed distro — the choices a LOCAL
+     * profile's distro picker offers (#per-distro-local). Empty when no
+     * rootfs is installed (the picker then just isn't shown).
+     */
+    fun installedDistros(): List<Pair<String, String>> =
+        prootManager.installedDistros.map { it.id to it.label }
 
-        return if (!useAndroidShell && prootBinary != null && prootManager.isRootfsInstalled) {
-            // PRoot with the active distro's rootfs
-            val rootfsDir = prootManager.activeRootfsDir
+    fun buildCommand(
+        useAndroidShell: Boolean = false,
+        plain: Boolean = false,
+        distroId: String? = null,
+    ): Triple<String, Array<String>, Array<String>> {
+        val prootBinary = prootManager.prootBinary
+        // A LOCAL profile may pin a specific distro; otherwise follow the
+        // global active distro (the original behaviour). If the pinned
+        // distro isn't installed, fall through to the Android-shell branch
+        // rather than launching a broken rootfs.
+        val targetDistro = distroId ?: prootManager.activeDistroId
+
+        return if (!useAndroidShell && prootBinary != null && prootManager.isRootfsInstalledFor(targetDistro)) {
+            // PRoot with the target distro's rootfs
+            val rootfsDir = prootManager.rootfsDirFor(targetDistro)
 
             // Ensure resolv.conf exists (Android doesn't have /etc/resolv.conf)
             val resolvConf = java.io.File(rootfsDir, "etc/resolv.conf")
@@ -229,7 +254,7 @@ class LocalSessionManager @Inject constructor(
         if (session.status != SessionState.Status.CONNECTED) return null
         if (session.localSession != null) return null
 
-        val (cmd, args, env) = buildCommand(session.useAndroidShell, plain = plain)
+        val (cmd, args, env) = buildCommand(session.useAndroidShell, plain = plain, distroId = session.prootDistroId)
 
         val localSession = LocalSession(
             sessionId = sessionId,

@@ -447,4 +447,6 @@
     <string name="connections_vm_copied_short">Kopiert</string>
     <string name="connections_vm_terminal_not_found">Terminal-App nicht gefunden</string>
     <string name="connections_mcp_badge">MCP</string>
+    <string name="connections_local_distro_label">In Betriebssystem öffnen</string>
+    <string name="connections_local_distro_active_default">Aktive Distribution (Standard)</string>
 </resources>
