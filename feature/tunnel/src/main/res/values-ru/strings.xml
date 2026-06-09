@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tunnels list -->
+    <string name="tunnel_add">Добавить туннель</string>
+    <string name="tunnel_empty_title">Туннели ещё не настроены</string>
+    <string name="tunnel_empty_subtitle">Добавьте конфигурацию WireGuard, чтобы направлять через неё отдельные профили подключений — общесистемный VPN не требуется.</string>
+    <!-- %1$s = tunnel type (e.g. WireGuard), %2$s = date added -->
+    <string name="tunnel_row_subtitle">%1$s · добавлено %2$s</string>
+    <string name="tunnel_type_unknown">неизвестно</string>
+    <string name="tunnel_cf_sign_in_again">Войти снова</string>
+    <string name="tunnel_delete_content_desc">Удалить туннель</string>
+
+    <!-- Delete confirmation -->
+    <string name="tunnel_delete_title">Удалить туннель?</string>
+    <!-- %1$s = tunnel label -->
+    <string name="tunnel_delete_message">Удалить \"%1$s\". Профили, ссылающиеся на этот туннель, не смогут подключиться, пока вы не выберете другой.</string>
+    <string name="tunnel_delete_confirm">Удалить</string>
+    <string name="tunnel_cancel">Отмена</string>
+
+    <!-- Add tunnel dialog -->
+    <string name="tunnel_label">Метка</string>
+    <string name="tunnel_save">Сохранить</string>
+    <string name="tunnel_wireguard_help">Вставьте конфигурацию в стиле wg-quick или загрузите файл .conf. Читаются только поля [Interface] и [Peer]; неизвестные ключи (PostUp, Table, MTU) игнорируются. Конечные точки по имени хоста и DNS-имена разрешаются при запуске туннеля.</string>
+    <string name="tunnel_load_from_file">Загрузить из файла…</string>
+    <string name="tunnel_wireguard_config">Конфигурация WireGuard</string>
+    <string name="tunnel_tailscale_help">Создайте authkey в админ-консоли Tailscale (Settings → Keys) или в CLI Headscale (`headscale preauthkeys create`). Haven присоединяется к вашему tailnet при первом использовании и затем повторно использует состояние узла, поэтому одноразового ключа достаточно. Многоразовые ключи позволяют переподключаться после переустановки.</string>
+    <string name="tunnel_tailscale_authkey_label">Ключ аутентификации (tskey-auth-…)</string>
+    <string name="tunnel_tailscale_control_url_label">URL управляющего сервера (необязательно)</string>
+    <string name="tunnel_tailscale_control_url_help">Оставьте пустым для размещённого управляющего сервера Tailscale. Укажите URL Headscale для самостоятельно размещённого сервера координации.</string>
+</resources>

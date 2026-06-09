@@ -375,4 +375,10 @@
     <string name="settings_paired_clients_unpair_message">Il devra être approuvé à nouveau lors de sa prochaine connexion, et toute approbation automatique est révoquée.</string>
     <string name="settings_paired_clients_unpair_confirm">Dissocier</string>
     <string name="settings_paired_clients_unpaired_toast">\'%1$s\' dissocié</string>
+
+    <!-- MCP endpoint VPN collision + loopback trust -->
+    <string name="settings_mcp_wireguard_collision">Un autre VPN (%1$s) utilise %2$s — la même adresse à laquelle ce point de terminaison se lie, il est donc masqué et inaccessible depuis les pairs. Arrêtez ce VPN, ou pointez votre client MCP vers le point de terminaison de boucle locale (127.0.0.1).</string>
+    <string name="settings_mcp_trust_loopback_title">Faire confiance aux clients locaux</string>
+    <string name="settings_mcp_trust_loopback_subtitle_on">Activé — les clients locaux (127.0.0.1) se connectent sans appairage ni invite d\'approbation. Les clients Wi-Fi/LAN et WireGuard demandent toujours confirmation.</string>
+    <string name="settings_mcp_trust_loopback_subtitle_off">Désactivé — même les clients locaux doivent être appairés et approuver chaque requête</string>
 </resources>

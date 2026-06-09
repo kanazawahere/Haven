@@ -447,4 +447,26 @@
     <string name="connections_mcp_badge">MCP</string>
     <string name="connections_local_distro_label">在系统中打开</string>
     <string name="connections_local_distro_active_default">活动发行版（默认）</string>
+
+    <!-- Email account (embedded mail) -->
+    <string name="connections_section_email">电子邮件账户</string>
+    <string name="connections_auth_method_proton_srp">ProtonMail SRP</string>
+    <string name="connections_email_provider_proton">提供商：ProtonMail</string>
+    <string name="connections_email_proton_unofficial_warning">使用 Proton 的非官方 API。此接口为逆向工程所得，违反 Proton 的服务条款——您的账户可能被限速或锁定。继续即表示您自担风险。</string>
+    <string name="connections_field_email_address">电子邮件地址</string>
+    <string name="connections_field_email_password">密码</string>
+    <string name="connections_field_email_mailbox_password">邮箱密码（仅双密码模式）</string>
+    <string name="connections_email_mailbox_password_hint">除非您的 Proton 账户设有独立的邮箱密码，否则请留空。</string>
+    <string name="connections_email_2fa_hint">如果您的账户启用了双重验证，请在 SSH 密钥 / TOTP 管理器中关联其 TOTP 密钥，系统将自动应用。</string>
+    <string name="connections_email_provider_proton_short">ProtonMail</string>
+    <string name="connections_email_provider_imap_short">IMAP/SMTP</string>
+    <string name="connections_email_app_password_hint">使用您的密码；如果提供商要求（Fastmail、iCloud、Yahoo、Gmail/双重验证），请使用应用专用密码。</string>
+    <string name="connections_email_preset_label">提供商预设</string>
+    <string name="connections_email_app_password_link">为 %1$s 创建应用专用密码</string>
+    <string name="connections_field_imap_server">IMAP 服务器</string>
+    <string name="connections_field_smtp_server">SMTP 服务器</string>
+    <string name="connections_field_smtp_server_help">留空则使用 IMAP 服务器。</string>
+    <string name="connections_field_imap_port">IMAP 端口</string>
+    <string name="connections_field_smtp_port">SMTP 端口</string>
+    <string name="connections_toggle_imap_tls">使用 TLS（隐式 SSL）</string>
 </resources>

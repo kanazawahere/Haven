@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Message list -->
+    <string name="mail_refresh">تحديث</string>
+    <string name="mail_load_older">تحميل الأقدم</string>
+    <!-- Compose / reply / forward (CP-7) -->
+    <string name="mail_compose">إنشاء</string>
+    <string name="mail_reply">رد</string>
+    <string name="mail_reply_all">رد على الكل</string>
+    <string name="mail_forward">إعادة توجيه</string>
+    <string name="mail_send">إرسال</string>
+    <string name="mail_close">إغلاق</string>
+
+    <string name="mail_from">من</string>
+    <string name="mail_switch_account">تبديل الحساب</string>
+    <string name="mail_engine_proton">Proton</string>
+    <string name="mail_engine_imap">IMAP</string>
+    <string name="mail_to">إلى</string>
+    <string name="mail_cc">نسخة</string>
+    <string name="mail_bcc">نسخة مخفية</string>
+    <string name="mail_cc_bcc">نسخة/نسخة مخفية</string>
+    <string name="mail_subject">الموضوع</string>
+    <string name="mail_message">الرسالة</string>
+
+    <string name="mail_recipients_hint">افصل بين العناوين بفواصل</string>
+    <string name="mail_recipients_required">أضِف مستلمًا واحدًا على الأقل</string>
+    <string name="mail_sent_ok">تم إرسال الرسالة</string>
+
+    <string name="mail_discard_title">تجاهل الرسالة؟</string>
+    <string name="mail_discard_body">ستفقد مسودتك.</string>
+    <string name="mail_discard_confirm">تجاهل</string>
+    <string name="mail_discard_cancel">متابعة التحرير</string>
+
+    <!-- "On <date>, <sender> wrote:" -->
+    <string name="mail_reply_quote_header">في %1$s، كتب %2$s:</string>
+    <string name="mail_forward_header">---------- رسالة معاد توجيهها ----------</string>
+</resources>

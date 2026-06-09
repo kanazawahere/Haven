@@ -375,4 +375,10 @@
     <string name="settings_paired_clients_unpair_message">अगली बार कनेक्ट होने पर इसे फिर से स्वीकृत करना होगा, और कोई भी स्वतः-स्वीकृति रद्द हो जाएगी।</string>
     <string name="settings_paired_clients_unpair_confirm">युग्मन हटाएँ</string>
     <string name="settings_paired_clients_unpaired_toast">\'%1$s\' का युग्मन हटाया गया</string>
+
+    <!-- MCP WireGuard endpoint collision + loopback trust -->
+    <string name="settings_mcp_wireguard_collision">एक अन्य VPN (%1$s) %2$s का उपयोग कर रहा है — वही पता जिससे यह endpoint बँधता है, इसलिए यह छिप जाता है और peers से पहुँच योग्य नहीं रहता। उस VPN को बंद करें, या अपने MCP client को इसके बजाय loopback (127.0.0.1) endpoint की ओर इंगित करें।</string>
+    <string name="settings_mcp_trust_loopback_title">स्थानीय clients पर भरोसा करें</string>
+    <string name="settings_mcp_trust_loopback_subtitle_on">सक्षम — स्थानीय clients (127.0.0.1) बिना पेयरिंग या स्वीकृति प्रॉम्प्ट के कनेक्ट होते हैं। Wi-Fi/LAN और WireGuard clients अब भी प्रॉम्प्ट करते हैं।</string>
+    <string name="settings_mcp_trust_loopback_subtitle_off">अक्षम — स्थानीय clients को भी पेयर होना और हर अनुरोध को स्वीकृत करना होगा</string>
 </resources>

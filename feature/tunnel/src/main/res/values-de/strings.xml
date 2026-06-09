@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tunnels list -->
+    <string name="tunnel_add">Tunnel hinzufügen</string>
+    <string name="tunnel_empty_title">Noch keine Tunnel konfiguriert</string>
+    <string name="tunnel_empty_subtitle">Füge eine WireGuard-Konfiguration hinzu, um einzelne Verbindungsprofile darüber zu leiten — kein systemweites VPN erforderlich.</string>
+    <!-- %1$s = tunnel type (e.g. WireGuard), %2$s = date added -->
+    <string name="tunnel_row_subtitle">%1$s · hinzugefügt %2$s</string>
+    <string name="tunnel_type_unknown">unbekannt</string>
+    <string name="tunnel_cf_sign_in_again">Erneut anmelden</string>
+    <string name="tunnel_delete_content_desc">Tunnel löschen</string>
+
+    <!-- Delete confirmation -->
+    <string name="tunnel_delete_title">Tunnel löschen?</string>
+    <!-- %1$s = tunnel label -->
+    <string name="tunnel_delete_message">\"%1$s\" entfernen. Profile, die auf diesen Tunnel verweisen, können sich nicht mehr verbinden, bis du einen anderen auswählst.</string>
+    <string name="tunnel_delete_confirm">Löschen</string>
+    <string name="tunnel_cancel">Abbrechen</string>
+
+    <!-- Add tunnel dialog -->
+    <string name="tunnel_label">Bezeichnung</string>
+    <string name="tunnel_save">Speichern</string>
+    <string name="tunnel_wireguard_help">Füge eine Konfiguration im wg-quick-Stil ein oder lade eine .conf-Datei. Es werden nur die Felder [Interface] und [Peer] gelesen; unbekannte Schlüssel (PostUp, Table, MTU) werden ignoriert. Hostname-Endpunkte und DNS-Namen werden beim Start des Tunnels aufgelöst.</string>
+    <string name="tunnel_load_from_file">Aus Datei laden…</string>
+    <string name="tunnel_wireguard_config">WireGuard-Konfiguration</string>
+    <string name="tunnel_tailscale_help">Erzeuge einen authkey in der Tailscale-Admin-Konsole (Einstellungen → Keys) oder in deiner Headscale-CLI (`headscale preauthkeys create`). Haven tritt beim ersten Mal deinem Tailnet bei und verwendet danach den Node-Status wieder, daher genügt ein Einmal-Schlüssel. Mit wiederverwendbaren Schlüsseln kannst du dich nach einer Neuinstallation erneut verbinden.</string>
+    <string name="tunnel_tailscale_authkey_label">Auth-Schlüssel (tskey-auth-…)</string>
+    <string name="tunnel_tailscale_control_url_label">Control-Plane-URL (optional)</string>
+    <string name="tunnel_tailscale_control_url_help">Leer lassen für Tailscales gehostete Control-Plane. Für einen selbst gehosteten Koordinationsserver auf eine Headscale-URL setzen.</string>
+</resources>

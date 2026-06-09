@@ -142,4 +142,8 @@
     <string name="app_biometric_no_hardware_body">यह डिवाइस authenticate नहीं कर सकता (न biometric hardware है, न device credential)। अनलॉक करने के लिए Settings में PIN या पासवर्ड सेट अप करें।</string>
     <string name="app_present_minimize">छोटा करें</string>
     <string name="app_present_pip">पिक्चर में पिक्चर</string>
+
+    <!-- Local Linux desktop manager -->
+    <string name="app_desktop_manager_title">स्थानीय Linux डेस्कटॉप</string>
+    <string name="app_desktop_manager_description">Haven के अंदर पूरा Linux डेस्कटॉप चलाएँ। एक distro चुनें, एक डेस्कटॉप वातावरण (Xfce4, Openbox, या Sway) इंस्टॉल करें, फिर लॉन्च करें — किसी अलग सर्वर या कनेक्शन की ज़रूरत नहीं।</string>
 </resources>

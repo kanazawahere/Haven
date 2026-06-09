@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Message list -->
+    <string name="mail_refresh">Atualizar</string>
+    <string name="mail_load_older">Carregar mais antigas</string>
+    <!-- Compose / reply / forward (CP-7) -->
+    <string name="mail_compose">Escrever</string>
+    <string name="mail_reply">Responder</string>
+    <string name="mail_reply_all">Responder a todos</string>
+    <string name="mail_forward">Encaminhar</string>
+    <string name="mail_send">Enviar</string>
+    <string name="mail_close">Fechar</string>
+
+    <string name="mail_from">De</string>
+    <string name="mail_switch_account">Trocar de conta</string>
+    <string name="mail_engine_proton">Proton</string>
+    <string name="mail_engine_imap">IMAP</string>
+    <string name="mail_to">Para</string>
+    <string name="mail_cc">Cc</string>
+    <string name="mail_bcc">Bcc</string>
+    <string name="mail_cc_bcc">Cc/Bcc</string>
+    <string name="mail_subject">Assunto</string>
+    <string name="mail_message">Mensagem</string>
+
+    <string name="mail_recipients_hint">Separe os endereços com vírgulas</string>
+    <string name="mail_recipients_required">Adicione pelo menos um destinatário</string>
+    <string name="mail_sent_ok">Mensagem enviada</string>
+
+    <string name="mail_discard_title">Descartar mensagem?</string>
+    <string name="mail_discard_body">Seu rascunho será perdido.</string>
+    <string name="mail_discard_confirm">Descartar</string>
+    <string name="mail_discard_cancel">Continuar editando</string>
+
+    <!-- "On <date>, <sender> wrote:" -->
+    <string name="mail_reply_quote_header">Em %1$s, %2$s escreveu:</string>
+    <string name="mail_forward_header">---------- Mensagem encaminhada ----------</string>
+</resources>

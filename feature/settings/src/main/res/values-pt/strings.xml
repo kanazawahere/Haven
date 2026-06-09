@@ -375,4 +375,10 @@
     <string name="settings_paired_clients_unpair_message">Ele precisará ser aprovado novamente na próxima vez que se conectar, e qualquer aprovação automática é revogada.</string>
     <string name="settings_paired_clients_unpair_confirm">Desparear</string>
     <string name="settings_paired_clients_unpaired_toast">\'%1$s\' despareado</string>
+
+    <!-- MCP WireGuard / loopback trust -->
+    <string name="settings_mcp_wireguard_collision">Outra VPN (%1$s) está usando %2$s — o mesmo endereço a que este endpoint se vincula, então ele fica oculto e inacessível pelos peers. Pare essa VPN ou aponte seu cliente MCP para o endpoint de loopback (127.0.0.1).</string>
+    <string name="settings_mcp_trust_loopback_title">Confiar em clientes locais</string>
+    <string name="settings_mcp_trust_loopback_subtitle_on">Ativado — clientes locais (127.0.0.1) conectam sem emparelhamento nem avisos de aprovação. Clientes Wi-Fi/LAN e WireGuard ainda solicitam.</string>
+    <string name="settings_mcp_trust_loopback_subtitle_off">Desativado — mesmo clientes locais precisam ser emparelhados e aprovar cada solicitação</string>
 </resources>

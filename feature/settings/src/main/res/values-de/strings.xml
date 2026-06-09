@@ -375,4 +375,10 @@
     <string name="settings_paired_clients_unpair_message">Beim nächsten Verbinden muss er erneut bestätigt werden, und eine etwaige automatische Genehmigung wird widerrufen.</string>
     <string name="settings_paired_clients_unpair_confirm">Entkoppeln</string>
     <string name="settings_paired_clients_unpaired_toast">\'%1$s\' entkoppelt</string>
+
+    <!-- MCP WireGuard collision + loopback trust -->
+    <string name="settings_mcp_wireguard_collision">Ein anderes VPN (%1$s) belegt %2$s — dieselbe Adresse, an die dieser Endpunkt bindet. Dadurch wird er verdeckt und ist für Peers nicht erreichbar. Beende dieses VPN oder richte deinen MCP-Client stattdessen auf den Loopback-Endpunkt (127.0.0.1).</string>
+    <string name="settings_mcp_trust_loopback_title">Lokalen Clients vertrauen</string>
+    <string name="settings_mcp_trust_loopback_subtitle_on">Aktiviert — lokale Clients (127.0.0.1) verbinden sich ohne Kopplung oder Genehmigungsabfragen. WLAN/LAN- und WireGuard-Clients fragen weiterhin nach.</string>
+    <string name="settings_mcp_trust_loopback_subtitle_off">Deaktiviert — auch lokale Clients müssen gekoppelt sein und jede Anfrage genehmigen</string>
 </resources>

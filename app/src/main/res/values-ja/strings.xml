@@ -142,4 +142,8 @@
     <string name="app_biometric_no_hardware_body">このデバイスは認証できません（生体認証ハードウェアもデバイス認証情報もありません）。ロック解除するには、設定で PIN またはパスワードを設定してください。</string>
     <string name="app_present_minimize">最小化</string>
     <string name="app_present_pip">ピクチャー イン ピクチャー</string>
+
+    <!-- Local Linux desktop manager -->
+    <string name="app_desktop_manager_title">ローカル Linux デスクトップ</string>
+    <string name="app_desktop_manager_description">Haven 内でフル機能の Linux デスクトップを実行します。ディストリビューションを選び、デスクトップ環境（Xfce4、Openbox、Sway）をインストールして「起動」をタップするだけ — 別途サーバーや接続は不要です。</string>
 </resources>

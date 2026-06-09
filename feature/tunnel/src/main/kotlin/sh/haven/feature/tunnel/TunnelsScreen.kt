@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -42,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -114,7 +117,7 @@ fun TunnelsScreen(
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "Add tunnel")
+                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.tunnel_add))
             }
         },
     ) { padding ->
@@ -164,18 +167,18 @@ fun TunnelsScreen(
         val tunnel = tunnels.firstOrNull { it.id == id }
         AlertDialog(
             onDismissRequest = { pendingDeleteId = null },
-            title = { Text("Delete tunnel?") },
+            title = { Text(stringResource(R.string.tunnel_delete_title)) },
             text = {
-                Text("Remove \"${tunnel?.label ?: id}\". Profiles referencing this tunnel will fail to connect until you pick another one.")
+                Text(stringResource(R.string.tunnel_delete_message, tunnel?.label ?: id))
             },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.delete(id)
                     pendingDeleteId = null
-                }) { Text("Delete") }
+                }) { Text(stringResource(R.string.tunnel_delete_confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDeleteId = null }) { Text("Cancel") }
+                TextButton(onClick = { pendingDeleteId = null }) { Text(stringResource(R.string.tunnel_cancel)) }
             },
         )
     }
@@ -194,12 +197,12 @@ private fun EmptyState(modifier: Modifier = Modifier) {
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            "No tunnels configured yet",
+            stringResource(R.string.tunnel_empty_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            "Add a WireGuard config to route individual connection profiles through it — no system-wide VPN required.",
+            stringResource(R.string.tunnel_empty_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -240,7 +243,7 @@ private fun TunnelRow(
                         shape = MaterialTheme.shapes.small,
                     ) {
                         Text(
-                            "Sign in again",
+                            stringResource(R.string.tunnel_cf_sign_in_again),
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onErrorContainer,
@@ -250,9 +253,10 @@ private fun TunnelRow(
             }
         },
         supportingContent = {
-            val kind = runCatching { tunnelTypeLabel(tunnel.typeEnum) }.getOrDefault("unknown")
+            val unknown = stringResource(R.string.tunnel_type_unknown)
+            val kind = runCatching { tunnelTypeLabel(tunnel.typeEnum) }.getOrDefault(unknown)
             Text(
-                "$kind · added ${formatter.format(Date(tunnel.createdAt))}",
+                stringResource(R.string.tunnel_row_subtitle, kind, formatter.format(Date(tunnel.createdAt))),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -264,7 +268,7 @@ private fun TunnelRow(
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Filled.Delete,
-                    contentDescription = "Delete tunnel",
+                    contentDescription = stringResource(R.string.tunnel_delete_content_desc),
                     tint = MaterialTheme.colorScheme.error,
                 )
             }
@@ -330,7 +334,7 @@ private fun AddTunnelDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
             Text(
-                "Add tunnel",
+                stringResource(R.string.tunnel_add),
                 style = MaterialTheme.typography.headlineSmall,
             )
 
@@ -353,7 +357,7 @@ private fun AddTunnelDialog(
             OutlinedTextField(
                 value = label,
                 onValueChange = { label = it },
-                label = { Text("Label") },
+                label = { Text(stringResource(R.string.tunnel_label)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -361,7 +365,7 @@ private fun AddTunnelDialog(
             when (type) {
                 TunnelConfigType.WIREGUARD -> {
                     Text(
-                        "Paste a wg-quick style config or load a .conf file. Only [Interface] and [Peer] fields are read; unknown keys (PostUp, Table, MTU) are ignored. Hostname endpoints and DNS names are resolved at tunnel start.",
+                        stringResource(R.string.tunnel_wireguard_help),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -370,12 +374,13 @@ private fun AddTunnelDialog(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Icon(Icons.Filled.FileOpen, contentDescription = null)
-                        Text("  Load from file…")
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.tunnel_load_from_file))
                     }
                     OutlinedTextField(
                         value = configText,
                         onValueChange = { configText = it },
-                        label = { Text("WireGuard config") },
+                        label = { Text(stringResource(R.string.tunnel_wireguard_config)) },
                         placeholder = {
                             Text(
                                 "[Interface]\nPrivateKey = …\nAddress = 10.0.0.2/32\n\n[Peer]\nPublicKey = …\nEndpoint = vpn.example.com:51820\nAllowedIPs = 0.0.0.0/0",
@@ -396,14 +401,14 @@ private fun AddTunnelDialog(
                 }
                 TunnelConfigType.TAILSCALE -> {
                     Text(
-                        "Generate an authkey in the Tailscale admin console (Settings → Keys), or in your Headscale CLI (`headscale preauthkeys create`). Haven joins your tailnet on first use and reuses the node state after that, so a one-time key is fine. Reusable keys let you reconnect after reinstall.",
+                        stringResource(R.string.tunnel_tailscale_help),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     OutlinedTextField(
                         value = authKey,
                         onValueChange = { authKey = it },
-                        label = { Text("Auth key (tskey-auth-…)") },
+                        label = { Text(stringResource(R.string.tunnel_tailscale_authkey_label)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         textStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -413,7 +418,7 @@ private fun AddTunnelDialog(
                     OutlinedTextField(
                         value = controlUrl,
                         onValueChange = { controlUrl = it },
-                        label = { Text("Control plane URL (optional)") },
+                        label = { Text(stringResource(R.string.tunnel_tailscale_control_url_label)) },
                         placeholder = {
                             Text(
                                 "https://headscale.example.com",
@@ -422,7 +427,7 @@ private fun AddTunnelDialog(
                         },
                         supportingText = {
                             Text(
-                                "Leave blank for Tailscale's hosted controlplane. Set to a Headscale URL for a self-hosted coordination server.",
+                                stringResource(R.string.tunnel_tailscale_control_url_help),
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         },
@@ -448,7 +453,7 @@ private fun AddTunnelDialog(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             ) {
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.tunnel_cancel)) }
                 val canSubmit = label.isNotBlank() && when (type) {
                     TunnelConfigType.WIREGUARD -> configText.isNotBlank()
                     TunnelConfigType.TAILSCALE -> authKey.isNotBlank()
@@ -465,7 +470,7 @@ private fun AddTunnelDialog(
                         }
                     },
                     enabled = canSubmit,
-                ) { Text("Save") }
+                ) { Text(stringResource(R.string.tunnel_save)) }
             }
             }
         }

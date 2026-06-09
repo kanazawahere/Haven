@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tunnels list -->
+    <string name="tunnel_add">トンネルを追加</string>
+    <string name="tunnel_empty_title">トンネルはまだ設定されていません</string>
+    <string name="tunnel_empty_subtitle">WireGuard の設定を追加すると、個々の接続プロファイルをそのトンネル経由でルーティングできます — システム全体の VPN は不要です。</string>
+    <!-- %1$s = tunnel type (e.g. WireGuard), %2$s = date added -->
+    <string name="tunnel_row_subtitle">%1$s · %2$s に追加</string>
+    <string name="tunnel_type_unknown">不明</string>
+    <string name="tunnel_cf_sign_in_again">再度サインイン</string>
+    <string name="tunnel_delete_content_desc">トンネルを削除</string>
+
+    <!-- Delete confirmation -->
+    <string name="tunnel_delete_title">トンネルを削除しますか？</string>
+    <!-- %1$s = tunnel label -->
+    <string name="tunnel_delete_message">\"%1$s\" を削除します。このトンネルを参照しているプロファイルは、別のトンネルを選ぶまで接続できなくなります。</string>
+    <string name="tunnel_delete_confirm">削除</string>
+    <string name="tunnel_cancel">キャンセル</string>
+
+    <!-- Add tunnel dialog -->
+    <string name="tunnel_label">ラベル</string>
+    <string name="tunnel_save">保存</string>
+    <string name="tunnel_wireguard_help">wg-quick 形式の設定を貼り付けるか、.conf ファイルを読み込んでください。[Interface] と [Peer] のフィールドのみが読み取られ、不明なキー（PostUp、Table、MTU）は無視されます。ホスト名のエンドポイントや DNS 名はトンネル開始時に解決されます。</string>
+    <string name="tunnel_load_from_file">ファイルから読み込む…</string>
+    <string name="tunnel_wireguard_config">WireGuard 設定</string>
+    <string name="tunnel_tailscale_help">Tailscale 管理コンソール（Settings → Keys）または Headscale CLI（`headscale preauthkeys create`）で authkey を生成してください。Haven は初回使用時に tailnet に参加し、以降はノードの状態を再利用するため、ワンタイムキーで問題ありません。再利用可能なキーを使うと、再インストール後でも再接続できます。</string>
+    <string name="tunnel_tailscale_authkey_label">認証キー (tskey-auth-…)</string>
+    <string name="tunnel_tailscale_control_url_label">コントロールプレーン URL（任意）</string>
+    <string name="tunnel_tailscale_control_url_help">Tailscale のホスト型コントロールプレーンを使う場合は空欄にしてください。セルフホストの調整サーバーを使う場合は Headscale の URL を設定してください。</string>
+</resources>

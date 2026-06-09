@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tunnel_add">টানেল যোগ করুন</string>
+    <string name="tunnel_empty_title">এখনো কোনো টানেল কনফিগার করা হয়নি</string>
+    <string name="tunnel_empty_subtitle">পৃথক সংযোগ প্রোফাইলকে এর মাধ্যমে রুট করতে একটি WireGuard কনফিগ যোগ করুন — কোনো সিস্টেম-ব্যাপী VPN-এর প্রয়োজন নেই।</string>
+    <string name="tunnel_row_subtitle">%1$s · যোগ করা হয়েছে %2$s</string>
+    <string name="tunnel_type_unknown">অজানা</string>
+    <string name="tunnel_cf_sign_in_again">আবার সাইন ইন করুন</string>
+    <string name="tunnel_delete_content_desc">টানেল মুছুন</string>
+    <string name="tunnel_delete_title">টানেল মুছবেন?</string>
+    <string name="tunnel_delete_message">\"%1$s\" সরান। এই টানেল উল্লেখকারী প্রোফাইলগুলি আপনি অন্য একটি না বেছে নেওয়া পর্যন্ত সংযোগ করতে ব্যর্থ হবে।</string>
+    <string name="tunnel_delete_confirm">মুছুন</string>
+    <string name="tunnel_cancel">বাতিল</string>
+    <string name="tunnel_label">লেবেল</string>
+    <string name="tunnel_save">সংরক্ষণ</string>
+    <string name="tunnel_wireguard_help">একটি wg-quick স্টাইল কনফিগ পেস্ট করুন বা একটি .conf ফাইল লোড করুন। শুধু [Interface] ও [Peer] ফিল্ড পড়া হয়; অজানা কী (PostUp, Table, MTU) উপেক্ষা করা হয়। হোস্টনেম endpoint ও DNS নাম টানেল শুরুর সময় নির্ণয় করা হয়।</string>
+    <string name="tunnel_load_from_file">ফাইল থেকে লোড করুন…</string>
+    <string name="tunnel_wireguard_config">WireGuard কনফিগ</string>
+    <string name="tunnel_tailscale_help">Tailscale অ্যাডমিন কনসোলে (Settings → Keys), অথবা আপনার Headscale CLI-তে (`headscale preauthkeys create`) একটি authkey তৈরি করুন। Haven প্রথম ব্যবহারে আপনার tailnet-এ যোগ দেয় এবং তারপর নোড স্টেট পুনঃব্যবহার করে, তাই একবারের কী যথেষ্ট। পুনঃব্যবহারযোগ্য কী আপনাকে পুনরায় ইনস্টলের পর আবার সংযোগ করতে দেয়।</string>
+    <string name="tunnel_tailscale_authkey_label">Auth কী (tskey-auth-…)</string>
+    <string name="tunnel_tailscale_control_url_label">কন্ট্রোল প্লেন URL (ঐচ্ছিক)</string>
+    <string name="tunnel_tailscale_control_url_help">Tailscale-এর হোস্ট করা controlplane-এর জন্য খালি রাখুন। একটি স্ব-হোস্ট করা সমন্বয় সার্ভারের জন্য একটি Headscale URL সেট করুন।</string>
+</resources>

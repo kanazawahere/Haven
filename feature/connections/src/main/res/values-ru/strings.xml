@@ -449,4 +449,26 @@
     <string name="connections_mcp_badge">MCP</string>
     <string name="connections_local_distro_label">Открыть в ОС</string>
     <string name="connections_local_distro_active_default">Активный дистрибутив (по умолчанию)</string>
+
+    <!-- Email accounts (Proton / IMAP-SMTP) -->
+    <string name="connections_section_email">Учётная запись email</string>
+    <string name="connections_auth_method_proton_srp">ProtonMail SRP</string>
+    <string name="connections_email_provider_proton">Провайдер: ProtonMail</string>
+    <string name="connections_email_proton_unofficial_warning">Использует неофициальный API Proton. Он получен методом обратной разработки и нарушает условия Proton — учётная запись может быть ограничена по скорости или заблокирована. Действуйте на свой страх и риск.</string>
+    <string name="connections_field_email_address">Адрес email</string>
+    <string name="connections_field_email_password">Пароль</string>
+    <string name="connections_field_email_mailbox_password">Пароль почтового ящика (только в режиме двух паролей)</string>
+    <string name="connections_email_mailbox_password_hint">Оставьте пустым, если у вашей учётной записи Proton нет отдельного пароля почтового ящика.</string>
+    <string name="connections_email_2fa_hint">Если у учётной записи включена 2FA, привяжите её секрет TOTP в менеджере SSH-ключей / TOTP — он будет применяться автоматически.</string>
+    <string name="connections_email_provider_proton_short">ProtonMail</string>
+    <string name="connections_email_provider_imap_short">IMAP/SMTP</string>
+    <string name="connections_email_app_password_hint">Используйте свой пароль или пароль приложения, если провайдер этого требует (Fastmail, iCloud, Yahoo, Gmail/2FA).</string>
+    <string name="connections_email_preset_label">Шаблон провайдера</string>
+    <string name="connections_email_app_password_link">Создать пароль приложения для %1$s</string>
+    <string name="connections_field_imap_server">Сервер IMAP</string>
+    <string name="connections_field_smtp_server">Сервер SMTP</string>
+    <string name="connections_field_smtp_server_help">Оставьте пустым, чтобы использовать сервер IMAP.</string>
+    <string name="connections_field_imap_port">Порт IMAP</string>
+    <string name="connections_field_smtp_port">Порт SMTP</string>
+    <string name="connections_toggle_imap_tls">Использовать TLS (неявный SSL)</string>
 </resources>

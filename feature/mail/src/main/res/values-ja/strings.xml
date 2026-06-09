@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Message list -->
+    <string name="mail_refresh">更新</string>
+    <string name="mail_load_older">古いメールを読み込む</string>
+    <!-- Compose / reply / forward (CP-7) -->
+    <string name="mail_compose">作成</string>
+    <string name="mail_reply">返信</string>
+    <string name="mail_reply_all">全員に返信</string>
+    <string name="mail_forward">転送</string>
+    <string name="mail_send">送信</string>
+    <string name="mail_close">閉じる</string>
+
+    <string name="mail_from">差出人</string>
+    <string name="mail_switch_account">アカウントを切り替え</string>
+    <string name="mail_engine_proton">Proton</string>
+    <string name="mail_engine_imap">IMAP</string>
+    <string name="mail_to">宛先</string>
+    <string name="mail_cc">Cc</string>
+    <string name="mail_bcc">Bcc</string>
+    <string name="mail_cc_bcc">Cc/Bcc</string>
+    <string name="mail_subject">件名</string>
+    <string name="mail_message">本文</string>
+
+    <string name="mail_recipients_hint">アドレスはカンマで区切ってください</string>
+    <string name="mail_recipients_required">宛先を 1 件以上追加してください</string>
+    <string name="mail_sent_ok">メールを送信しました</string>
+
+    <string name="mail_discard_title">メールを破棄しますか？</string>
+    <string name="mail_discard_body">下書きは失われます。</string>
+    <string name="mail_discard_confirm">破棄</string>
+    <string name="mail_discard_cancel">編集を続ける</string>
+
+    <!-- "On <date>, <sender> wrote:" -->
+    <string name="mail_reply_quote_header">%1$s に %2$s が書きました:</string>
+    <string name="mail_forward_header">---------- 転送メッセージ ----------</string>
+</resources>

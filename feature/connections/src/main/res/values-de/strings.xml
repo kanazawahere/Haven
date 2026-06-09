@@ -449,4 +449,26 @@
     <string name="connections_mcp_badge">MCP</string>
     <string name="connections_local_distro_label">In Betriebssystem öffnen</string>
     <string name="connections_local_distro_active_default">Aktive Distribution (Standard)</string>
+
+    <!-- Email accounts (Proton / IMAP+SMTP) -->
+    <string name="connections_section_email">E-Mail-Konto</string>
+    <string name="connections_auth_method_proton_srp">ProtonMail SRP</string>
+    <string name="connections_email_provider_proton">Anbieter: ProtonMail</string>
+    <string name="connections_email_proton_unofficial_warning">Verwendet Protons inoffizielle API. Diese ist per Reverse Engineering nachgebaut und verstößt gegen Protons Nutzungsbedingungen — dein Konto könnte ratenbegrenzt oder gesperrt werden. Nutzung auf eigenes Risiko.</string>
+    <string name="connections_field_email_address">E-Mail-Adresse</string>
+    <string name="connections_field_email_password">Passwort</string>
+    <string name="connections_field_email_mailbox_password">Mailbox-Passwort (nur Zwei-Passwort-Modus)</string>
+    <string name="connections_email_mailbox_password_hint">Leer lassen, sofern dein Proton-Konto kein separates Mailbox-Passwort hat.</string>
+    <string name="connections_email_2fa_hint">Wenn dein Konto 2FA nutzt, verknüpfe sein TOTP-Geheimnis im SSH-Schlüssel-/TOTP-Manager — es wird dann automatisch angewendet.</string>
+    <string name="connections_email_provider_proton_short">ProtonMail</string>
+    <string name="connections_email_provider_imap_short">IMAP/SMTP</string>
+    <string name="connections_email_app_password_hint">Verwende dein Passwort oder ein App-Passwort, falls dein Anbieter eines verlangt (Fastmail, iCloud, Yahoo, Gmail/2FA).</string>
+    <string name="connections_email_preset_label">Anbieter-Vorlage</string>
+    <string name="connections_email_app_password_link">App-Passwort für %1$s erstellen</string>
+    <string name="connections_field_imap_server">IMAP-Server</string>
+    <string name="connections_field_smtp_server">SMTP-Server</string>
+    <string name="connections_field_smtp_server_help">Leer lassen, um den IMAP-Server zu verwenden.</string>
+    <string name="connections_field_imap_port">IMAP-Port</string>
+    <string name="connections_field_smtp_port">SMTP-Port</string>
+    <string name="connections_toggle_imap_tls">TLS verwenden (implizites SSL)</string>
 </resources>

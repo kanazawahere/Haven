@@ -152,4 +152,8 @@
     <string name="app_biometric_no_hardware_body">이 기기는 인증할 수 없습니다(생체 인증 하드웨어와 기기 자격 증명이 모두 없음). 잠금을 해제하려면 설정에서 PIN 또는 비밀번호를 설정하세요.</string>
     <string name="app_present_minimize">최소화</string>
     <string name="app_present_pip">화면 속 화면</string>
+
+    <!-- Local Linux desktop manager -->
+    <string name="app_desktop_manager_title">로컬 Linux 데스크톱</string>
+    <string name="app_desktop_manager_description">Haven 안에서 전체 Linux 데스크톱을 실행합니다. 배포판을 선택하고 데스크톱 환경(Xfce4, Openbox 또는 Sway)을 설치한 다음 실행하세요. 별도의 서버나 연결이 필요하지 않습니다.</string>
 </resources>

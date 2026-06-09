@@ -148,4 +148,8 @@
     <string name="app_biometric_no_hardware_body">Este dispositivo no puede autenticarse (sin hardware biométrico ni credencial del dispositivo). Configura un PIN o una contraseña en Ajustes para desbloquear.</string>
     <string name="app_present_minimize">Minimizar</string>
     <string name="app_present_pip">Imagen en imagen</string>
+
+    <!-- Local Linux desktop manager -->
+    <string name="app_desktop_manager_title">Escritorio Linux local</string>
+    <string name="app_desktop_manager_description">Ejecuta un escritorio Linux completo dentro de Haven. Elige una distro, instala un entorno de escritorio (Xfce4, Openbox o Sway) y luego pulsa Iniciar — no hace falta un servidor ni una conexión aparte.</string>
 </resources>

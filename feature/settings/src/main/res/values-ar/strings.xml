@@ -375,4 +375,10 @@
     <string name="settings_paired_clients_unpair_message">سيتعين الموافقة عليه مجددًا في المرة التالية التي يتصل فيها، وسيتم إلغاء أي موافقة تلقائية.</string>
     <string name="settings_paired_clients_unpair_confirm">إلغاء الاقتران</string>
     <string name="settings_paired_clients_unpaired_toast">تم إلغاء اقتران \'%1$s\'</string>
+
+    <!-- MCP WireGuard / loopback trust -->
+    <string name="settings_mcp_wireguard_collision">شبكة VPN أخرى (%1$s) تستخدم %2$s — العنوان نفسه الذي ترتبط به نقطة النهاية هذه، لذا فهي محجوبة وغير قابلة للوصول من النظراء. أوقف تلك الشبكة، أو وجّه عميل MCP إلى نقطة نهاية الاسترجاع (127.0.0.1) بدلاً من ذلك.</string>
+    <string name="settings_mcp_trust_loopback_title">الثقة بالعملاء المحليين</string>
+    <string name="settings_mcp_trust_loopback_subtitle_on">مفعّل — يتصل العملاء المحليون (127.0.0.1) دون إقران أو مطالبات موافقة. لا يزال عملاء Wi-Fi/LAN وWireGuard يُطالَبون.</string>
+    <string name="settings_mcp_trust_loopback_subtitle_off">معطّل — يجب اقتران حتى العملاء المحليين والموافقة على كل طلب</string>
 </resources>

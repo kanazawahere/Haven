@@ -449,4 +449,26 @@
     <string name="connections_mcp_badge">MCP</string>
     <string name="connections_local_distro_label">OS में खोलें</string>
     <string name="connections_local_distro_active_default">सक्रिय डिस्ट्रो (डिफ़ॉल्ट)</string>
+
+    <!-- Email account -->
+    <string name="connections_section_email">ईमेल खाता</string>
+    <string name="connections_auth_method_proton_srp">ProtonMail SRP</string>
+    <string name="connections_email_provider_proton">प्रदाता: ProtonMail</string>
+    <string name="connections_email_proton_unofficial_warning">Proton का अनौपचारिक API उपयोग करता है। यह रिवर्स-इंजीनियर्ड है और Proton की शर्तों के विरुद्ध है — आपके खाते की दर सीमित हो सकती है या वह लॉक हो सकता है। अपने जोखिम पर आगे बढ़ें।</string>
+    <string name="connections_field_email_address">ईमेल पता</string>
+    <string name="connections_field_email_password">पासवर्ड</string>
+    <string name="connections_field_email_mailbox_password">मेलबॉक्स पासवर्ड (केवल दो-पासवर्ड मोड)</string>
+    <string name="connections_email_mailbox_password_hint">तब तक खाली छोड़ें जब तक आपके Proton खाते में अलग मेलबॉक्स पासवर्ड न हो।</string>
+    <string name="connections_email_2fa_hint">यदि आपके खाते में 2FA है, तो उसका TOTP secret SSH कुंजी / TOTP प्रबंधक में लिंक करें और वह स्वतः लागू हो जाएगा।</string>
+    <string name="connections_email_provider_proton_short">ProtonMail</string>
+    <string name="connections_email_provider_imap_short">IMAP/SMTP</string>
+    <string name="connections_email_app_password_hint">अपना पासवर्ड उपयोग करें, या ऐप-पासवर्ड यदि आपका प्रदाता उसकी माँग करता है (Fastmail, iCloud, Yahoo, Gmail/2FA)।</string>
+    <string name="connections_email_preset_label">प्रदाता प्रीसेट</string>
+    <string name="connections_email_app_password_link">%1$s के लिए ऐप-पासवर्ड बनाएँ</string>
+    <string name="connections_field_imap_server">IMAP सर्वर</string>
+    <string name="connections_field_smtp_server">SMTP सर्वर</string>
+    <string name="connections_field_smtp_server_help">IMAP सर्वर उपयोग करने के लिए खाली छोड़ें।</string>
+    <string name="connections_field_imap_port">IMAP पोर्ट</string>
+    <string name="connections_field_smtp_port">SMTP पोर्ट</string>
+    <string name="connections_toggle_imap_tls">TLS उपयोग करें (implicit SSL)</string>
 </resources>

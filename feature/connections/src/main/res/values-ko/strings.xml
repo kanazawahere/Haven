@@ -441,4 +441,26 @@
     <string name="connections_mcp_badge">MCP</string>
     <string name="connections_local_distro_label">OS에서 열기</string>
     <string name="connections_local_distro_active_default">활성 배포판 (기본값)</string>
+
+    <!-- Email account (embedded mail) -->
+    <string name="connections_section_email">이메일 계정</string>
+    <string name="connections_auth_method_proton_srp">ProtonMail SRP</string>
+    <string name="connections_email_provider_proton">제공자: ProtonMail</string>
+    <string name="connections_email_proton_unofficial_warning">Proton의 비공식 API를 사용합니다. 이는 리버스 엔지니어링된 것으로 Proton의 약관에 위배됩니다 — 계정에 속도 제한이 걸리거나 잠길 수 있습니다. 위험을 감수하고 진행하세요.</string>
+    <string name="connections_field_email_address">이메일 주소</string>
+    <string name="connections_field_email_password">비밀번호</string>
+    <string name="connections_field_email_mailbox_password">메일박스 비밀번호 (2단계 비밀번호 모드 전용)</string>
+    <string name="connections_email_mailbox_password_hint">Proton 계정에 별도의 메일박스 비밀번호가 있는 경우가 아니면 비워 두세요.</string>
+    <string name="connections_email_2fa_hint">계정에 2FA가 설정되어 있으면 SSH 키 / TOTP 관리자에서 해당 TOTP 시크릿을 연결하면 자동으로 적용됩니다.</string>
+    <string name="connections_email_provider_proton_short">ProtonMail</string>
+    <string name="connections_email_provider_imap_short">IMAP/SMTP</string>
+    <string name="connections_email_app_password_hint">비밀번호를 사용하거나, 제공자에서 요구하는 경우 앱 비밀번호를 사용하세요(Fastmail, iCloud, Yahoo, Gmail/2FA).</string>
+    <string name="connections_email_preset_label">제공자 프리셋</string>
+    <string name="connections_email_app_password_link">%1$s의 앱 비밀번호 만들기</string>
+    <string name="connections_field_imap_server">IMAP 서버</string>
+    <string name="connections_field_smtp_server">SMTP 서버</string>
+    <string name="connections_field_smtp_server_help">IMAP 서버를 사용하려면 비워 두세요.</string>
+    <string name="connections_field_imap_port">IMAP 포트</string>
+    <string name="connections_field_smtp_port">SMTP 포트</string>
+    <string name="connections_toggle_imap_tls">TLS 사용 (암묵적 SSL)</string>
 </resources>

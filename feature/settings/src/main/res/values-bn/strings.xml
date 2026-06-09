@@ -375,4 +375,10 @@
     <string name="settings_paired_clients_unpair_message">পরেরবার সংযুক্ত হলে এটিকে আবার অনুমোদন করতে হবে, এবং যেকোনো স্বয়ংক্রিয় অনুমোদন বাতিল হবে।</string>
     <string name="settings_paired_clients_unpair_confirm">আনপেয়ার</string>
     <string name="settings_paired_clients_unpaired_toast">\'%1$s\' আনপেয়ার করা হয়েছে</string>
+
+    <!-- MCP endpoint warnings / loopback trust -->
+    <string name="settings_mcp_wireguard_collision">আরেকটি VPN (%1$s) %2$s ব্যবহার করছে — এই endpoint যে ঠিকানায় বাইন্ড করে সেই একই ঠিকানা, তাই এটি ছায়াবৃত এবং পেয়ার থেকে অপৌঁছনীয়। সেই VPN বন্ধ করুন, অথবা আপনার MCP ক্লায়েন্টকে loopback (127.0.0.1) endpoint-এ নির্দেশ করুন।</string>
+    <string name="settings_mcp_trust_loopback_title">স্থানীয় ক্লায়েন্টদের বিশ্বাস করুন</string>
+    <string name="settings_mcp_trust_loopback_subtitle_on">চালু — স্থানীয় ক্লায়েন্ট (127.0.0.1) পেয়ারিং বা অনুমোদন প্রম্পট ছাড়াই সংযুক্ত হয়। Wi-Fi/LAN ও WireGuard ক্লায়েন্ট এখনও প্রম্পট করে।</string>
+    <string name="settings_mcp_trust_loopback_subtitle_off">বন্ধ — স্থানীয় ক্লায়েন্টদেরও পেয়ার করতে হবে এবং প্রতিটি অনুরোধ অনুমোদন করতে হবে</string>
 </resources>

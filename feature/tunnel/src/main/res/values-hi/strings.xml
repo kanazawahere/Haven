@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tunnels list -->
+    <string name="tunnel_add">टनल जोड़ें</string>
+    <string name="tunnel_empty_title">अभी तक कोई टनल कॉन्फ़िगर नहीं किया गया</string>
+    <string name="tunnel_empty_subtitle">अलग-अलग कनेक्शन प्रोफ़ाइल को इसके माध्यम से रूट करने के लिए एक WireGuard config जोड़ें — किसी सिस्टम-व्यापी VPN की ज़रूरत नहीं।</string>
+    <!-- %1$s = tunnel type (e.g. WireGuard), %2$s = date added -->
+    <string name="tunnel_row_subtitle">%1$s · %2$s को जोड़ा गया</string>
+    <string name="tunnel_type_unknown">अज्ञात</string>
+    <string name="tunnel_cf_sign_in_again">फिर से साइन इन करें</string>
+    <string name="tunnel_delete_content_desc">टनल हटाएँ</string>
+
+    <!-- Delete confirmation -->
+    <string name="tunnel_delete_title">टनल हटाएँ?</string>
+    <!-- %1$s = tunnel label -->
+    <string name="tunnel_delete_message">\"%1$s\" हटाएँ। इस टनल का संदर्भ देने वाली प्रोफ़ाइल तब तक कनेक्ट नहीं हो पाएँगी जब तक आप कोई दूसरा न चुनें।</string>
+    <string name="tunnel_delete_confirm">हटाएँ</string>
+    <string name="tunnel_cancel">रद्द करें</string>
+
+    <!-- Add tunnel dialog -->
+    <string name="tunnel_label">लेबल</string>
+    <string name="tunnel_save">सहेजें</string>
+    <string name="tunnel_wireguard_help">wg-quick शैली का config पेस्ट करें या .conf फ़ाइल लोड करें। केवल [Interface] और [Peer] फ़ील्ड पढ़े जाते हैं; अज्ञात कुंजियाँ (PostUp, Table, MTU) अनदेखी की जाती हैं। होस्टनाम endpoints और DNS नाम टनल शुरू होने पर हल किए जाते हैं।</string>
+    <string name="tunnel_load_from_file">फ़ाइल से लोड करें…</string>
+    <string name="tunnel_wireguard_config">WireGuard config</string>
+    <string name="tunnel_tailscale_help">Tailscale एडमिन कंसोल (Settings → Keys) में, या अपने Headscale CLI (`headscale preauthkeys create`) में एक authkey बनाएँ। Haven पहली बार उपयोग पर आपके tailnet में शामिल होता है और उसके बाद node state का पुनः उपयोग करता है, इसलिए एक-बार की कुंजी ठीक है। पुनः-उपयोग योग्य कुंजियाँ आपको पुनः-इंस्टॉल के बाद फिर से कनेक्ट करने देती हैं।</string>
+    <string name="tunnel_tailscale_authkey_label">Auth key (tskey-auth-…)</string>
+    <string name="tunnel_tailscale_control_url_label">Control plane URL (वैकल्पिक)</string>
+    <string name="tunnel_tailscale_control_url_help">Tailscale के होस्टेड controlplane के लिए खाली छोड़ें। स्व-होस्टेड coordination सर्वर के लिए Headscale URL पर सेट करें।</string>
+</resources>

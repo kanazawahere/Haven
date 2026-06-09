@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Message list -->
+    <string name="mail_refresh">새로고침</string>
+    <string name="mail_load_older">이전 메일 불러오기</string>
+    <!-- Compose / reply / forward (CP-7) -->
+    <string name="mail_compose">작성</string>
+    <string name="mail_reply">답장</string>
+    <string name="mail_reply_all">전체 답장</string>
+    <string name="mail_forward">전달</string>
+    <string name="mail_send">보내기</string>
+    <string name="mail_close">닫기</string>
+
+    <string name="mail_from">보낸 사람</string>
+    <string name="mail_switch_account">계정 전환</string>
+    <string name="mail_engine_proton">Proton</string>
+    <string name="mail_engine_imap">IMAP</string>
+    <string name="mail_to">받는 사람</string>
+    <string name="mail_cc">참조</string>
+    <string name="mail_bcc">숨은 참조</string>
+    <string name="mail_cc_bcc">참조/숨은 참조</string>
+    <string name="mail_subject">제목</string>
+    <string name="mail_message">본문</string>
+
+    <string name="mail_recipients_hint">주소는 쉼표로 구분하세요</string>
+    <string name="mail_recipients_required">받는 사람을 한 명 이상 추가하세요</string>
+    <string name="mail_sent_ok">메일을 보냈습니다</string>
+
+    <string name="mail_discard_title">메일을 삭제할까요?</string>
+    <string name="mail_discard_body">작성 중인 초안이 사라집니다.</string>
+    <string name="mail_discard_confirm">삭제</string>
+    <string name="mail_discard_cancel">계속 편집</string>
+
+    <!-- "On <date>, <sender> wrote:" -->
+    <string name="mail_reply_quote_header">%1$s에 %2$s님이 작성:</string>
+    <string name="mail_forward_header">---------- 전달된 메일 ----------</string>
+</resources>

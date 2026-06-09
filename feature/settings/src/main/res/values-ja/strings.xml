@@ -375,4 +375,10 @@
     <string name="settings_paired_clients_unpair_message">次回接続時に再度承認が必要になり、自動承認は取り消されます。</string>
     <string name="settings_paired_clients_unpair_confirm">ペアリング解除</string>
     <string name="settings_paired_clients_unpaired_toast">\'%1$s\' のペアリングを解除しました</string>
+
+    <!-- MCP WireGuard / loopback -->
+    <string name="settings_mcp_wireguard_collision">別の VPN（%1$s）が %2$s を使用しています — このエンドポイントがバインドするアドレスと同じため、隠されてピアから到達できません。その VPN を停止するか、MCP クライアントをループバック（127.0.0.1）エンドポイントに向けてください。</string>
+    <string name="settings_mcp_trust_loopback_title">ローカルクライアントを信頼</string>
+    <string name="settings_mcp_trust_loopback_subtitle_on">有効 — ローカルクライアント（127.0.0.1）はペアリングや承認プロンプトなしで接続します。Wi-Fi/LAN と WireGuard クライアントは引き続き確認を求めます。</string>
+    <string name="settings_mcp_trust_loopback_subtitle_off">無効 — ローカルクライアントでもペアリングが必要で、リクエストごとに承認します</string>
 </resources>

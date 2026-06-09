@@ -6,6 +6,7 @@
     <string name="nav_keys">कुंजियाँ</string>
     <string name="nav_sftp">फ़ाइलें</string>
     <string name="nav_settings">सेटिंग्स</string>
+    <string name="nav_mail">मेल</string>
     <string name="common_cancel">रद्द करें</string>
     <string name="common_save">सहेजें</string>
     <string name="common_done">हो गया</string>

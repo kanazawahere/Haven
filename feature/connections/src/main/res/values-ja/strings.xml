@@ -449,4 +449,26 @@
     <string name="connections_mcp_badge">MCP</string>
     <string name="connections_local_distro_label">OSで開く</string>
     <string name="connections_local_distro_active_default">アクティブなディストロ（デフォルト）</string>
+
+    <!-- Email accounts -->
+    <string name="connections_section_email">メールアカウント</string>
+    <string name="connections_auth_method_proton_srp">ProtonMail SRP</string>
+    <string name="connections_email_provider_proton">プロバイダー: ProtonMail</string>
+    <string name="connections_email_proton_unofficial_warning">Proton の非公式 API を使用します。これはリバースエンジニアリングされたもので Proton の利用規約に反します — アカウントがレート制限されたりロックされたりする可能性があります。自己責任でご利用ください。</string>
+    <string name="connections_field_email_address">メールアドレス</string>
+    <string name="connections_field_email_password">パスワード</string>
+    <string name="connections_field_email_mailbox_password">メールボックスパスワード（2パスワードモードのみ）</string>
+    <string name="connections_email_mailbox_password_hint">Proton アカウントに別のメールボックスパスワードがある場合を除き、空欄のままにしてください。</string>
+    <string name="connections_email_2fa_hint">アカウントに 2FA がある場合は、SSH 鍵 / TOTP マネージャーでその TOTP シークレットを紐付けると自動的に適用されます。</string>
+    <string name="connections_email_provider_proton_short">ProtonMail</string>
+    <string name="connections_email_provider_imap_short">IMAP/SMTP</string>
+    <string name="connections_email_app_password_hint">パスワード、またはプロバイダーが要求する場合はアプリパスワードを使用してください（Fastmail、iCloud、Yahoo、Gmail/2FA）。</string>
+    <string name="connections_email_preset_label">プロバイダープリセット</string>
+    <string name="connections_email_app_password_link">%1$s 用のアプリパスワードを作成</string>
+    <string name="connections_field_imap_server">IMAP サーバー</string>
+    <string name="connections_field_smtp_server">SMTP サーバー</string>
+    <string name="connections_field_smtp_server_help">空欄にすると IMAP サーバーを使用します。</string>
+    <string name="connections_field_imap_port">IMAP ポート</string>
+    <string name="connections_field_smtp_port">SMTP ポート</string>
+    <string name="connections_toggle_imap_tls">TLS を使用（暗黙的 SSL）</string>
 </resources>

@@ -449,4 +449,26 @@
     <string name="connections_mcp_badge">MCP</string>
     <string name="connections_local_distro_label">Abrir en SO</string>
     <string name="connections_local_distro_active_default">Distro activa (predeterminado)</string>
+
+    <!-- Email account -->
+    <string name="connections_section_email">Cuenta de correo</string>
+    <string name="connections_auth_method_proton_srp">SRP de ProtonMail</string>
+    <string name="connections_email_provider_proton">Proveedor: ProtonMail</string>
+    <string name="connections_email_proton_unofficial_warning">Usa la API no oficial de Proton. Está obtenida por ingeniería inversa y va contra los términos de Proton — tu cuenta podría sufrir límites de tasa o bloquearse. Continúa bajo tu propia responsabilidad.</string>
+    <string name="connections_field_email_address">Dirección de correo</string>
+    <string name="connections_field_email_password">Contraseña</string>
+    <string name="connections_field_email_mailbox_password">Contraseña del buzón (solo modo de dos contraseñas)</string>
+    <string name="connections_email_mailbox_password_hint">Déjalo en blanco a menos que tu cuenta de Proton tenga una contraseña de buzón aparte.</string>
+    <string name="connections_email_2fa_hint">Si tu cuenta tiene 2FA, vincula su secreto TOTP en el gestor de claves SSH / TOTP y se aplicará automáticamente.</string>
+    <string name="connections_email_provider_proton_short">ProtonMail</string>
+    <string name="connections_email_provider_imap_short">IMAP/SMTP</string>
+    <string name="connections_email_app_password_hint">Usa tu contraseña, o una contraseña de aplicación si tu proveedor lo requiere (Fastmail, iCloud, Yahoo, Gmail/2FA).</string>
+    <string name="connections_email_preset_label">Preajuste de proveedor</string>
+    <string name="connections_email_app_password_link">Crear una contraseña de aplicación para %1$s</string>
+    <string name="connections_field_imap_server">Servidor IMAP</string>
+    <string name="connections_field_smtp_server">Servidor SMTP</string>
+    <string name="connections_field_smtp_server_help">Déjalo en blanco para usar el servidor IMAP.</string>
+    <string name="connections_field_imap_port">Puerto IMAP</string>
+    <string name="connections_field_smtp_port">Puerto SMTP</string>
+    <string name="connections_toggle_imap_tls">Usar TLS (SSL implícito)</string>
 </resources>

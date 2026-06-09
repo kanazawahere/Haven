@@ -34,4 +34,5 @@
     <string name="common_github">GitHub</string>
     <string name="common_support">Поддержка</string>
     <string name="common_unlock">Разблокировать</string>
+    <string name="nav_mail">Почта</string>
 </resources>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tunnel_add">Agregar túnel</string>
+    <string name="tunnel_empty_title">Aún no hay túneles configurados</string>
+    <string name="tunnel_empty_subtitle">Agrega una configuración de WireGuard para enrutar perfiles de conexión concretos a través de ella — sin necesidad de una VPN en todo el sistema.</string>
+    <string name="tunnel_row_subtitle">%1$s · agregado %2$s</string>
+    <string name="tunnel_type_unknown">desconocido</string>
+    <string name="tunnel_cf_sign_in_again">Volver a iniciar sesión</string>
+    <string name="tunnel_delete_content_desc">Eliminar túnel</string>
+    <string name="tunnel_delete_title">¿Eliminar túnel?</string>
+    <string name="tunnel_delete_message">Eliminar \"%1$s\". Los perfiles que usen este túnel no podrán conectarse hasta que elijas otro.</string>
+    <string name="tunnel_delete_confirm">Eliminar</string>
+    <string name="tunnel_cancel">Cancelar</string>
+    <string name="tunnel_label">Etiqueta</string>
+    <string name="tunnel_save">Guardar</string>
+    <string name="tunnel_wireguard_help">Pega una configuración estilo wg-quick o carga un archivo .conf. Solo se leen los campos [Interface] y [Peer]; las claves desconocidas (PostUp, Table, MTU) se ignoran. Los endpoints con nombre de host y los nombres DNS se resuelven al iniciar el túnel.</string>
+    <string name="tunnel_load_from_file">Cargar desde archivo…</string>
+    <string name="tunnel_wireguard_config">Configuración de WireGuard</string>
+    <string name="tunnel_tailscale_help">Genera una authkey en la consola de administración de Tailscale (Settings → Keys), o en tu CLI de Headscale (`headscale preauthkeys create`). Haven se une a tu tailnet en el primer uso y reutiliza el estado del nodo después, así que una clave de un solo uso vale. Las claves reutilizables permiten reconectar tras reinstalar.</string>
+    <string name="tunnel_tailscale_authkey_label">Clave de autenticación (tskey-auth-…)</string>
+    <string name="tunnel_tailscale_control_url_label">URL del plano de control (opcional)</string>
+    <string name="tunnel_tailscale_control_url_help">Déjalo en blanco para el controlplane alojado de Tailscale. Indica una URL de Headscale para un servidor de coordinación autoalojado.</string>
+</resources>

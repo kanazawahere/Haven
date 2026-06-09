@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Message list -->
+    <string name="mail_refresh">রিফ্রেশ</string>
+    <string name="mail_load_older">পুরোনো লোড করুন</string>
+    <!-- Compose / reply / forward (CP-7) -->
+    <string name="mail_compose">লিখুন</string>
+    <string name="mail_reply">উত্তর</string>
+    <string name="mail_reply_all">সবাইকে উত্তর</string>
+    <string name="mail_forward">ফরোয়ার্ড</string>
+    <string name="mail_send">পাঠান</string>
+    <string name="mail_close">বন্ধ</string>
+
+    <string name="mail_from">প্রেরক</string>
+    <string name="mail_switch_account">অ্যাকাউন্ট পরিবর্তন</string>
+    <string name="mail_engine_proton">Proton</string>
+    <string name="mail_engine_imap">IMAP</string>
+    <string name="mail_to">প্রাপক</string>
+    <string name="mail_cc">Cc</string>
+    <string name="mail_bcc">Bcc</string>
+    <string name="mail_cc_bcc">Cc/Bcc</string>
+    <string name="mail_subject">বিষয়</string>
+    <string name="mail_message">বার্তা</string>
+
+    <string name="mail_recipients_hint">ঠিকানাগুলি কমা দিয়ে আলাদা করুন</string>
+    <string name="mail_recipients_required">অন্তত একজন প্রাপক যোগ করুন</string>
+    <string name="mail_sent_ok">বার্তা পাঠানো হয়েছে</string>
+
+    <string name="mail_discard_title">বার্তা বাতিল করবেন?</string>
+    <string name="mail_discard_body">আপনার খসড়া হারিয়ে যাবে।</string>
+    <string name="mail_discard_confirm">বাতিল</string>
+    <string name="mail_discard_cancel">সম্পাদনা চালিয়ে যান</string>
+
+    <!-- "On <date>, <sender> wrote:" -->
+    <string name="mail_reply_quote_header">%1$s-এ, %2$s লিখেছেন:</string>
+    <string name="mail_forward_header">---------- ফরোয়ার্ড করা বার্তা ----------</string>
+</resources>

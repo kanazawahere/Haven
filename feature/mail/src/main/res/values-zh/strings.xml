@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Message list -->
+    <string name="mail_refresh">刷新</string>
+    <string name="mail_load_older">加载更早的</string>
+    <!-- Compose / reply / forward (CP-7) -->
+    <string name="mail_compose">撰写</string>
+    <string name="mail_reply">回复</string>
+    <string name="mail_reply_all">全部回复</string>
+    <string name="mail_forward">转发</string>
+    <string name="mail_send">发送</string>
+    <string name="mail_close">关闭</string>
+
+    <string name="mail_from">发件人</string>
+    <string name="mail_switch_account">切换账户</string>
+    <string name="mail_engine_proton">Proton</string>
+    <string name="mail_engine_imap">IMAP</string>
+    <string name="mail_to">收件人</string>
+    <string name="mail_cc">抄送</string>
+    <string name="mail_bcc">密送</string>
+    <string name="mail_cc_bcc">抄送/密送</string>
+    <string name="mail_subject">主题</string>
+    <string name="mail_message">正文</string>
+
+    <string name="mail_recipients_hint">用逗号分隔多个地址</string>
+    <string name="mail_recipients_required">请至少添加一个收件人</string>
+    <string name="mail_sent_ok">邮件已发送</string>
+
+    <string name="mail_discard_title">放弃邮件？</string>
+    <string name="mail_discard_body">您的草稿将丢失。</string>
+    <string name="mail_discard_confirm">放弃</string>
+    <string name="mail_discard_cancel">继续编辑</string>
+
+    <!-- "On <date>, <sender> wrote:" -->
+    <string name="mail_reply_quote_header">在 %1$s，%2$s 写道：</string>
+    <string name="mail_forward_header">---------- 转发的邮件 ----------</string>
+</resources>

@@ -374,4 +374,10 @@
     <string name="settings_paired_clients_unpair_message">下次连接时它需要重新获得批准，并且任何自动批准都会被撤销。</string>
     <string name="settings_paired_clients_unpair_confirm">取消配对</string>
     <string name="settings_paired_clients_unpaired_toast">已取消配对 \'%1$s\'</string>
+
+    <!-- MCP WireGuard / loopback trust -->
+    <string name="settings_mcp_wireguard_collision">另一个 VPN（%1$s）正在使用 %2$s——与此端点绑定的地址相同，因此被遮蔽，对端无法访问。请停止该 VPN，或改将 MCP 客户端指向回环（127.0.0.1）端点。</string>
+    <string name="settings_mcp_trust_loopback_title">信任本地客户端</string>
+    <string name="settings_mcp_trust_loopback_subtitle_on">已启用——本地客户端（127.0.0.1）无需配对或批准提示即可连接。Wi-Fi/LAN 和 WireGuard 客户端仍会提示。</string>
+    <string name="settings_mcp_trust_loopback_subtitle_off">已禁用——即使本地客户端也必须配对并逐次批准请求</string>
 </resources>

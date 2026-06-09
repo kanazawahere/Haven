@@ -375,4 +375,10 @@
     <string name="settings_paired_clients_unpair_message">При следующем подключении его потребуется одобрить заново, а любое автоодобрение отменяется.</string>
     <string name="settings_paired_clients_unpair_confirm">Разорвать</string>
     <string name="settings_paired_clients_unpaired_toast">Сопряжение с \'%1$s\' разорвано</string>
+
+    <!-- MCP endpoint: VPN collision + loopback trust -->
+    <string name="settings_mcp_wireguard_collision">Другой VPN (%1$s) использует %2$s — тот же адрес, к которому привязана эта конечная точка, поэтому она перекрыта и недоступна для пиров. Остановите этот VPN или укажите MCP-клиенту конечную точку loopback (127.0.0.1).</string>
+    <string name="settings_mcp_trust_loopback_title">Доверять локальным клиентам</string>
+    <string name="settings_mcp_trust_loopback_subtitle_on">Включено — локальные клиенты (127.0.0.1) подключаются без сопряжения и запросов подтверждения. Клиенты по Wi-Fi/LAN и WireGuard по-прежнему запрашивают подтверждение.</string>
+    <string name="settings_mcp_trust_loopback_subtitle_off">Отключено — даже локальные клиенты должны быть сопряжены и подтверждать каждый запрос</string>
 </resources>

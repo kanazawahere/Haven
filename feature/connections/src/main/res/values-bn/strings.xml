@@ -449,4 +449,26 @@
     <string name="connections_mcp_badge">MCP</string>
     <string name="connections_local_distro_label">ওএস-এ খুলুন</string>
     <string name="connections_local_distro_active_default">সক্রিয় ডিস্ট্রো (ডিফল্ট)</string>
+
+    <!-- Email account -->
+    <string name="connections_section_email">ইমেইল অ্যাকাউন্ট</string>
+    <string name="connections_auth_method_proton_srp">ProtonMail SRP</string>
+    <string name="connections_email_provider_proton">প্রদানকারী: ProtonMail</string>
+    <string name="connections_email_proton_unofficial_warning">Proton-এর অনানুষ্ঠানিক API ব্যবহার করে। এটি রিভার্স-ইঞ্জিনিয়ার করা এবং Proton-এর শর্তের বিরুদ্ধে — আপনার অ্যাকাউন্ট রেট-সীমিত বা লক হতে পারে। নিজ দায়িত্বে এগিয়ে যান।</string>
+    <string name="connections_field_email_address">ইমেইল ঠিকানা</string>
+    <string name="connections_field_email_password">পাসওয়ার্ড</string>
+    <string name="connections_field_email_mailbox_password">মেইলবক্স পাসওয়ার্ড (শুধু দুই-পাসওয়ার্ড মোড)</string>
+    <string name="connections_email_mailbox_password_hint">আপনার Proton অ্যাকাউন্টে আলাদা মেইলবক্স পাসওয়ার্ড না থাকলে খালি রাখুন।</string>
+    <string name="connections_email_2fa_hint">আপনার অ্যাকাউন্টে 2FA থাকলে, SSH কী / TOTP ম্যানেজারে এর TOTP সিক্রেট সংযুক্ত করুন এবং তা স্বয়ংক্রিয়ভাবে প্রয়োগ হবে।</string>
+    <string name="connections_email_provider_proton_short">ProtonMail</string>
+    <string name="connections_email_provider_imap_short">IMAP/SMTP</string>
+    <string name="connections_email_app_password_hint">আপনার পাসওয়ার্ড ব্যবহার করুন, অথবা আপনার প্রদানকারীর প্রয়োজন হলে একটি অ্যাপ-পাসওয়ার্ড (Fastmail, iCloud, Yahoo, Gmail/2FA)।</string>
+    <string name="connections_email_preset_label">প্রদানকারী প্রিসেট</string>
+    <string name="connections_email_app_password_link">%1$s-এর জন্য একটি অ্যাপ-পাসওয়ার্ড তৈরি করুন</string>
+    <string name="connections_field_imap_server">IMAP সার্ভার</string>
+    <string name="connections_field_smtp_server">SMTP সার্ভার</string>
+    <string name="connections_field_smtp_server_help">IMAP সার্ভার ব্যবহার করতে খালি রাখুন।</string>
+    <string name="connections_field_imap_port">IMAP পোর্ট</string>
+    <string name="connections_field_smtp_port">SMTP পোর্ট</string>
+    <string name="connections_toggle_imap_tls">TLS ব্যবহার করুন (implicit SSL)</string>
 </resources>
