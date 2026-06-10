@@ -6,16 +6,41 @@ package sh.haven.core.mail
  * bodies are parsed from RFC822 in the feature layer, not here.
  */
 
-/** A mailbox folder / Proton label. [type] is Proton's LabelType (1=label, 2=folder, 3=system). */
+/**
+ * Engine-neutral special-use classification for a mailbox, derived from IMAP RFC 6154
+ * attributes (`\Sent`, `\Trash`, …) or Proton's system-folder ids. The UI uses it to pick
+ * an icon and to order the folder list (Inbox first, user labels last). [sortOrder] is the
+ * list position; lower sorts earlier.
+ */
+enum class MailFolderRole(val sortOrder: Int) {
+    INBOX(0),
+    STARRED(1),
+    IMPORTANT(2),
+    SENT(3),
+    DRAFTS(4),
+    ARCHIVE(5),
+    SPAM(6),
+    TRASH(7),
+    NONE(8),
+}
+
+/**
+ * A mailbox folder / Proton label. [type] is Proton's LabelType (1=label, 2=folder, 3=system).
+ * [role] is the engine-neutral special-use class (for UI icons + ordering). [selectable] is
+ * false for IMAP `\Noselect` container mailboxes (e.g. Gmail's `[Gmail]` parent) that hold no
+ * messages and must not be opened.
+ */
 data class MailFolder(
     val id: String,
     val name: String,
     val type: Int,
     val color: String? = null,
     val parentId: String? = null,
+    val role: MailFolderRole = MailFolderRole.NONE,
+    val selectable: Boolean = true,
 ) {
     /** Proton system folders carry well-known stable ids ("0"); IMAP's inbox is the fullName "INBOX". */
-    val isInbox: Boolean get() = id == INBOX_ID || id.equals("INBOX", ignoreCase = true)
+    val isInbox: Boolean get() = role == MailFolderRole.INBOX || id == INBOX_ID || id.equals("INBOX", ignoreCase = true)
 
     companion object {
         const val INBOX_ID = "0"

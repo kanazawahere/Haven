@@ -28,15 +28,22 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Forward
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.automirrored.filled.ReplyAll
+import androidx.compose.material.icons.automirrored.filled.LabelImportant
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Drafts
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Report
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
@@ -77,6 +84,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import sh.haven.core.mail.MailEngine
 import sh.haven.core.mail.MailFolder
+import sh.haven.core.mail.MailFolderRole
 import sh.haven.core.mail.MailMessage
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -301,16 +309,31 @@ private fun FolderList(folders: List<MailFolder>, onOpen: (MailFolder) -> Unit) 
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .clickable { onOpen(folder) }
+                    // \Noselect containers are filtered out upstream; the guard keeps a
+                    // stray non-selectable folder from a non-clickable, crash-free row.
+                    .then(if (folder.selectable) Modifier.clickable { onOpen(folder) } else Modifier)
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Filled.Folder, contentDescription = null, modifier = Modifier.padding(end = 16.dp))
+                Icon(folderIcon(folder.role), contentDescription = null, modifier = Modifier.padding(end = 16.dp))
                 Text(folder.name, style = MaterialTheme.typography.bodyLarge)
             }
             Divider()
         }
     }
+}
+
+/** Icon for a folder's special-use [role] (Inbox/Sent/Drafts/…); plain folder for user labels. */
+private fun folderIcon(role: MailFolderRole) = when (role) {
+    MailFolderRole.INBOX -> Icons.Filled.Inbox
+    MailFolderRole.STARRED -> Icons.Filled.Star
+    MailFolderRole.IMPORTANT -> Icons.AutoMirrored.Filled.LabelImportant
+    MailFolderRole.SENT -> Icons.AutoMirrored.Filled.Send
+    MailFolderRole.DRAFTS -> Icons.Filled.Drafts
+    MailFolderRole.ARCHIVE -> Icons.Filled.Archive
+    MailFolderRole.SPAM -> Icons.Filled.Report
+    MailFolderRole.TRASH -> Icons.Filled.Delete
+    MailFolderRole.NONE -> Icons.Filled.Folder
 }
 
 /**

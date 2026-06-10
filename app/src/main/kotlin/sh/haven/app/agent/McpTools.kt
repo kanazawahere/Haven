@@ -2948,6 +2948,8 @@ internal class McpTools(
                             put("id", f.id)
                             put("name", f.name)
                             put("type", f.type)
+                            // Special-use class so the agent can pick Inbox/Sent/Trash/etc.
+                            put("role", f.role.name.lowercase())
                         })
                     }
                 })

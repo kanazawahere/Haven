@@ -95,13 +95,29 @@ class ProtonMailClient @Inject constructor() : MailClient {
 
     // ---- parsing (Proton structs marshal with capitalised Go field names) ----
 
-    private fun parseFolder(o: JSONObject): MailFolder = MailFolder(
-        id = o.optString("ID"),
-        name = o.optString("Name"),
-        type = o.optInt("Type"),
-        color = o.optString("Color").ifBlank { null },
-        parentId = o.optString("ParentID").ifBlank { null },
-    )
+    private fun parseFolder(o: JSONObject): MailFolder {
+        val id = o.optString("ID")
+        return MailFolder(
+            id = id,
+            name = o.optString("Name"),
+            type = o.optInt("Type"),
+            color = o.optString("Color").ifBlank { null },
+            parentId = o.optString("ParentID").ifBlank { null },
+            role = protonRole(id),
+        )
+    }
+
+    /** Proton's system folders carry stable ids; map them to the engine-neutral role for the UI. */
+    private fun protonRole(id: String): MailFolderRole = when (id) {
+        MailFolder.INBOX_ID -> MailFolderRole.INBOX
+        MailFolder.STARRED_ID -> MailFolderRole.STARRED
+        MailFolder.SENT_ID -> MailFolderRole.SENT
+        MailFolder.DRAFTS_ID -> MailFolderRole.DRAFTS
+        MailFolder.ARCHIVE_ID, MailFolder.ALL_MAIL_ID -> MailFolderRole.ARCHIVE
+        MailFolder.SPAM_ID -> MailFolderRole.SPAM
+        MailFolder.TRASH_ID -> MailFolderRole.TRASH
+        else -> MailFolderRole.NONE
+    }
 
     private fun parseMessage(o: JSONObject): MailMessage = MailMessage(
         id = o.optString("ID"),

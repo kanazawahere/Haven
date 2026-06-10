@@ -73,15 +73,32 @@ class ImapMailClient @Inject constructor() : MailClient {
         withContext(Dispatchers.IO) {
             val s = session(sessionId)
             val listed = runCatching { s.store.defaultFolder.list("*").toList() }.getOrDefault(emptyList())
-            val folders = listed.map { f ->
-                MailFolder(id = f.fullName, name = f.name.ifBlank { f.fullName }, type = 0)
+            val folders = listed.mapNotNull { f ->
+                // attributes are cached from the LIST response (no extra round-trip).
+                val attrs = runCatching { (f as? com.sun.mail.imap.IMAPFolder)?.attributes?.toList() }
+                    .getOrNull().orEmpty()
+                // Drop \Noselect containers (e.g. Gmail's "[Gmail]" parent): opening one
+                // throws. 1b will reintroduce them as non-clickable section headers once the
+                // folder list is hierarchical.
+                if (!folderSelectable(attrs)) return@mapNotNull null
+                MailFolder(
+                    id = f.fullName,
+                    name = f.name.ifBlank { f.fullName },
+                    type = 0,
+                    role = folderRole(f.name, attrs),
+                )
             }
-            // Some servers don't return INBOX from list("*"); ensure it's present and first.
-            if (folders.none { it.isInbox }) {
-                listOf(MailFolder(id = "INBOX", name = "INBOX", type = 0)) + folders
+            // Some servers don't return INBOX from list("*"); ensure it's present.
+            val withInbox = if (folders.none { it.isInbox }) {
+                listOf(MailFolder(id = "INBOX", name = "INBOX", type = 0, role = MailFolderRole.INBOX)) + folders
             } else {
-                folders.sortedByDescending { it.isInbox }
+                folders
             }
+            // Order by special-use role (Inbox · Starred · Important · Sent · Drafts ·
+            // All Mail · Spam · Trash), then user folders/labels in the server's order.
+            withInbox.withIndex()
+                .sortedWith(compareBy({ it.value.role.sortOrder }, { it.index }))
+                .map { it.value }
         }
 
     override suspend fun listMessages(
@@ -414,5 +431,36 @@ class ImapMailClient @Inject constructor() : MailClient {
                 ?: throw IllegalArgumentException("Malformed IMAP message id (uid): $messageId")
             return messageId.substring(0, i) to uid
         }
+
+        /**
+         * Classify an IMAP mailbox into an engine-neutral [MailFolderRole] from its leaf
+         * [name] and its RFC 6154 special-use [attributes] (`\Sent`, `\Drafts`, `\Trash`,
+         * `\Junk`, `\Flagged`, `\All`, `\Archive`) plus Gmail's non-standard `\Important`.
+         * INBOX is matched by name (RFC 3501 reserves it; it carries no special-use flag).
+         * Attribute matching is case-insensitive — servers vary.
+         */
+        internal fun folderRole(name: String, attributes: List<String>): MailFolderRole {
+            if (name.equals("INBOX", ignoreCase = true)) return MailFolderRole.INBOX
+            val attrs = attributes.mapTo(HashSet()) { it.lowercase() }
+            return when {
+                "\\sent" in attrs -> MailFolderRole.SENT
+                "\\drafts" in attrs -> MailFolderRole.DRAFTS
+                "\\trash" in attrs -> MailFolderRole.TRASH
+                "\\junk" in attrs -> MailFolderRole.SPAM
+                "\\flagged" in attrs -> MailFolderRole.STARRED   // Gmail "Starred"
+                "\\important" in attrs -> MailFolderRole.IMPORTANT // Gmail (non-RFC) "Important"
+                "\\all" in attrs -> MailFolderRole.ARCHIVE        // Gmail "All Mail"
+                "\\archive" in attrs -> MailFolderRole.ARCHIVE
+                else -> MailFolderRole.NONE
+            }
+        }
+
+        /**
+         * IMAP `\Noselect` (RFC 3501) mailboxes are containers only — they hold no messages,
+         * so opening one throws. Gmail's `[Gmail]` parent is the canonical example. Such
+         * folders are dropped from the list until the tree becomes hierarchical (1b).
+         */
+        internal fun folderSelectable(attributes: List<String>): Boolean =
+            attributes.none { it.equals("\\Noselect", ignoreCase = true) }
     }
 }

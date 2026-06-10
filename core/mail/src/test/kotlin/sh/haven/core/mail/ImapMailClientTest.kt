@@ -63,6 +63,35 @@ class ImapMailClientTest {
     }
 
     @Test
+    fun folderRoleMapsImapSpecialUse() {
+        // Gmail's `[Gmail]/*` special-use attributes (leaf names + RFC 6154 / Gmail attrs).
+        assertEquals(MailFolderRole.SENT, ImapMailClient.folderRole("Sent Mail", listOf("\\HasNoChildren", "\\Sent")))
+        assertEquals(MailFolderRole.DRAFTS, ImapMailClient.folderRole("Drafts", listOf("\\Drafts")))
+        assertEquals(MailFolderRole.TRASH, ImapMailClient.folderRole("Trash", listOf("\\Trash")))
+        assertEquals(MailFolderRole.SPAM, ImapMailClient.folderRole("Spam", listOf("\\Junk")))
+        assertEquals(MailFolderRole.STARRED, ImapMailClient.folderRole("Starred", listOf("\\Flagged")))
+        assertEquals(MailFolderRole.IMPORTANT, ImapMailClient.folderRole("Important", listOf("\\Important")))
+        assertEquals(MailFolderRole.ARCHIVE, ImapMailClient.folderRole("All Mail", listOf("\\All")))
+        assertEquals(MailFolderRole.ARCHIVE, ImapMailClient.folderRole("Archive", listOf("\\Archive")))
+        // INBOX wins by name even when no special-use attribute is present.
+        assertEquals(MailFolderRole.INBOX, ImapMailClient.folderRole("INBOX", emptyList()))
+        assertEquals(MailFolderRole.INBOX, ImapMailClient.folderRole("inbox", listOf("\\Marked")))
+        // A plain user label / folder is NONE.
+        assertEquals(MailFolderRole.NONE, ImapMailClient.folderRole("Work", listOf("\\HasChildren")))
+        // Attribute match is case-insensitive (servers vary).
+        assertEquals(MailFolderRole.SENT, ImapMailClient.folderRole("X", listOf("\\sent")))
+    }
+
+    @Test
+    fun noselectFoldersAreNotSelectable() {
+        // Gmail's "[Gmail]" parent is \Noselect — opening it throws, so listFolders must drop it.
+        assertTrue(!ImapMailClient.folderSelectable(listOf("\\Noselect", "\\HasChildren")))
+        assertTrue("case-insensitive", !ImapMailClient.folderSelectable(listOf("\\noselect")))
+        assertTrue(ImapMailClient.folderSelectable(listOf("\\HasNoChildren", "\\Sent")))
+        assertTrue("no attributes = selectable", ImapMailClient.folderSelectable(emptyList()))
+    }
+
+    @Test
     fun recentSliceWindowsTheNewestMessages() {
         // 1-based message numbers 1=oldest .. count=newest.
         // First page: the most-recent `limit`.
