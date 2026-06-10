@@ -51,7 +51,79 @@ class MimeParserTest {
         assertTrue("plain text preferred over html", msg.bodyText.contains("Plain body line."))
         assertFalse(msg.bodyWasHtml)
         assertEquals(1, msg.attachments.size)
-        assertEquals("doc.pdf", msg.attachments.first().filename)
+        val att = msg.attachments.first()
+        assertEquals("doc.pdf", att.filename)
+        assertEquals(0, att.index)
+        assertEquals("application/pdf", att.mimeType)
+        assertFalse(att.isInline)
+        // "JVBERi0xLjQK" decodes to the 9-byte "%PDF-1.4\n".
+        assertEquals(9L, att.sizeBytes)
+
+        val extracted = MimeParser.extractAttachment(raw, 0)
+        assertEquals("doc.pdf", extracted.filename)
+        assertEquals("application/pdf", extracted.mimeType)
+        assertEquals("%PDF-1.4\n", String(extracted.bytes))
+    }
+
+    @Test
+    fun `indexes parts in dfs order, flags inline cid, round-trips exact bytes`() {
+        val raw = """
+            From: a@example.com
+            Subject: Two parts
+            MIME-Version: 1.0
+            Content-Type: multipart/mixed; boundary="MIX"
+
+            --MIX
+            Content-Type: text/plain; charset=utf-8
+
+            Body line.
+            --MIX
+            Content-Type: image/png
+            Content-Disposition: inline
+            Content-ID: <logo@haven>
+            Content-Transfer-Encoding: base64
+
+            aGVsbG8=
+            --MIX
+            Content-Type: text/csv; name="data.csv"
+            Content-Disposition: attachment; filename="data.csv"
+
+            a,b,c
+            --MIX--
+        """.trimIndent().replace("\n", "\r\n").toByteArray()
+
+        val msg = MimeParser.parse(raw)
+        assertEquals("Body line.", msg.bodyText.trim())
+        assertEquals(2, msg.attachments.size)
+
+        val inline = msg.attachments[0]
+        assertEquals(0, inline.index)
+        assertTrue("inline png flagged inline", inline.isInline)
+        assertEquals("logo@haven", inline.contentId)
+        assertEquals("image/png", inline.mimeType)
+
+        val csv = msg.attachments[1]
+        assertEquals(1, csv.index)
+        assertFalse(csv.isInline)
+        assertEquals("data.csv", csv.filename)
+
+        // "aGVsbG8=" decodes to "hello"; the csv text part round-trips its content.
+        assertEquals("hello", String(MimeParser.extractAttachment(raw, 0).bytes))
+        assertTrue(String(MimeParser.extractAttachment(raw, 1).bytes).contains("a,b,c"))
+    }
+
+    @Test(expected = IndexOutOfBoundsException::class)
+    fun `extracting a missing attachment index throws`() {
+        val raw = """
+            From: a@example.com
+            Subject: No attachments
+            MIME-Version: 1.0
+            Content-Type: text/plain; charset=utf-8
+
+            Just text.
+        """.trimIndent().replace("\n", "\r\n").toByteArray()
+
+        MimeParser.extractAttachment(raw, 0)
     }
 
     @Test

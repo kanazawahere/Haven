@@ -19,7 +19,9 @@ import javax.mail.Session
 import javax.mail.Store
 import javax.mail.UIDFolder
 import javax.mail.internet.InternetAddress
+import javax.mail.internet.MimeBodyPart
 import javax.mail.internet.MimeMessage
+import javax.mail.internet.MimeMultipart
 
 /**
  * [MailClient] over generic IMAP using the android-mail (JavaMail) build. The
@@ -311,7 +313,24 @@ class ImapMailClient @Inject constructor() : MailClient {
         if (mail.cc.isNotEmpty()) setRecipients(Message.RecipientType.CC, toAddresses(mail.cc))
         if (mail.bcc.isNotEmpty()) setRecipients(Message.RecipientType.BCC, toAddresses(mail.bcc))
         setSubject(mail.subject, "UTF-8")
-        setText(mail.bodyText, "UTF-8")
+        if (mail.attachments.isEmpty()) {
+            setText(mail.bodyText, "UTF-8")
+        } else {
+            val mp = MimeMultipart("mixed")
+            mp.addBodyPart(MimeBodyPart().apply { setText(mail.bodyText, "UTF-8") })
+            for (a in mail.attachments) {
+                mp.addBodyPart(
+                    MimeBodyPart().apply {
+                        dataHandler = javax.activation.DataHandler(
+                            javax.mail.util.ByteArrayDataSource(a.bytes, a.mimeType),
+                        )
+                        fileName = a.filename
+                        disposition = javax.mail.Part.ATTACHMENT
+                    },
+                )
+            }
+            setContent(mp)
+        }
         sentDate = Date()
         saveChanges()
     }

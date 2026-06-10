@@ -21,6 +21,8 @@ interface MailBackend {
         offset: Int = 0,
     ): List<MailMessage>
     suspend fun readMessage(messageId: String): ParsedMessage
+    /** Decode one attachment of [messageId] by its [index] (from [ParsedMessage.attachments]). */
+    suspend fun readAttachment(messageId: String, index: Int): MimeParser.ExtractedAttachment
     suspend fun sendMessage(mail: OutgoingMail): SendResult
 }
 
@@ -44,7 +46,22 @@ data class ParsedMessage(
 )
 
 data class MailAttachmentInfo(
+    /**
+     * Stable depth-first traversal index of this attachment part within the
+     * message. Assigned in the same order [MimeParser] walks the MIME tree, so
+     * [index] N always resolves to the same part — it is the key used by
+     * [MimeParser.extractAttachment] to fetch this attachment's bytes on demand.
+     */
+    val index: Int,
     val filename: String,
     val mimeType: String,
     val sizeBytes: Long,
+    /**
+     * True for an inline part (Content-Disposition: inline, or a part carrying a
+     * Content-ID and no explicit attachment disposition) — typically a `cid:`
+     * image referenced by an HTML body rather than a user-facing attachment.
+     */
+    val isInline: Boolean = false,
+    /** The part's Content-ID with surrounding `<>` stripped, when present. */
+    val contentId: String? = null,
 )

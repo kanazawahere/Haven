@@ -32,6 +32,11 @@ class RfcMailBackend(
         return MimeParser.parse(raw)
     }
 
+    override suspend fun readAttachment(messageId: String, index: Int): MimeParser.ExtractedAttachment {
+        val raw = client.getMessageRaw(sessionId, messageId)
+        return MimeParser.extractAttachment(raw, index)
+    }
+
     override suspend fun sendMessage(mail: OutgoingMail): SendResult {
         val result = client.send(sessionId, mail)
         // Audit-log a successful send so it shows in Settings → connection log,

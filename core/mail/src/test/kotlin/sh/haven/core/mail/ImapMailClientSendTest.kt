@@ -8,8 +8,10 @@ import org.junit.Test
 import java.net.InetAddress
 import java.net.Socket
 import javax.mail.Message
+import javax.mail.Part
 import javax.mail.Session
 import javax.mail.internet.InternetAddress
+import javax.mail.internet.MimeMultipart
 import javax.net.SocketFactory
 
 /**
@@ -118,6 +120,36 @@ class ImapMailClientSendTest {
         assertEquals("Body text", msg.content.toString().trim())
         // saveChanges() must have assigned a Message-ID.
         assertNotNull(msg.messageID)
+    }
+
+    @Test
+    fun buildsMultipartMixedWhenAttachmentsPresent() {
+        val p = imapParams(tls = true, smtpPort = 465)
+        val session = Session.getInstance(client.buildSmtpProps(p))
+        val bytes = "%PDF-1.4\n".toByteArray()
+        val msg = client.buildMimeMessage(
+            session,
+            p,
+            OutgoingMail(
+                to = listOf("bob@example.org"),
+                subject = "With attachment",
+                bodyText = "See attached.",
+                attachments = listOf(OutgoingAttachment("doc.pdf", "application/pdf", bytes)),
+            ),
+        )
+
+        val content = msg.content
+        assertTrue("content is multipart when attachments present", content is MimeMultipart)
+        val mp = content as MimeMultipart
+        assertEquals(2, mp.count)
+        // Part 0 is the text body; part 1 is the attachment.
+        assertTrue(mp.getBodyPart(0).content.toString().contains("See attached."))
+        val att = mp.getBodyPart(1)
+        assertEquals("doc.pdf", att.fileName)
+        assertEquals(Part.ATTACHMENT, att.disposition)
+        val out = java.io.ByteArrayOutputStream()
+        att.inputStream.use { it.copyTo(out) }
+        assertEquals("%PDF-1.4\n", String(out.toByteArray()))
     }
 
     @Test

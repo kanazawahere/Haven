@@ -17,12 +17,29 @@ data class ComposeDraft(
     val sendError: String? = null,
     /** The connected account this draft sends from (the compose "From"); set by the ViewModel. */
     val fromProfileId: String = "",
+    /** Files queued to attach, resolved to bytes only at send time. */
+    val attachments: List<DraftAttachment> = emptyList(),
 ) {
     /** Any user-entered content — drives the discard-confirm on back/close. */
     val isDirty: Boolean
         get() = to.isNotBlank() || cc.isNotBlank() || bcc.isNotBlank() ||
-            subject.isNotBlank() || body.isNotBlank()
+            subject.isNotBlank() || body.isNotBlank() || attachments.isNotEmpty()
 }
+
+/**
+ * A file queued in the composer, referenced (not read) until send time so editing
+ * a draft never holds attachment bytes in memory. v1 sources a device file picked
+ * via the Storage Access Framework; an [AttachmentResolver] reads [uri] to bytes
+ * at send. (A backend-file source — profileId+path — is a planned follow-up.)
+ */
+data class DraftAttachment(
+    val displayName: String,
+    val mimeType: String,
+    /** Size in bytes, or -1 when the picker didn't report one. */
+    val sizeBytes: Long,
+    /** Android content Uri (`toString()`) of the picked device file. */
+    val uri: String,
+)
 
 /**
  * Pure, Android-free helpers for building reply/forward drafts and parsing

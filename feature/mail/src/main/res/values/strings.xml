@@ -35,4 +35,11 @@
     <!-- "On <date>, <sender> wrote:" -->
     <string name="mail_reply_quote_header">On %1$s, %2$s wrote:</string>
     <string name="mail_forward_header">---------- Forwarded message ----------</string>
+
+    <!-- Attachments -->
+    <string name="mail_save_attachment">Save to device</string>
+    <string name="mail_attachment_saved">Saved %1$s</string>
+    <string name="mail_attachment_save_failed">Couldn\'t save attachment</string>
+    <string name="mail_attach_file">Attach file</string>
+    <string name="mail_remove_attachment">Remove attachment</string>
 </resources>

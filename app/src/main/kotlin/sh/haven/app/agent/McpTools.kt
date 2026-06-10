@@ -247,7 +247,7 @@ internal class McpTools(
         ) { args -> listMailMessages(args) },
 
         "read_mail_message" to ToolHandler(
-            description = "Fetch and decrypt one message from a connected EMAIL profile, returning parsed headers and plain-text body (HTML is stripped; remote content is never loaded). Pass profileId and messageId (from list_mail_messages). Read-only.",
+            description = "Fetch and decrypt one message from a connected EMAIL profile, returning parsed headers and plain-text body (HTML is stripped; remote content is never loaded). Pass profileId and messageId (from list_mail_messages). Each attachment carries an { index, filename, mimeType, sizeBytes, isInline } — pass the index to save_mail_attachment to write its bytes to any connected filesystem. Read-only.",
             inputSchema = JSONObject().apply {
                 put("type", "object")
                 put("properties", JSONObject().apply {
@@ -266,7 +266,7 @@ internal class McpTools(
         ) { args -> readMailMessage(args) },
 
         "send_mail" to ToolHandler(
-            description = "Send a plain-text email from a connected EMAIL profile. Pass profileId (from list_connections; connect_profile first), to (array of recipient addresses, at least one), subject, and body (plain text). Optional cc/bcc arrays. Returns { sent, messageId, appendedToSent }. IMAP/SMTP only — Proton send is not yet implemented and returns an error. Side-effectful: prompts for consent on every call and is recorded in the connection log.",
+            description = "Send a plain-text email from a connected EMAIL profile. Pass profileId (from list_connections; connect_profile first), to (array of recipient addresses, at least one), subject, and body (plain text). Optional cc/bcc arrays. Optional attachments: an array of { profileId, path } files on any connected backend (\"local\" or a connected profile id) to attach. Returns { sent, messageId, appendedToSent }. IMAP/SMTP only — Proton send is not yet implemented and returns an error. Side-effectful: prompts for consent on every call and is recorded in the connection log.",
             inputSchema = JSONObject().apply {
                 put("type", "object")
                 put("properties", JSONObject().apply {
@@ -297,16 +297,75 @@ internal class McpTools(
                         put("items", JSONObject().put("type", "string"))
                         put("description", "Optional Bcc addresses.")
                     })
+                    put("attachments", JSONObject().apply {
+                        put("type", "array")
+                        put("items", JSONObject().apply {
+                            put("type", "object")
+                            put("properties", JSONObject().apply {
+                                put("profileId", JSONObject().apply {
+                                    put("type", "string")
+                                    put("description", "Backend profile id holding the file, or \"local\".")
+                                })
+                                put("path", JSONObject().apply {
+                                    put("type", "string")
+                                    put("description", "Absolute path of the file to attach on that backend.")
+                                })
+                            })
+                            put("required", JSONArray().put("profileId").put("path"))
+                        })
+                        put("description", "Optional files to attach, each { profileId, path } on a connected backend.")
+                    })
                 })
                 put("required", JSONArray().put("profileId").put("to").put("subject").put("body"))
             },
             consentLevel = ConsentLevel.EVERY_CALL,
             summarise = { args ->
                 val n = args.optJSONArray("to")?.length() ?: 0
+                val na = args.optJSONArray("attachments")?.length() ?: 0
                 "Send email to $n recipient(s) — \"${args.optString("subject")}\" — " +
-                    "from \"${profileLabel(args.optString("profileId"))}\"?"
+                    "from \"${profileLabel(args.optString("profileId"))}\"" +
+                    (if (na > 0) " with $na attachment(s)" else "") + "?"
             },
         ) { args -> sendMail(args) },
+
+        "save_mail_attachment" to ToolHandler(
+            description = "Save one attachment from a message on a connected EMAIL profile to any connected filesystem (local, SFTP, SMB, rclone, Reticulum). Pass profileId + messageId + attachmentIndex (the index from read_mail_message), and the destination as destProfileId (\"local\" or any connected profile id) + destPath (a directory). Optional destFilename overrides the saved name. The file is named after the attachment (sanitised); a collision gets \" (1)\", \" (2)\", … Returns { saved, destProfileId, backend, destPath, filename, bytes }. Works for both IMAP and Proton. Writes a file — prompts for consent on every call.",
+            inputSchema = JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("profileId", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Source EMAIL connection profile id.")
+                    })
+                    put("messageId", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Message id from list_mail_messages.")
+                    })
+                    put("attachmentIndex", JSONObject().apply {
+                        put("type", "integer")
+                        put("description", "Attachment index from read_mail_message.")
+                    })
+                    put("destProfileId", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Destination backend profile id, or \"local\" for the device filesystem.")
+                    })
+                    put("destPath", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Destination directory on the chosen backend.")
+                    })
+                    put("destFilename", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Optional name to save as (defaults to the attachment's own filename).")
+                    })
+                })
+                put("required", JSONArray().put("profileId").put("messageId").put("attachmentIndex").put("destProfileId").put("destPath"))
+            },
+            consentLevel = ConsentLevel.EVERY_CALL,
+            summarise = { args ->
+                "Save attachment #${args.optInt("attachmentIndex")} from \"${profileLabel(args.optString("profileId"))}\" " +
+                    "to ${args.optString("destPath")} on \"${profileLabel(args.optString("destProfileId"))}\"?"
+            },
+        ) { args -> saveMailAttachment(args) },
 
         "list_rclone_provider_options" to ToolHandler(
             description = "List a credentials-based rclone provider's basic config fields — the non-advanced options needed to configure a non-OAuth remote (ftp, sftp, webdav, s3, b2, mega, filen, …). Each entry has name, help, required, isPassword, default, type. Feed the collected values into configure_rclone_remote's `parameters`. OAuth providers (drive, dropbox, onedrive, box, pcloud) are configured via the in-app browser sign-in, not this. (#181)",
@@ -2948,8 +3007,12 @@ internal class McpTools(
                 put("attachments", JSONArray().apply {
                     parsed.attachments.forEach { a ->
                         put(JSONObject().apply {
+                            put("index", a.index)
                             put("filename", a.filename)
                             put("mimeType", a.mimeType)
+                            put("sizeBytes", a.sizeBytes)
+                            put("isInline", a.isInline)
+                            a.contentId?.let { put("contentId", it) }
                         })
                     }
                 })
@@ -2974,8 +3037,10 @@ internal class McpTools(
         val cc = args.optJSONArray("cc").toTrimmedStringList()
         val bcc = args.optJSONArray("bcc").toTrimmedStringList()
         val sessionId = requireMailSession(profileId)
+        val attachments = resolveSendAttachments(args.optJSONArray("attachments"))
         val mail = sh.haven.core.mail.OutgoingMail(
             to = to, cc = cc, bcc = bcc, subject = subject, bodyText = body,
+            attachments = attachments,
         )
         return try {
             val result = mailClientFor(sessionId).send(sessionId, mail)
@@ -2996,6 +3061,149 @@ internal class McpTools(
         } catch (e: Exception) {
             throw McpError(-32603, "Failed to send mail: ${e.message}")
         }
+    }
+
+    /** Whole-attachment-in-memory cap for save/attach (writeBytes + ByteArrayDataSource buffer in RAM). */
+    private val mailAttachmentMaxBytes: Long = 25L * 1024 * 1024
+
+    /**
+     * Resolve a `send_mail` `attachments` array — each `{ profileId, path }` on a
+     * connected backend — into in-memory [OutgoingAttachment]s, enforcing the
+     * per-file size cap before reading. Empty/absent → no attachments.
+     */
+    private suspend fun resolveSendAttachments(
+        arr: JSONArray?,
+    ): List<sh.haven.core.mail.OutgoingAttachment> {
+        if (arr == null || arr.length() == 0) return emptyList()
+        val out = ArrayList<sh.haven.core.mail.OutgoingAttachment>(arr.length())
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i)
+                ?: throw McpError(-32602, "attachments[$i] must be an object { profileId, path }")
+            val pid = o.optString("profileId").ifEmpty {
+                throw McpError(-32602, "attachments[$i].profileId is required")
+            }
+            val path = o.optString("path").ifEmpty {
+                throw McpError(-32602, "attachments[$i].path is required")
+            }
+            val backend = transportSelector.resolveFileBackend(pid)?.backend
+                ?: throw McpError(-32603, "No connected backend for profile $pid (attachments[$i])")
+            val size = try {
+                backend.stat(path).size
+            } catch (e: Exception) {
+                throw McpError(-32602, "attachments[$i]: cannot stat $path on $pid: ${e.message}")
+            }
+            if (size > mailAttachmentMaxBytes) {
+                throw McpError(
+                    -32603,
+                    "attachments[$i] ($path) is $size bytes — exceeds ${mailAttachmentMaxBytes / (1024 * 1024)} MiB cap",
+                )
+            }
+            val bytes = try {
+                backend.readBytes(path)
+            } catch (e: Exception) {
+                throw McpError(-32603, "attachments[$i]: failed to read $path: ${e.message}")
+            }
+            val name = sanitizeFilename(path.substringAfterLast('/'))
+            out += sh.haven.core.mail.OutgoingAttachment(name, guessContentType(name), bytes)
+        }
+        return out
+    }
+
+    /**
+     * Save one attachment from a message on a connected EMAIL profile to any
+     * connected filesystem (or "local"). Engine-neutral — works for IMAP and
+     * Proton via getMessageRaw. Decodes the attachment at [attachmentIndex]
+     * (from read_mail_message) and writes it under destPath (a directory) on
+     * destProfileId's backend, named after the attachment (sanitised) or an
+     * optional destFilename; a name collision gets " (1)", " (2)", … The path
+     * actually written is returned.
+     */
+    private suspend fun saveMailAttachment(args: JSONObject): JSONObject = withContext(Dispatchers.IO) {
+        val profileId = args.optString("profileId").ifEmpty {
+            throw McpError(-32602, "Missing required argument: profileId")
+        }
+        val messageId = args.optString("messageId").ifEmpty {
+            throw McpError(-32602, "Missing required argument: messageId")
+        }
+        if (!args.has("attachmentIndex")) {
+            throw McpError(-32602, "Missing required argument: attachmentIndex")
+        }
+        val attachmentIndex = args.optInt("attachmentIndex", -1)
+        if (attachmentIndex < 0) throw McpError(-32602, "attachmentIndex must be a non-negative integer")
+        val destProfileId = args.optString("destProfileId").ifEmpty {
+            throw McpError(-32602, "Missing required argument: destProfileId")
+        }
+        val destDir = args.optString("destPath").ifEmpty {
+            throw McpError(-32602, "Missing required argument: destPath (destination directory)")
+        }
+
+        val sessionId = requireMailSession(profileId)
+        val extracted = try {
+            val raw = mailClientFor(sessionId).getMessageRaw(sessionId, messageId)
+            sh.haven.feature.mail.MimeParser.extractAttachment(raw, attachmentIndex)
+        } catch (e: IndexOutOfBoundsException) {
+            throw McpError(-32602, "No attachment at index $attachmentIndex (see read_mail_message)")
+        } catch (e: McpError) {
+            throw e
+        } catch (e: Exception) {
+            throw McpError(-32603, "Failed to read attachment: ${e.message}")
+        }
+        if (extracted.bytes.size > mailAttachmentMaxBytes) {
+            throw McpError(
+                -32603,
+                "Attachment is ${extracted.bytes.size} bytes — exceeds ${mailAttachmentMaxBytes / (1024 * 1024)} MiB cap",
+            )
+        }
+
+        val resolution = transportSelector.resolveFileBackend(destProfileId)
+            ?: throw McpError(-32603, "No connected backend for profile $destProfileId")
+        val backend = resolution.backend
+        val name = sanitizeFilename(args.optString("destFilename").ifBlank { extracted.filename })
+        val destPath = uniqueDestPath(backend, destDir.trimEnd('/'), name)
+        try {
+            backend.writeBytes(destPath, extracted.bytes)
+        } catch (e: Exception) {
+            throw McpError(-32603, "Save failed: ${e.message}")
+        }
+        JSONObject().apply {
+            put("saved", true)
+            put("destProfileId", destProfileId)
+            put("backend", backend.label)
+            put("destPath", destPath)
+            put("filename", name)
+            put("bytes", extracted.bytes.size)
+        }
+    }
+
+    /** Basename only; strip path separators, control chars, and "." / ".." traversal. */
+    private fun sanitizeFilename(name: String): String {
+        val base = name.substringAfterLast('/').substringAfterLast('\\')
+            .replace(Regex("[\\x00-\\x1f]"), "")
+            .trim()
+        return if (base.isBlank() || base == "." || base == "..") "attachment" else base
+    }
+
+    /** First non-existing `<dir>/<name>`, appending " (n)" before the extension on collision. */
+    private suspend fun uniqueDestPath(
+        backend: sh.haven.feature.sftp.transport.FileBackend,
+        dir: String,
+        name: String,
+    ): String {
+        fun join(n: String) = if (dir.isEmpty()) n else "$dir/$n"
+        suspend fun exists(p: String): Boolean = try {
+            backend.stat(p); true
+        } catch (e: Exception) {
+            false
+        }
+        if (!exists(join(name))) return join(name)
+        val dot = name.lastIndexOf('.')
+        val stem = if (dot > 0) name.substring(0, dot) else name
+        val ext = if (dot > 0) name.substring(dot) else ""
+        for (n in 1..99) {
+            val cand = join("$stem ($n)$ext")
+            if (!exists(cand)) return cand
+        }
+        return join("$stem (${System.currentTimeMillis()})$ext")
     }
 
     private suspend fun startRcloneSync(args: JSONObject): JSONObject = withContext(Dispatchers.IO) {
@@ -3595,6 +3803,15 @@ internal class McpTools(
             "bmp" -> "image/bmp"
             "svg" -> "image/svg+xml"
             "html", "htm" -> "text/html"
+            "txt", "text", "log" -> "text/plain"
+            "csv" -> "text/csv"
+            "json" -> "application/json"
+            "xml" -> "application/xml"
+            "zip" -> "application/zip"
+            "doc" -> "application/msword"
+            "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            "xls" -> "application/vnd.ms-excel"
+            "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             "pdf" -> "application/pdf"
             else -> "application/octet-stream"
         }

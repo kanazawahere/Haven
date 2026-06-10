@@ -1,6 +1,9 @@
 package sh.haven.feature.mail
 
+import android.provider.OpenableColumns
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -33,6 +36,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
@@ -55,10 +59,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -66,6 +72,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import sh.haven.core.mail.MailEngine
 import sh.haven.core.mail.MailFolder
 import sh.haven.core.mail.MailMessage
@@ -111,6 +120,8 @@ fun MailScreen(
             onFromSelected = viewModel::setComposeFrom,
             onSend = viewModel::send,
             onDiscard = viewModel::discardCompose,
+            onAddAttachment = viewModel::addDeviceAttachment,
+            onRemoveAttachment = viewModel::removeAttachment,
             modifier = mailModifier,
         )
         return
@@ -120,6 +131,34 @@ fun MailScreen(
     val sentMessage = stringResource(R.string.mail_sent_ok)
     LaunchedEffect(ui.sentSignal) {
         if (ui.sentSignal > 0) snackbarHostState.showSnackbar(sentMessage)
+    }
+
+    // Save-an-attachment-to-device: tapping Save in the reader stashes the chosen
+    // attachment, launches the SAF "create document" picker, then writes the
+    // decoded bytes straight to the user-picked Uri (scoped-storage-safe).
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var pendingSave by remember { mutableStateOf<MailAttachmentInfo?>(null) }
+    val saveAttachmentLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("*/*"),
+    ) { uri ->
+        val att = pendingSave
+        pendingSave = null
+        if (uri != null && att != null) {
+            scope.launch {
+                val extracted = viewModel.loadAttachmentBytes(att.index)
+                val ok = extracted != null && withContext(Dispatchers.IO) {
+                    runCatching {
+                        context.contentResolver.openOutputStream(uri)?.use { it.write(extracted.bytes) }
+                            ?: error("no output stream")
+                    }.isSuccess
+                }
+                snackbarHostState.showSnackbar(
+                    if (ok) context.getString(R.string.mail_attachment_saved, att.filename)
+                    else context.getString(R.string.mail_attachment_save_failed),
+                )
+            }
+        }
     }
 
     val title = when (ui.view) {
@@ -227,7 +266,12 @@ fun MailScreen(
                         onLoadOlder = viewModel::loadOlder,
                         onOpen = viewModel::openMessage,
                     )
-                    MailViewModel.View.READER -> ui.openMessage?.let { MessageReader(it) }
+                    MailViewModel.View.READER -> ui.openMessage?.let { msg ->
+                        MessageReader(msg) { att ->
+                            pendingSave = att
+                            saveAttachmentLauncher.launch(att.filename)
+                        }
+                    }
                     MailViewModel.View.COMPOSE -> {} // handled by the early full-screen branch above
                 }
             }
@@ -396,7 +440,7 @@ private fun MessageList(
 }
 
 @Composable
-private fun MessageReader(msg: ParsedMessage) {
+private fun MessageReader(msg: ParsedMessage, onSaveAttachment: (MailAttachmentInfo) -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
@@ -418,9 +462,24 @@ private fun MessageReader(msg: ParsedMessage) {
         if (msg.attachments.isNotEmpty()) {
             Divider(Modifier.padding(vertical = 8.dp))
             msg.attachments.forEach { att ->
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                ) {
                     Icon(Icons.Filled.AttachFile, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                    Text(att.filename, style = MaterialTheme.typography.bodySmall)
+                    Column(Modifier.weight(1f)) {
+                        Text(att.filename, style = MaterialTheme.typography.bodySmall)
+                        if (att.sizeBytes > 0) {
+                            Text(
+                                formatBytes(att.sizeBytes),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    IconButton(onClick = { onSaveAttachment(att) }) {
+                        Icon(Icons.Filled.Save, contentDescription = stringResource(R.string.mail_save_attachment))
+                    }
                 }
             }
         }
@@ -457,10 +516,22 @@ private fun ComposeView(
     onFromSelected: (String) -> Unit,
     onSend: (String) -> Unit,
     onDiscard: () -> Unit,
+    onAddAttachment: (uri: String, name: String, mimeType: String, size: Long) -> Unit,
+    onRemoveAttachment: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showDiscardConfirm by remember { mutableStateOf(false) }
     val recipientsRequired = stringResource(R.string.mail_recipients_required)
+    val context = LocalContext.current
+    val attachLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            val (name, size) = queryNameSize(context, uri)
+            val mime = context.contentResolver.getType(uri) ?: "application/octet-stream"
+            onAddAttachment(uri.toString(), name, mime, size)
+        }
+    }
 
     fun attemptDiscard() {
         if (draft.isDirty) showDiscardConfirm = true else onDiscard()
@@ -481,6 +552,12 @@ private fun ComposeView(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = { attachLauncher.launch(arrayOf("*/*")) },
+                        enabled = !draft.sending,
+                    ) {
+                        Icon(Icons.Filled.AttachFile, contentDescription = stringResource(R.string.mail_attach_file))
+                    }
                     if (draft.sending) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp).padding(end = 12.dp),
@@ -558,6 +635,30 @@ private fun ComposeView(
                 minLines = 8,
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (draft.attachments.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                draft.attachments.forEachIndexed { i, a ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                    ) {
+                        Icon(Icons.Filled.AttachFile, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(a.displayName, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (a.sizeBytes > 0) {
+                                Text(
+                                    formatBytes(a.sizeBytes),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        IconButton(onClick = { onRemoveAttachment(i) }) {
+                            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.mail_remove_attachment))
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -728,4 +829,26 @@ private fun formatTimeCompact(millis: Long): String {
         else -> MailDateFormats.dayMonthYear
     }
     return fmt.format(Date(millis))
+}
+
+/** Human-readable byte size for an attachment row. */
+private fun formatBytes(bytes: Long): String = when {
+    bytes >= 1024L * 1024L -> String.format(Locale.getDefault(), "%.1f MB", bytes / (1024.0 * 1024.0))
+    bytes >= 1024L -> String.format(Locale.getDefault(), "%.0f KB", bytes / 1024.0)
+    else -> "$bytes B"
+}
+
+/** Read a SAF document's display name + size (size = -1 when the provider omits it). */
+private fun queryNameSize(context: android.content.Context, uri: android.net.Uri): Pair<String, Long> {
+    var name: String? = null
+    var size = -1L
+    context.contentResolver.query(uri, null, null, null, null)?.use { c ->
+        val nameIdx = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+        val sizeIdx = c.getColumnIndex(OpenableColumns.SIZE)
+        if (c.moveToFirst()) {
+            if (nameIdx >= 0) name = c.getString(nameIdx)
+            if (sizeIdx >= 0 && !c.isNull(sizeIdx)) size = c.getLong(sizeIdx)
+        }
+    }
+    return (name ?: uri.lastPathSegment?.substringAfterLast('/') ?: "attachment") to size
 }

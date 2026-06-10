@@ -56,11 +56,10 @@ data class MailMessage(
 )
 
 /**
- * An outgoing message handed to [MailClient.send]. CP-6 carries a plain-text
- * body only — attachments, HTML bodies, and reply-threading headers
- * (In-Reply-To / References) are deferred to a later checkpoint. [to] must be
- * non-empty; the From address is the authenticated account and is set by the
- * engine, not the caller.
+ * An outgoing message handed to [MailClient.send]. Carries a plain-text body and
+ * optional [attachments]; HTML bodies and reply-threading headers (In-Reply-To /
+ * References) are still deferred. [to] must be non-empty; the From address is the
+ * authenticated account and is set by the engine, not the caller.
  */
 data class OutgoingMail(
     val to: List<String>,
@@ -68,6 +67,20 @@ data class OutgoingMail(
     val bcc: List<String> = emptyList(),
     val subject: String,
     val bodyText: String,
+    val attachments: List<OutgoingAttachment> = emptyList(),
+)
+
+/**
+ * A fully-resolved outbound attachment: the bytes are already in hand. The
+ * feature/app layer resolves the source (a Haven backend path or a device URI)
+ * to bytes BEFORE calling [MailClient.send], so this domain model — and the JVM
+ * SMTP engine that consumes it — stays free of Android and FileBackend types.
+ * Identity (equals/hashCode) is by reference for [bytes]; these are never compared.
+ */
+data class OutgoingAttachment(
+    val filename: String,
+    val mimeType: String,
+    val bytes: ByteArray,
 )
 
 /**
