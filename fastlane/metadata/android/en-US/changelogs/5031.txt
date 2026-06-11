@@ -1,0 +1,3 @@
+Local shell: read_terminal_scrollback now works for shells you opened by tapping Terminal (previously only agent-opened shells had a readable buffer), so the agent can read their output — including the final lines of a shell that exited.
+
+Local shell: dead (exited) shell sessions are now reaped instead of piling up in the session list each time one drops and you reconnect.
