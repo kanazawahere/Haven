@@ -1,0 +1,3 @@
+Keys: the "Add key" (+) chooser now scrolls, so the last option is reachable on shorter screens.
+
+Security keys (FIDO2/SSH): a connection that lists several security keys no longer shows a password prompt when key auth fails — it reports the security-key error instead, so a publickey-only server stays password-free.
