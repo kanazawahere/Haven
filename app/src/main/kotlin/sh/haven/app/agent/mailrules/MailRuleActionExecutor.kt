@@ -7,6 +7,8 @@ import sh.haven.core.data.db.entities.MailRulePendingAction
 import sh.haven.core.data.mailrule.ImapFilterOp
 import sh.haven.core.data.mailrule.MailRuleAction
 import sh.haven.core.data.mailrule.MailRuleJson
+import sh.haven.core.data.mailrule.MailRulePendingRunner
+import sh.haven.core.data.mailrule.MatchableMessage
 import sh.haven.core.data.mailrule.staticDestructive
 import sh.haven.core.data.repository.MailRuleRepository
 import sh.haven.core.mail.MailSessionManager
@@ -32,7 +34,7 @@ class MailRuleActionExecutor @Inject constructor(
     private val mcpServerLazy: dagger.Lazy<McpServer>,
     private val mailSessionManager: MailSessionManager,
     private val repo: MailRuleRepository,
-) : MailRuleActionRunner {
+) : MailRuleActionRunner, MailRulePendingRunner {
 
     private val mcpServer: McpServer get() = mcpServerLazy.get()
 
@@ -57,6 +59,41 @@ class MailRuleActionExecutor @Inject constructor(
 
     override suspend fun notifyRuleFired(ruleName: String, subject: String) {
         notify("Mail rule fired: $ruleName", subject)
+    }
+
+    /**
+     * Run a queued destructive action the user has approved in the rules UI. Reuses
+     * [executeNow] (the same per-action machinery a foreground firing uses) and clears the
+     * pending row on success. The context is reconstructed from the stored pending fields:
+     * IMAP filter ops (the dominant queued case) need only `profileId` + `messageId`, and
+     * template actions resolve `{subject}`/`{uid}`; `{from}`/`{to}` are unavailable after the
+     * fact (the envelope wasn't stored) — an honest, minor limitation for the rare queued
+     * RunCommand/InvokeMcpTool. An unparseable action is dropped rather than left stuck.
+     */
+    override suspend fun runApproved(pending: MailRulePendingAction): Boolean {
+        val action = MailRuleJson.actionsFromJson(pending.actionJson).firstOrNull() ?: run {
+            repo.deletePendingAction(pending.id)
+            return false
+        }
+        val ctx = ActionContext(
+            profileId = pending.profileId,
+            folderId = pending.folderId,
+            uid = pending.uid,
+            messageId = pending.messageId,
+            message = MatchableMessage(
+                fromAddress = "", fromName = "", toAddresses = emptyList(),
+                subject = pending.messageSubject.orEmpty(), unread = false,
+            ),
+            ruleId = pending.ruleId,
+            ruleName = "",
+        )
+        val outcome = try {
+            executeNow(action, ctx)
+        } catch (e: Exception) {
+            ActionOutcome(false, "error: ${e.message}")
+        }
+        if (outcome.ok) repo.deletePendingAction(pending.id)
+        return outcome.ok
     }
 
     /** A curated action's static class, or — for invoke_mcp_tool — the target tool's consent level. */

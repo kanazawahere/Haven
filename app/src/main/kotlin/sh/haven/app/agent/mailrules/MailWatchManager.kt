@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import sh.haven.core.data.mailrule.MailWatchPoker
 import sh.haven.core.data.preferences.UserPreferencesRepository
 import sh.haven.core.data.repository.MailRuleRepository
 import sh.haven.core.mail.MailSessionManager
@@ -34,7 +35,7 @@ class MailWatchManager @Inject constructor(
     private val mailSessionManager: MailSessionManager,
     private val preferencesRepository: UserPreferencesRepository,
     biometricGate: sh.haven.core.data.keystore.BiometricGate,
-) {
+) : MailWatchPoker {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val engine = MailRuleEngine(
         repo = repo,
@@ -65,7 +66,7 @@ class MailWatchManager @Inject constructor(
     }
 
     /** Request a poll now (e.g. on app-return-to-foreground); no-op when automation is off. */
-    fun pokeNow() {
+    override fun pokeNow() {
         scope.launch {
             if (preferencesRepository.mailAutomationEnabled.first()) {
                 runCatching { pollCycle() }

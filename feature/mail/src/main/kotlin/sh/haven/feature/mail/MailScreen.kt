@@ -141,6 +141,15 @@ fun MailScreen(
         return
     }
 
+    // Mail Rules manager overlays everything as a full-screen pane (opened from the
+    // overflow menu). Like compose, it lives inside the already session-gated Mail tab,
+    // so non-email users never see it.
+    var showRules by remember { mutableStateOf(false) }
+    if (showRules) {
+        MailRulesScreen(onClose = { showRules = false }, modifier = mailModifier)
+        return
+    }
+
     val snackbarHostState = remember { SnackbarHostState() }
     val sentMessage = stringResource(R.string.mail_sent_ok)
     LaunchedEffect(ui.sentSignal) {
@@ -270,6 +279,13 @@ fun MailScreen(
                                             },
                                             onClick = {
                                                 viewModel.setDeleteToBin(!ui.deleteToBin)
+                                                menuOpen = false
+                                            },
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.mail_rules_title)) },
+                                            onClick = {
+                                                showRules = true
                                                 menuOpen = false
                                             },
                                         )
