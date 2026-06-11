@@ -1,0 +1,3 @@
+Terminal: new "Resize terminal for keyboard" option (Settings → Terminal). When on, opening the keyboard resizes the terminal to fit above it instead of scrolling the view up — helps full-screen apps that show a status line at the top. Off by default, so plain shells are unchanged.
+
+Security keys (FIDO2/SSH): the touch prompt now names which key it is asking for, so when a connection lists several keys you present the right one. Tapping the wrong key no longer kills the login — Haven re-prompts for the correct key instead of falling back to a password.
