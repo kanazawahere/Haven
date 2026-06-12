@@ -253,6 +253,19 @@ class FidoAuthenticator @Inject constructor(
 
         val clientDataHash = MessageDigest.getInstance("SHA-256").digest(message)
 
+        // For a verify-required key, collect the PIN UP FRONT — before the key
+        // is tapped — so the whole assertion runs as one continuous tap. Over
+        // NFC you can't hold the key on the phone's back AND type the PIN, so a
+        // mid-exchange PIN prompt drops the tag ("Tag is out of date"); USB is
+        // unaffected (the PIN dialog just appears before "touch your key"). A
+        // wrong PIN then fails the attempt cleanly instead of looping
+        // mid-exchange. Mirrors the registration (makeCredential) flow.
+        val prePin: String? = if (requireUv) {
+            promptPin(null) ?: throw IOException("PIN entry cancelled")
+        } else {
+            null
+        }
+
         // A key that doesn't hold this credential answers NO_CREDENTIALS. Rather
         // than let that abort the whole SSH publickey method (the user tapped the
         // wrong one of several listed keys, #237), re-prompt for the correct key
@@ -287,10 +300,10 @@ class FidoAuthenticator @Inject constructor(
 
                         val result = when (device) {
                             is ConnectedDevice.Usb -> performUsbAssertion(
-                                device.device, rpId, clientDataHash, credentialId, requireUv,
+                                device.device, rpId, clientDataHash, credentialId, requireUv, prePin,
                             )
                             is ConnectedDevice.Nfc -> performNfcAssertion(
-                                device.tag, rpId, clientDataHash, credentialId, requireUv,
+                                device.tag, rpId, clientDataHash, credentialId, requireUv, prePin,
                             )
                         }
 
@@ -819,6 +832,7 @@ class FidoAuthenticator @Inject constructor(
         clientDataHash: ByteArray,
         credentialId: ByteArray,
         requireUv: Boolean,
+        prePin: String?,
     ): FidoAssertionResult {
         val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
         ensureUsbPermission(usbManager, device)
@@ -836,7 +850,7 @@ class FidoAuthenticator @Inject constructor(
                 Log.d(TAG, "CTAPHID init...")
                 transport.init()
                 return runGetAssertionExchange(
-                    rpId, clientDataHash, credentialId, requireUv,
+                    rpId, clientDataHash, credentialId, requireUv, prePin,
                     FidoTouchPrompt.TouchKey.Transport.USB,
                 ) { cmd ->
                     transport.sendCborCommand(cmd) {
@@ -858,6 +872,7 @@ class FidoAuthenticator @Inject constructor(
         clientDataHash: ByteArray,
         credentialId: ByteArray,
         requireUv: Boolean,
+        prePin: String?,
     ): FidoAssertionResult {
         val isoDep = IsoDep.get(tag) ?: throw IOException("Tag does not support ISO-DEP")
 
@@ -865,7 +880,7 @@ class FidoAuthenticator @Inject constructor(
             transport.connect()
             transport.select()
             return runGetAssertionExchange(
-                rpId, clientDataHash, credentialId, requireUv,
+                rpId, clientDataHash, credentialId, requireUv, prePin,
                 FidoTouchPrompt.TouchKey.Transport.NFC,
             ) { cmd -> transport.sendCborCommand(cmd) }
         }
@@ -895,13 +910,19 @@ class FidoAuthenticator @Inject constructor(
         clientDataHash: ByteArray,
         credentialId: ByteArray,
         requireUv: Boolean,
+        prePin: String?,
         touchTransport: FidoTouchPrompt.TouchKey.Transport,
         send: (ByteArray) -> ByteArray,
     ): FidoAssertionResult {
         var pinUvAuthParam: ByteArray? = null
         var pinProtocol: Int? = null
         if (requireUv) {
-            val (token, proto) = runUvPinProtocol(rpId, Ctap2Cbor.PERMISSION_GET_ASSERTION, send)
+            // Use the PIN collected up front (NFC-safe one-shot): a wrong PIN
+            // fails cleanly here rather than prompting mid-exchange.
+            val (token, proto) = runUvPinProtocol(
+                rpId, Ctap2Cbor.PERMISSION_GET_ASSERTION, send,
+                knownPin = prePin, allowPrompt = false,
+            )
             pinUvAuthParam = proto.authenticate(token, clientDataHash)
             pinProtocol = proto.version
         }

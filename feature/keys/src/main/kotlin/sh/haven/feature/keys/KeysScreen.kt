@@ -101,6 +101,7 @@ fun KeysScreen(
 ) {
     val keys by viewModel.keys.collectAsState()
     val keyEntries by viewModel.keyEntries.collectAsState()
+    val skVerifyRequired by viewModel.skVerifyRequired.collectAsState()
     val passwordEntries by viewModel.passwordEntries.collectAsState()
     val generating by viewModel.generating.collectAsState()
     val error by viewModel.error.collectAsState()
@@ -301,6 +302,7 @@ fun KeysScreen(
                             sshKey = sshKey,
                             entry = keyEntries[sshKey.id],
                             hasCertificate = sshKey.certificateBytes != null,
+                            verifyRequired = skVerifyRequired[sshKey.id] ?: false,
                             menuOpen = contextMenuKeyId == sshKey.id,
                             onMenuOpen = { contextMenuKeyId = sshKey.id },
                             onMenuDismiss = { contextMenuKeyId = null },
@@ -313,6 +315,9 @@ fun KeysScreen(
                             },
                             onEnabledForAuthToggle = { enabled ->
                                 viewModel.setKeyEnabledForAuth(sshKey.id, enabled)
+                            },
+                            onSetVerifyRequired = { required ->
+                                viewModel.setSkVerifyRequired(sshKey.id, required)
                             },
                             onAttachCertificate = { viewModel.requestAttachCertificate(sshKey.id) },
                             onRemoveCertificate = { viewModel.removeCertificate(sshKey.id) },
@@ -1013,6 +1018,7 @@ private fun SshKeyAuditRow(
     sshKey: SshKey,
     entry: KeystoreEntry?,
     hasCertificate: Boolean,
+    verifyRequired: Boolean,
     menuOpen: Boolean,
     onMenuOpen: () -> Unit,
     onMenuDismiss: () -> Unit,
@@ -1022,6 +1028,7 @@ private fun SshKeyAuditRow(
     onDelete: () -> Unit,
     onBiometricToggle: (Boolean) -> Unit,
     onEnabledForAuthToggle: (Boolean) -> Unit,
+    onSetVerifyRequired: (Boolean) -> Unit,
     onAttachCertificate: () -> Unit,
     onRemoveCertificate: () -> Unit,
     onExportCertificate: () -> Unit,
@@ -1126,6 +1133,22 @@ private fun SshKeyAuditRow(
                     Switch(
                         checked = sshKey.enabledForAuth,
                         onCheckedChange = onEnabledForAuthToggle,
+                    )
+                }
+            }
+            // FIDO2/SK keys: flip verify-required (PIN at sign-in) in place,
+            // without re-registering — the credential was made with a PIN token
+            // so it can do UV at assertion. Sits with the biometric toggle.
+            if (sshKey.keyType.startsWith("sk-")) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(R.string.keys_sk_require_pin),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Switch(
+                        checked = verifyRequired,
+                        onCheckedChange = onSetVerifyRequired,
                     )
                 }
             }

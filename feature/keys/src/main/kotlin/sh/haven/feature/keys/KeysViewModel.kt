@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -88,6 +89,28 @@ class KeysViewModel @Inject constructor(
 
     val keys: StateFlow<List<SshKey>> = repository.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /**
+     * Per-SK-key verify-required (PIN) state, for the Keys-tab toggle. Derived
+     * by decrypting each non-biometric SK blob's flags (the 0x04 UV bit) when
+     * the keys list changes — not on every row render, and biometric-protected
+     * keys are skipped so reading the state never triggers a biometric prompt
+     * (toggling such a key still works; setSkVerifyRequired decrypts on demand).
+     */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val skVerifyRequired: StateFlow<Map<String, Boolean>> = keys
+        .mapLatest { list ->
+            list.filter { it.keyType.startsWith("sk-") && !it.biometricProtected }
+                .associate { key ->
+                    key.id to (
+                        runCatching {
+                            repository.getDecryptedKeyBytes(key.id)
+                                ?.let { SkKeyData.deserialize(it).flags.toInt() and 0x04 != 0 }
+                        }.getOrNull() ?: false
+                        )
+                }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     /**
      * Per-key audit metadata indexed by [SshKey.id]. Refreshed whenever
@@ -448,6 +471,38 @@ class KeysViewModel @Inject constructor(
     fun setKeyEnabledForAuth(keyId: String, enabled: Boolean) {
         viewModelScope.launch {
             repository.setEnabledForAuth(keyId, enabled)
+        }
+    }
+
+    /**
+     * Flip a FIDO2/SK key's verify-required (PIN) flag in place without
+     * re-registering: SK flags 0x01 (touch only) ↔ 0x05 (touch + PIN). The
+     * credential was made with a PIN token so it can do UV at assertion; this
+     * just sets the stored SK flag that drives getAssertion's `requireUv`.
+     * Decrypts the SK blob, rewrites the flag, and saves (which re-encrypts).
+     */
+    fun setSkVerifyRequired(keyId: String, required: Boolean) {
+        viewModelScope.launch {
+            try {
+                val key = repository.getById(keyId) ?: return@launch
+                if (!key.keyType.startsWith("sk-")) return@launch
+                val plain = repository.getDecryptedKeyBytes(keyId) ?: run {
+                    _error.value = "Couldn't read the security key"
+                    return@launch
+                }
+                val sk = SkKeyData.deserialize(plain)
+                val newFlags: Byte = if (required) 0x05 else 0x01
+                if (sk.flags == newFlags) {
+                    _message.value = if (required) "Key already requires a PIN" else "Key is already touch-only"
+                    return@launch
+                }
+                repository.save(key.copy(privateKeyBytes = SkKeyData.serialize(sk.copy(flags = newFlags))))
+                _message.value = if (required) "Key now requires a PIN at sign-in" else "Key is now touch-only"
+                Log.d("KeysViewModel", "SK verify-required set to $required for ${key.label}")
+            } catch (e: Exception) {
+                Log.e("KeysViewModel", "setSkVerifyRequired failed", e)
+                _error.value = "Couldn't update the key: ${e.message}"
+            }
         }
     }
 
