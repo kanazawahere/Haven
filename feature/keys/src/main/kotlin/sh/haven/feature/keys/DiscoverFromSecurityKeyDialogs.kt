@@ -41,17 +41,17 @@ import sh.haven.core.fido.FidoTouchPrompt
  * follow-up — for now duplication keeps the v1 patch contained.
  */
 @Composable
-internal fun KeysFidoTouchPromptDialog(prompt: FidoTouchPrompt) {
+internal fun KeysFidoTouchPromptDialog(prompt: FidoTouchPrompt, onCancel: () -> Unit) {
     when (prompt) {
         is FidoTouchPrompt.EnterPin -> PinEntryDialog(prompt)
         is FidoTouchPrompt.WaitingForKey,
         is FidoTouchPrompt.WrongKey,
-        is FidoTouchPrompt.TouchKey -> TouchDialog(prompt)
+        is FidoTouchPrompt.TouchKey -> TouchDialog(prompt, onCancel)
     }
 }
 
 @Composable
-private fun TouchDialog(prompt: FidoTouchPrompt) {
+private fun TouchDialog(prompt: FidoTouchPrompt, onCancel: () -> Unit) {
     val (title, body) = when (prompt) {
         // WrongKey can't arise during resident-credential discovery (no specific
         // credential is targeted); fall back to the waiting copy for exhaustiveness.
@@ -70,7 +70,7 @@ private fun TouchDialog(prompt: FidoTouchPrompt) {
     }
 
     AlertDialog(
-        onDismissRequest = {},
+        onDismissRequest = onCancel,
         title = { Text(title) },
         text = {
             Row(
@@ -91,6 +91,9 @@ private fun TouchDialog(prompt: FidoTouchPrompt) {
             }
         },
         confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onCancel) { Text(stringResource(android.R.string.cancel)) }
+        },
     )
 }
 

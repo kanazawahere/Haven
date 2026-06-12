@@ -519,6 +519,9 @@ class KeysViewModel @Inject constructor(
     val fidoTouchPrompt: StateFlow<sh.haven.core.fido.FidoTouchPrompt?> =
         fidoAuthenticator.touchPrompt
 
+    /** Cancel an in-flight FIDO key wait/touch (the dialog's Cancel button). */
+    fun cancelFido() = fidoAuthenticator.cancelPending()
+
     /**
      * Discovered SSH-SK credentials staged for the user to pick from.
      * Non-empty when enumeration succeeded; the UI shows a picker dialog

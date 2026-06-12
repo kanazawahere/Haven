@@ -217,7 +217,7 @@ fun KeysScreen(
 
     // FIDO touch / PIN dialog during "Discover from security key" enumeration
     val fidoPrompt by viewModel.fidoTouchPrompt.collectAsState()
-    fidoPrompt?.let { KeysFidoTouchPromptDialog(it) }
+    fidoPrompt?.let { KeysFidoTouchPromptDialog(it, onCancel = { viewModel.cancelFido() }) }
 
     // Picker dialog after enumeration returns one-or-more credentials
     val discovered by viewModel.discoveredCredentials.collectAsState()

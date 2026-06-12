@@ -28,30 +28,28 @@ import androidx.compose.ui.unit.dp
 import sh.haven.core.fido.FidoTouchPrompt
 
 /**
- * Modal prompt shown while a FIDO2 SSH assertion is in flight. The dialog is
- * not user-dismissible for the discovery and touch states — the JSch auth
- * path is awaiting the security key's signature, and there is no clean cancel
- * route from the UI thread back into a blocking USB / NFC transfer. The
- * dialog disappears automatically when [FidoTouchPrompt] flips back to null
- * in [FidoAuthenticator.touchPrompt], whether the assertion succeeds, fails,
- * or the underlying transfer times out.
+ * Modal prompt shown while a FIDO2 SSH assertion is in flight. All states are
+ * cancellable: [onCancel] completes the pending key discovery exceptionally
+ * (FidoAuthenticator.cancelPending), so the awaiting CTAP flow unwinds and the
+ * prompt clears instead of the user being stuck until the transfer times out.
+ * The dialog also disappears automatically when [FidoTouchPrompt] flips back to
+ * null in [FidoAuthenticator.touchPrompt] (success / failure / timeout).
  *
- * The PIN-entry state ([FidoTouchPrompt.EnterPin]) IS user-dismissible —
- * tapping Cancel calls back with `null`, which makes the authenticator throw
- * out of its PIN flow before any blocking touch wait begins.
+ * The PIN-entry state ([FidoTouchPrompt.EnterPin]) cancels via its own
+ * `submit(null)` (it has no pending discovery to unwind yet).
  */
 @Composable
-fun FidoTouchPromptDialog(prompt: FidoTouchPrompt) {
+fun FidoTouchPromptDialog(prompt: FidoTouchPrompt, onCancel: () -> Unit) {
     when (prompt) {
         is FidoTouchPrompt.EnterPin -> PinEntryDialog(prompt)
         is FidoTouchPrompt.WaitingForKey,
         is FidoTouchPrompt.WrongKey,
-        is FidoTouchPrompt.TouchKey -> TouchDialog(prompt)
+        is FidoTouchPrompt.TouchKey -> TouchDialog(prompt, onCancel)
     }
 }
 
 @Composable
-private fun TouchDialog(prompt: FidoTouchPrompt) {
+private fun TouchDialog(prompt: FidoTouchPrompt, onCancel: () -> Unit) {
     val (title, body) = when (prompt) {
         is FidoTouchPrompt.WaitingForKey -> stringResource(R.string.connections_fido_waiting_title) to
             stringResource(R.string.connections_fido_waiting_body)
@@ -69,10 +67,7 @@ private fun TouchDialog(prompt: FidoTouchPrompt) {
     }
 
     AlertDialog(
-        // Empty lambda — touch states are not user-dismissible. The
-        // FidoAuthenticator clears the state when the assertion finishes
-        // (success, failure, or timeout) and the dialog goes away with it.
-        onDismissRequest = {},
+        onDismissRequest = onCancel,
         title = { Text(title) },
         text = {
             Row(
@@ -107,6 +102,9 @@ private fun TouchDialog(prompt: FidoTouchPrompt) {
             }
         },
         confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onCancel) { Text(stringResource(R.string.common_cancel)) }
+        },
     )
 }
 

@@ -699,7 +699,7 @@ fun ConnectionsScreen(
     }
 
     fidoTouchPrompt?.let { prompt ->
-        FidoTouchPromptDialog(prompt = prompt)
+        FidoTouchPromptDialog(prompt = prompt, onCancel = { viewModel.cancelFido() })
     }
 
     keyboardInteractiveAuth?.let { pending ->

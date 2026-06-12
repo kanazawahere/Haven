@@ -122,6 +122,14 @@ sealed class FidoTouchPrompt {
 class FidoNoMatchingCredentialException(message: String) : java.io.IOException(message)
 
 /**
+ * Raised when the user cancels a pending FIDO key wait/touch from the dialog
+ * (Cancel on the WaitingForKey / WrongKey / TouchKey prompt). Lets the awaiting
+ * CTAP flow unwind cleanly instead of blocking until timeout.
+ */
+class FidoCancelledException(message: String = "Security key prompt cancelled") :
+    java.io.IOException(message)
+
+/**
  * Map a CTAP2 GetAssertion response status byte to the exception it should
  * raise, or null when [status] is STATUS_OK. A wrong key answers
  * STATUS_NO_CREDENTIALS, which becomes a typed [FidoNoMatchingCredentialException]
@@ -133,9 +141,8 @@ class FidoNoMatchingCredentialException(message: String) : java.io.IOException(m
 internal fun ctap2AssertionErrorForStatus(status: Byte): Exception? = when (status) {
     Ctap2Cbor.STATUS_OK -> null
     Ctap2Cbor.STATUS_NO_CREDENTIALS -> FidoNoMatchingCredentialException(
-        "FIDO2 assertion failed: No matching credential on this key " +
-            "(or the credential requires PIN verification — re-check " +
-            "that the PIN was accepted)",
+        "FIDO2 assertion failed: this security key has no matching credential — " +
+            "wrong key for this profile, try another",
     )
     Ctap2Cbor.STATUS_ACTION_TIMEOUT ->
         java.io.IOException("FIDO2 assertion failed: User did not touch the key in time")
@@ -219,6 +226,18 @@ class FidoAuthenticator @Inject constructor(
         if (activeActivity?.get() === activity) {
             activeActivity = null
         }
+    }
+
+    /**
+     * Cancel an in-flight assertion / discovery / registration that is waiting
+     * for a key to be presented (the WaitingForKey / WrongKey / TouchKey
+     * dialog). Completes the pending discovery exceptionally so the awaiting
+     * CTAP flow unwinds — its `finally` clears the touch prompt and tears down
+     * USB/NFC discovery. A no-op if nothing is pending. The PIN-entry dialog
+     * has its own cancel (submit(null)).
+     */
+    fun cancelPending() {
+        pendingDevice?.completeExceptionally(FidoCancelledException())
     }
 
     /**

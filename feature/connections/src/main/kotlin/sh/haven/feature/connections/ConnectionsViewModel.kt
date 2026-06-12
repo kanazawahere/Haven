@@ -440,6 +440,9 @@ class ConnectionsViewModel @Inject constructor(
      */
     val fidoTouchPrompt: StateFlow<FidoTouchPrompt?> = fidoAuthenticator.touchPrompt
 
+    /** Cancel an in-flight FIDO key wait/touch (the dialog's Cancel button). */
+    fun cancelFido() = fidoAuthenticator.cancelPending()
+
     private val _showMoshSetupGuide = MutableStateFlow(false)
     val showMoshSetupGuide: StateFlow<Boolean> = _showMoshSetupGuide.asStateFlow()
 
