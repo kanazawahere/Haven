@@ -166,6 +166,7 @@ fun SettingsScreen(
     val darkColorScheme by viewModel.terminalDarkColorScheme.collectAsState()
     val toolbarLayout by viewModel.toolbarLayout.collectAsState()
     val toolbarLayoutJson by viewModel.toolbarLayoutJson.collectAsState()
+    val snippetLibrary by viewModel.snippetLibrary.collectAsState()
     val navBlockMode by viewModel.navBlockMode.collectAsState()
     val editModeControlsPlacement by viewModel.editModeControlsPlacement.collectAsState()
     val toolbarMinButtonWidth by viewModel.toolbarMinButtonWidth.collectAsState()
@@ -1495,6 +1496,7 @@ fun SettingsScreen(
         ToolbarConfigDialog(
             layout = toolbarLayout,
             layoutJson = toolbarLayoutJson,
+            snippetLibrary = snippetLibrary,
             navBlockMode = navBlockMode,
             editModeControlsPlacement = editModeControlsPlacement,
             minButtonWidth = toolbarMinButtonWidth,
@@ -1504,6 +1506,7 @@ fun SettingsScreen(
                 viewModel.setToolbarLayout(layout)
                 showToolbarConfigDialog = false
             },
+            onSaveLibrary = { viewModel.setSnippetLibrary(it) },
             onSaveJson = { json ->
                 viewModel.setToolbarLayoutJson(json)
                 showToolbarConfigDialog = false
@@ -2272,12 +2275,14 @@ private fun editControlsPlacementLabel(placement: EditModeControlsPlacement): In
 private fun ToolbarConfigDialog(
     layout: ToolbarLayout,
     layoutJson: String,
+    snippetLibrary: List<ToolbarItem.Custom>,
     navBlockMode: NavBlockMode,
     editModeControlsPlacement: EditModeControlsPlacement,
     minButtonWidth: Int,
     onMinButtonWidthChange: (Int) -> Unit,
     onDismiss: () -> Unit,
     onSaveLayout: (ToolbarLayout) -> Unit,
+    onSaveLibrary: (List<ToolbarItem.Custom>) -> Unit,
     onSaveJson: (String) -> Unit,
     onNavBlockModeChange: (NavBlockMode) -> Unit,
     onEditControlsPlacementChange: (EditModeControlsPlacement) -> Unit,
@@ -2294,12 +2299,16 @@ private fun ToolbarConfigDialog(
     } else {
         ToolbarSimpleEditor(
             layout = layout,
+            snippetLibrary = snippetLibrary,
             navBlockMode = navBlockMode,
             editModeControlsPlacement = editModeControlsPlacement,
             minButtonWidth = minButtonWidth,
             onMinButtonWidthChange = onMinButtonWidthChange,
             onDismiss = onDismiss,
-            onSave = onSaveLayout,
+            onSave = { newLayout, newLibrary ->
+                onSaveLayout(newLayout)
+                onSaveLibrary(newLibrary)
+            },
             onAdvancedMode = { advancedMode = true },
             onNavBlockModeChange = onNavBlockModeChange,
             onEditControlsPlacementChange = onEditControlsPlacementChange,
@@ -2315,12 +2324,13 @@ private data class CustomKeyState(
 @Composable
 private fun ToolbarSimpleEditor(
     layout: ToolbarLayout,
+    snippetLibrary: List<ToolbarItem.Custom>,
     navBlockMode: NavBlockMode,
     editModeControlsPlacement: EditModeControlsPlacement,
     minButtonWidth: Int,
     onMinButtonWidthChange: (Int) -> Unit,
     onDismiss: () -> Unit,
-    onSave: (ToolbarLayout) -> Unit,
+    onSave: (ToolbarLayout, List<ToolbarItem.Custom>) -> Unit,
     onAdvancedMode: () -> Unit,
     onNavBlockModeChange: (NavBlockMode) -> Unit,
     onEditControlsPlacementChange: (EditModeControlsPlacement) -> Unit,
@@ -2345,8 +2355,10 @@ private fun ToolbarSimpleEditor(
         )
     }
 
-    // Custom keys state — built from current layout
-    val customKeys = remember(layout) {
+    // Custom keys (snippets) state — placed ones from the layout, plus the
+    // off-toolbar library shown as OFF so they can be promoted to a row or
+    // left in the scissors-only library (#244).
+    val customKeys = remember(layout, snippetLibrary) {
         mutableStateListOf<CustomKeyState>().apply {
             layout.row1.filterIsInstance<ToolbarItem.Custom>().forEach {
                 add(CustomKeyState(it, KeyAssignment.ROW1))
@@ -2354,6 +2366,7 @@ private fun ToolbarSimpleEditor(
             layout.row2.filterIsInstance<ToolbarItem.Custom>().forEach {
                 add(CustomKeyState(it, KeyAssignment.ROW2))
             }
+            snippetLibrary.forEach { add(CustomKeyState(it, KeyAssignment.OFF)) }
         }
     }
 
@@ -2520,13 +2533,18 @@ private fun ToolbarSimpleEditor(
                 val customRow2 = customKeys
                     .filter { it.row == KeyAssignment.ROW2 }
                     .map { it.item }
+                // OFF snippets go to the library (kept in the scissors sheet)
+                // rather than being discarded (#244).
+                val library = customKeys
+                    .filter { it.row == KeyAssignment.OFF }
+                    .map { it.item }
                 val newRow1 = ToolbarKey.entries
                     .filter { assignments[it] == KeyAssignment.ROW1 }
                     .map { ToolbarItem.BuiltIn(it) } + customRow1
                 val newRow2 = ToolbarKey.entries
                     .filter { assignments[it] == KeyAssignment.ROW2 }
                     .map { ToolbarItem.BuiltIn(it) } + customRow2
-                onSave(ToolbarLayout(listOf(newRow1, newRow2)))
+                onSave(ToolbarLayout(listOf(newRow1, newRow2)), library)
             }) {
                 Text(stringResource(R.string.common_save))
             }
@@ -2545,7 +2563,12 @@ private fun ToolbarSimpleEditor(
                             else -> KeyAssignment.OFF
                         }
                     }
-                    customKeys.clear()
+                    // Reset clears the toolbar back to defaults but keeps the
+                    // user's snippets — move them off the bar into the library
+                    // rather than deleting them (#244).
+                    for (i in customKeys.indices) {
+                        customKeys[i] = customKeys[i].copy(row = KeyAssignment.OFF)
+                    }
                 }) {
                     Text(stringResource(R.string.common_reset))
                 }

@@ -22,6 +22,7 @@ import sh.haven.core.data.db.AgentAuditEventDao
 import sh.haven.core.data.font.TerminalFontInstaller
 import sh.haven.core.data.preferences.EditModeControlsPlacement
 import sh.haven.core.data.preferences.NavBlockMode
+import sh.haven.core.data.preferences.ToolbarItem
 import sh.haven.core.data.preferences.ToolbarLayout
 import sh.haven.core.data.preferences.UserPreferencesRepository
 import sh.haven.core.data.repository.ConnectionRepository
@@ -430,6 +431,15 @@ class SettingsViewModel @Inject constructor(
             ToolbarLayout.DEFAULT.toJson(),
         )
 
+    /** Off-toolbar snippet library (#244) — snippets reachable from the scissors
+     *  sheet without a dedicated toolbar button. */
+    val snippetLibrary: StateFlow<List<ToolbarItem.Custom>> = preferencesRepository.snippetLibrary
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            emptyList(),
+        )
+
     val navBlockMode: StateFlow<NavBlockMode> = preferencesRepository.navBlockMode
         .stateIn(
             viewModelScope,
@@ -707,6 +717,12 @@ class SettingsViewModel @Inject constructor(
     fun setToolbarLayoutJson(json: String) {
         viewModelScope.launch {
             preferencesRepository.setToolbarLayoutJson(json)
+        }
+    }
+
+    fun setSnippetLibrary(items: List<ToolbarItem.Custom>) {
+        viewModelScope.launch {
+            preferencesRepository.setSnippetLibrary(items)
         }
     }
 

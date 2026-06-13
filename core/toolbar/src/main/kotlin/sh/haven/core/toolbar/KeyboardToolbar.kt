@@ -225,6 +225,8 @@ fun KeyboardToolbar(
     reorderMode: Boolean = false,
     onReorderModeChanged: (Boolean) -> Unit = {},
     onToolbarLayoutChanged: (ToolbarLayout) -> Unit = {},
+    snippetLibrary: List<ToolbarItem.Custom> = emptyList(),
+    onSnippetLibraryChanged: (List<ToolbarItem.Custom>) -> Unit = {},
     onOpenSettings: () -> Unit = {},
     selectionContent: (@Composable () -> Unit)? = null,
     allowStandardKeyboard: Boolean = false,
@@ -242,8 +244,10 @@ fun KeyboardToolbar(
         view.context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
     }
 
-    val allSnippets = remember(layout) {
-        layout.rows.flatMap { row -> row.filterIsInstance<ToolbarItem.Custom>() }
+    // Scissors-sheet list = snippets placed on the toolbar PLUS the off-toolbar
+    // library (#244), so a snippet toggled "Off" in settings is still reachable.
+    val allSnippets = remember(layout, snippetLibrary) {
+        sh.haven.core.data.preferences.SnippetOps.allSnippets(layout, snippetLibrary)
     }
 
     val callbacks = ToolbarCallbacks(
@@ -287,17 +291,18 @@ fun KeyboardToolbar(
         rawKeyboardMode = rawKeyboardMode,
         onToggleRawKeyboard = onToggleRawKeyboard,
         onAddSnippet = { snippet ->
-            val newRows = layout.rows.toMutableList()
-            if (newRows.isNotEmpty()) {
-                val targetRow = newRows.last().toMutableList()
-                targetRow.add(snippet)
-                newRows[newRows.lastIndex] = targetRow
-            }
-            onToolbarLayoutChanged(ToolbarLayout(newRows))
+            // Adding from the scissors sheet creates a library entry (no toolbar
+            // button) — the user pins it as a button via toolbar settings if they
+            // want one. Stops every added snippet from cluttering the bar (#244).
+            onSnippetLibraryChanged(
+                sh.haven.core.data.preferences.SnippetOps.addToLibrary(layout, snippetLibrary, snippet),
+            )
         },
         onDeleteSnippet = { snippet ->
-            val newRows = layout.rows.map { row -> row.filter { it != snippet } }
-            onToolbarLayoutChanged(ToolbarLayout(newRows))
+            val (newLayout, newLibrary) =
+                sh.haven.core.data.preferences.SnippetOps.delete(layout, snippetLibrary, snippet)
+            onToolbarLayoutChanged(newLayout)
+            onSnippetLibraryChanged(newLibrary)
         },
         onAttachTap = onAttachTap,
     )

@@ -185,3 +185,94 @@ data class ToolbarLayout(val rows: List<List<ToolbarItem>>) {
         }
     }
 }
+
+/**
+ * Snippets (custom send-key macros) can live in two places: as
+ * [ToolbarItem.Custom] buttons placed on the toolbar rows, and in a separate
+ * off-toolbar **library** (persisted under its own preference) that the
+ * scissors sheet also lists. Setting a snippet to "Off" in toolbar settings
+ * moves it to the library instead of deleting it (#244); only the trash
+ * action removes it outright. These pure helpers are the single source of
+ * truth for that placement logic, shared by the live toolbar, the settings
+ * editor and the MCP snippet tools.
+ */
+object SnippetOps {
+    /** Every snippet reachable from the scissors sheet: the ones placed on the
+     *  toolbar plus the off-toolbar library, de-duplicated by label+send. */
+    fun allSnippets(
+        layout: ToolbarLayout,
+        library: List<ToolbarItem.Custom>,
+    ): List<ToolbarItem.Custom> =
+        (layout.rows.flatMap { row -> row.filterIsInstance<ToolbarItem.Custom>() } + library)
+            .distinct()
+
+    /** Add a brand-new snippet to the library (no toolbar button). No-op if an
+     *  identical snippet already exists anywhere. */
+    fun addToLibrary(
+        layout: ToolbarLayout,
+        library: List<ToolbarItem.Custom>,
+        item: ToolbarItem.Custom,
+    ): List<ToolbarItem.Custom> =
+        if (allSnippets(layout, library).contains(item)) library else library + item
+
+    /** Remove a snippet everywhere — toolbar rows and library. */
+    fun delete(
+        layout: ToolbarLayout,
+        library: List<ToolbarItem.Custom>,
+        item: ToolbarItem.Custom,
+    ): Pair<ToolbarLayout, List<ToolbarItem.Custom>> =
+        ToolbarLayout(layout.rows.map { row -> row.filterNot { it == item } }) to
+            library.filterNot { it == item }
+
+    /**
+     * Move a snippet to [row] (0 = row 1, 1 = row 2, null = off-toolbar
+     * library). Strips it from wherever it currently sits first, then places
+     * it. A target row that doesn't exist yet is created empty.
+     */
+    fun place(
+        layout: ToolbarLayout,
+        library: List<ToolbarItem.Custom>,
+        item: ToolbarItem.Custom,
+        row: Int?,
+    ): Pair<ToolbarLayout, List<ToolbarItem.Custom>> {
+        val strippedRows = layout.rows.map { r -> r.filterNot { it == item } }
+        val strippedLib = library.filterNot { it == item }
+        if (row == null) {
+            return ToolbarLayout(strippedRows) to (strippedLib + item)
+        }
+        val rows = strippedRows.toMutableList()
+        val target = row.coerceAtLeast(0)
+        while (rows.size <= target) rows.add(emptyList())
+        rows[target] = rows[target] + item
+        return ToolbarLayout(rows) to strippedLib
+    }
+
+    /** Serialise the library to JSON (`[{"label":..,"send":..}, …]`). */
+    fun libraryToJson(items: List<ToolbarItem.Custom>): String {
+        val arr = JSONArray()
+        items.forEach {
+            arr.put(JSONObject().apply { put("label", it.label); put("send", it.send) })
+        }
+        return arr.toString()
+    }
+
+    /** Parse the library from JSON; malformed/empty entries are skipped. */
+    fun libraryFromJson(json: String): List<ToolbarItem.Custom> {
+        if (json.isBlank()) return emptyList()
+        return try {
+            val arr = JSONArray(json)
+            (0 until arr.length()).mapNotNull { i ->
+                val o = arr.optJSONObject(i) ?: return@mapNotNull null
+                val label = o.optString("label", "")
+                val send = o.optString("send", "")
+                if (label.isNotEmpty() && send.isNotEmpty()) {
+                    ToolbarItem.Custom(label, send)
+                } else {
+                    null
+                }
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+}

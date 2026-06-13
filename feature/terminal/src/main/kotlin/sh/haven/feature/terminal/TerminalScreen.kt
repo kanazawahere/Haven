@@ -110,6 +110,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import org.connectbot.terminal.ModifierManager
 import sh.haven.core.terminal.HavenKeyboardMode
 import sh.haven.core.terminal.HavenTerminal
+import sh.haven.core.data.preferences.ToolbarItem
 import sh.haven.core.data.preferences.ToolbarLayout
 import sh.haven.core.data.preferences.UserPreferencesRepository
 
@@ -176,6 +177,8 @@ fun TerminalScreen(
     onSelectionActiveChanged: (Boolean) -> Unit = {},
     onReorderModeChanged: (Boolean) -> Unit = {},
     onToolbarLayoutChanged: (ToolbarLayout) -> Unit = {},
+    snippetLibrary: List<ToolbarItem.Custom> = emptyList(),
+    onSnippetLibraryChanged: (List<ToolbarItem.Custom>) -> Unit = {},
     onOpenToolbarSettings: () -> Unit = {},
     /**
      * Switch to the SFTP page — fired by the attach (paperclip) flow so
@@ -1200,6 +1203,8 @@ fun TerminalScreen(
                             onReorderModeChanged(it)
                         },
                         onToolbarLayoutChanged = onToolbarLayoutChanged,
+                        snippetLibrary = snippetLibrary,
+                        onSnippetLibraryChanged = onSnippetLibraryChanged,
                         onOpenSettings = onOpenToolbarSettings,
                         allowStandardKeyboard = allowStandardKeyboard,
                         onToggleStandardKeyboard = onToggleStandardKeyboard,

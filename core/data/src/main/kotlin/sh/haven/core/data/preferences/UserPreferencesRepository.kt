@@ -39,6 +39,7 @@ class UserPreferencesRepository @Inject constructor(
     private val toolbarRow1Key = stringPreferencesKey("toolbar_row1") // legacy
     private val toolbarRow2Key = stringPreferencesKey("toolbar_row2") // legacy
     private val toolbarLayoutKey = stringPreferencesKey("toolbar_layout")
+    private val snippetLibraryKey = stringPreferencesKey("snippet_library")
     private val toolbarMinButtonWidthKey = intPreferencesKey("toolbar_min_button_width")
     private val appWindowDefsKey = stringPreferencesKey("app_window_defs")
     private val navBlockModeKey = stringPreferencesKey("nav_block_mode")
@@ -1003,6 +1004,22 @@ class UserPreferencesRepository @Inject constructor(
             prefs.remove(toolbarRow1Key)
             prefs.remove(toolbarRow2Key)
             prefs.remove(toolbarRowsKey)
+        }
+    }
+
+    /**
+     * Off-toolbar snippet library (#244): custom send-key macros that exist
+     * and show in the scissors sheet but have no dedicated toolbar button.
+     * Separate from [toolbarLayout] so toggling a snippet "Off" in settings
+     * keeps it here instead of discarding it.
+     */
+    val snippetLibrary: Flow<List<ToolbarItem.Custom>> = dataStore.data.map { prefs ->
+        SnippetOps.libraryFromJson(prefs[snippetLibraryKey] ?: "")
+    }
+
+    suspend fun setSnippetLibrary(items: List<ToolbarItem.Custom>) {
+        dataStore.edit { prefs ->
+            prefs[snippetLibraryKey] = SnippetOps.libraryToJson(items)
         }
     }
 

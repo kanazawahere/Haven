@@ -355,6 +355,8 @@ fun HavenNavHost(
         .collectAsState(initial = null)
     val toolbarLayout by preferencesRepository.toolbarLayout
         .collectAsState(initial = sh.haven.core.data.preferences.ToolbarLayout.DEFAULT)
+    val snippetLibrary by preferencesRepository.snippetLibrary
+        .collectAsState(initial = emptyList())
     val navBlockMode by preferencesRepository.navBlockMode
         .collectAsState(initial = sh.haven.core.data.preferences.NavBlockMode.ALIGNED)
     val editModeControlsPlacement by preferencesRepository.editModeControlsPlacement
@@ -610,6 +612,12 @@ fun HavenNavHost(
                         onToolbarLayoutChanged = { newLayout ->
                             coroutineScope.launch {
                                 preferencesRepository.setToolbarLayout(newLayout)
+                            }
+                        },
+                        snippetLibrary = snippetLibrary,
+                        onSnippetLibraryChanged = { newLibrary ->
+                            coroutineScope.launch {
+                                preferencesRepository.setSnippetLibrary(newLibrary)
                             }
                         },
                         onOpenToolbarSettings = {
