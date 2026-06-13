@@ -204,6 +204,9 @@ class FidoAuthenticator @Inject constructor(
      */
     private var heldNfcTransport: CtapNfcTransport? = null
 
+    /** Activity whose NFC reader mode is kept on for a [heldNfcTransport]; stopped by [releaseHeldNfc]. */
+    private var heldNfcActivity: Activity? = null
+
     /**
      * Weak reference to the currently-resumed foreground [Activity], used
      * as the host for NFC reader mode during an in-flight assertion. Set
@@ -281,6 +284,15 @@ class FidoAuthenticator @Inject constructor(
             runCatching { it.close() }
         }
         heldNfcTransport = null
+        // Reader mode was kept on to hold the field alive; stop it now. Posts to
+        // the main looper since NFC APIs are main-thread-only and this is called
+        // from non-suspend contexts (cancel, the SSH connect finally).
+        val activity = heldNfcActivity ?: return
+        heldNfcActivity = null
+        val nfcAdapter = NfcAdapter.getDefaultAdapter(context) ?: return
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            runCatching { nfcAdapter.disableReaderMode(activity) }
+        }
     }
 
     /**
@@ -333,7 +345,6 @@ class FidoAuthenticator @Inject constructor(
         // don't tap twice. Best-effort — if the tag has lifted the transceive
         // errors out and we fall through to the normal fresh-tap flow below.
         heldNfcTransport?.let { held ->
-            heldNfcTransport = null
             try {
                 activeTransport.set(held)
                 val result = runGetAssertionExchange(
@@ -346,8 +357,7 @@ class FidoAuthenticator @Inject constructor(
                 Log.w(TAG, "Held-NFC one-tap sign failed (${e.javaClass.simpleName}: ${e.message}); " +
                     "falling back to a fresh tap")
             } finally {
-                activeTransport.compareAndSet(held, null)
-                runCatching { held.close() }
+                releaseHeldNfc() // close the held transport + stop the kept-on reader mode
                 _touchPrompt.value = null
             }
         }
@@ -726,7 +736,15 @@ class FidoAuthenticator @Inject constructor(
                 }
             }
             if (nfcEnabled && nfcActivity != null) {
-                stopNfcReaderModeOnMain(nfcActivity)
+                if (heldNfcTransport != null) {
+                    // One-tap either/or: detection stashed an open ISO-DEP for the
+                    // follow-on sign. Disabling reader mode powers the field down
+                    // and the tag is lost, so KEEP it on — releaseHeldNfc() (after
+                    // the sign, or in the connect-finally / on cancel) stops it.
+                    heldNfcActivity = nfcActivity
+                } else {
+                    stopNfcReaderModeOnMain(nfcActivity)
+                }
             }
             _touchPrompt.value = null
         }
