@@ -1537,12 +1537,25 @@ fun SettingsScreen(
 
     if (showOsc133SetupDialog) {
         val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-        val bashSnippet = """# Add to ~/.bashrc
-PS0='\[\e]133;C\a\]'
-PS1='\[\e]133;D;${'$'}?\a\e]133;A\a\]'${'$'}PS1'\[\e]133;B\a\]'"""
-        val zshSnippet = """# Add to ~/.zshrc
-precmd()  { print -Pn '\e]133;D;%?\a\e]133;A\a' }
-preexec() { print -Pn '\e]133;B\a\e]133;C\a' }"""
+        // Emits OSC 133 prompt markers, wrapping them in tmux's DCS passthrough
+        // when inside tmux ($TMUX set) so the markers actually reach Haven —
+        // raw OSC 133 is otherwise consumed by tmux even with allow-passthrough
+        // (which only forwards explicitly-wrapped sequences). Needs
+        // `set -g allow-passthrough on` in tmux < 3.5a. (#243)
+        val bashSnippet = """# Add to ~/.bashrc  (works inside tmux too)
+__osc133() {
+  if [ -n "${'$'}TMUX" ]; then printf '\ePtmux;\e\e]133;%s\a\e\\' "${'$'}1"
+  else printf '\e]133;%s\a' "${'$'}1"; fi
+}
+PS0='\[${'$'}(__osc133 C)\]'
+PS1='\[${'$'}(__osc133 "D;${'$'}?")${'$'}(__osc133 A)\]'${'$'}PS1'\[${'$'}(__osc133 B)\]'"""
+        val zshSnippet = """# Add to ~/.zshrc  (works inside tmux too)
+__osc133() {
+  if [ -n "${'$'}TMUX" ]; then printf '\ePtmux;\e\e]133;%s\a\e\\' "${'$'}1"
+  else printf '\e]133;%s\a' "${'$'}1"; fi
+}
+precmd()  { local r=${'$'}?; __osc133 "D;${'$'}r"; __osc133 A }
+preexec() { __osc133 B; __osc133 C }"""
         val copiedBashMsg = stringResource(R.string.settings_osc133_copied_bash)
         val copiedZshMsg = stringResource(R.string.settings_osc133_copied_zsh)
         AlertDialog(
