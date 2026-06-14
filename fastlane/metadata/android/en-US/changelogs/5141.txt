@@ -1,0 +1,4 @@
+App windows (Cage) — launch from the home screen:
+
+- New "Add to home screen" button on each app window. It pins a launcher icon that opens the app fullscreen, even from a cold start.
+- The pinned icon uses the app's own Linux desktop icon where one can be found, so it looks like a native app.
