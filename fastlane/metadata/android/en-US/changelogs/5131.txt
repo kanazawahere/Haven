@@ -1,0 +1,7 @@
+App windows (Cage) improvements:
+
+- Fixes a black screen that could appear after pinch-zooming and then a rotation or resolution change.
+- Two-finger drag now scrolls the app (one finger stays the mouse), so lists and package managers are navigable.
+- The fullscreen menu button can be dragged out of the way, and flips to open upward when it's near the bottom.
+- New "Save as default" button pins an app's current size.
+- New "Run as root" option lets graphical package managers (e.g. Synaptic on Debian/Ubuntu) actually install software.
