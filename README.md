@@ -101,7 +101,7 @@ Output: `app/build/outputs/apk/debug/haven-*-debug.apk`
   if the in-app importer fails.
 - [Release process](RELEASE.md) — versioning, tagging, and F-Droid steps.
 - [Privacy policy](PRIVACY_POLICY.md).
-- [Roadmap](ROADMAP.md) and [Vision](VISION.md).
+- [Vision](VISION.md).
 
 ## Third-party libraries
 

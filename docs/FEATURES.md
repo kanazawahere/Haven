@@ -22,4 +22,4 @@ page below; the [landing page](index.md) has a short summary.
 
 ---
 
-[Vision](../VISION.md) · [Roadmap](../ROADMAP.md) · [Backup file format](backup-format.md) · [Privacy policy](privacy-policy.html)
+[Vision](../VISION.md) · [Backup file format](backup-format.md) · [Privacy policy](privacy-policy.html)
