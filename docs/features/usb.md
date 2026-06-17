@@ -11,7 +11,7 @@ shell. Haven turns that into a feature: it **brokers** the attached USB/OTG
 device through Android's `UsbManager` and re-exposes it three ways, with no root.
 This is the same pattern as the rest of Haven's bridge work — when something
 downstream can't reach a capability directly, Haven brokers the Android privilege
-and re-exposes it (see [Vision](../../VISION.md)).
+and re-exposes it (see [Vision](https://github.com/GlassHaven/Haven/blob/main/VISION.md)).
 
 The spark was a **YubiKey**: plug it into the phone and use it for SSH/FIDO on a
 machine that has no key of its own, with the **touch happening on the phone**.
@@ -135,4 +135,4 @@ USB/IP path bypasses Android's USB-permission model.
 
 ---
 
-[← All features](../FEATURES.md) · [Vision](../../VISION.md)
+[← All features](../FEATURES.md) · [Vision](https://github.com/GlassHaven/Haven/blob/main/VISION.md)

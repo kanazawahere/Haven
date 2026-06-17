@@ -22,4 +22,4 @@ page below; the [landing page](index.md) has a short summary.
 
 ---
 
-[Vision](../VISION.md) · [Backup file format](backup-format.md) · [Privacy policy](privacy-policy.html)
+[Vision](https://github.com/GlassHaven/Haven/blob/main/VISION.md) · [Backup file format](backup-format.md) · [Privacy policy](privacy-policy.html)

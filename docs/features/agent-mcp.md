@@ -19,4 +19,4 @@ Reads are free (no prompt); one-shot writes raise a per-action consent sheet. Fo
 
 ---
 
-[← All features](../FEATURES.md) · [Vision](../../VISION.md)
+[← All features](../FEATURES.md) · [Vision](https://github.com/GlassHaven/Haven/blob/main/VISION.md)
