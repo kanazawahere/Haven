@@ -48,7 +48,7 @@ import sh.haven.core.data.db.entities.WorkspaceProfile
         MailRulePendingAction::class,
         StandingPolicy::class,
     ],
-    version = 67,
+    version = 68,
     exportSchema = true,
 )
 abstract class HavenDatabase : RoomDatabase() {
@@ -1121,6 +1121,12 @@ abstract class HavenDatabase : RoomDatabase() {
         val MIGRATION_66_67 = object : Migration(66, 67) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 addColumnIfMissing(db, "ssh_keys", "enabledForAuth", "INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
+        val MIGRATION_67_68 = object : Migration(67, 68) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                addColumnIfMissing(db, "connection_profiles", "usbForwardVidPid", "TEXT DEFAULT NULL")
             }
         }
 

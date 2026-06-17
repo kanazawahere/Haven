@@ -119,6 +119,8 @@ fun ConnectionEditDialog(
     tunnelConfigs: List<sh.haven.core.data.db.entities.TunnelConfig> = emptyList(),
     /** Installed distros `(id, label)` for a LOCAL profile's "open in" picker. */
     availableDistros: List<Pair<String, String>> = emptyList(),
+    /** Attached phone USB devices `(vidPid, label)` for the SSH USB-forward picker. */
+    usbDevices: List<Pair<String, String>> = emptyList(),
     /**
      * The Cloudflare Tunnel transport row owned by [existing], if any
      * (GH #154). When non-null, the SSH profile editor renders inline CF
@@ -295,6 +297,8 @@ fun ConnectionEditDialog(
     var moshServerCommand by rememberSaveable { mutableStateOf(existing?.moshServerCommand ?: "") }
     var postLoginCommand by rememberSaveable { mutableStateOf(existing?.postLoginCommand ?: "") }
     var postLoginBeforeSessionManager by rememberSaveable { mutableStateOf(existing?.postLoginBeforeSessionManager ?: true) }
+    // USB/IP auto-forward: VID:PID of a phone device to export on connect (null = off).
+    var usbForwardVidPid by rememberSaveable { mutableStateOf(existing?.usbForwardVidPid) }
     var disableAltScreen by rememberSaveable { mutableStateOf(existing?.disableAltScreen ?: false) }
     var useAndroidShell by rememberSaveable { mutableStateOf(existing?.useAndroidShell ?: false) }
     // null = follow the active distro (the default). Set to a distro id to
@@ -2452,6 +2456,56 @@ fun ConnectionEditDialog(
                         )
                     }
 
+                    // USB/IP device forwarding (SSH) — export a phone-attached USB
+                    // device to the remote host on connect (e.g. a YubiKey for
+                    // `ssh-keygen -t ed25519-sk`, touch on the phone).
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.connections_section_usb_forward),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(
+                        stringResource(R.string.connections_helper_usb_forward),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    var usbExpanded by remember { mutableStateOf(false) }
+                    val usbNoneLabel = stringResource(R.string.connections_usb_forward_none)
+                    val usbSelectedLabel = usbDevices.firstOrNull { it.first == usbForwardVidPid }?.second
+                        ?: usbForwardVidPid?.let { stringResource(R.string.connections_usb_forward_unattached, it) }
+                        ?: usbNoneLabel
+                    ExposedDropdownMenuBox(
+                        expanded = usbExpanded,
+                        onExpandedChange = { usbExpanded = it },
+                    ) {
+                        OutlinedTextField(
+                            value = usbSelectedLabel,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(R.string.connections_field_usb_forward)) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = usbExpanded) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                        )
+                        ExposedDropdownMenu(
+                            expanded = usbExpanded,
+                            onDismissRequest = { usbExpanded = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(usbNoneLabel) },
+                                onClick = { usbForwardVidPid = null; usbExpanded = false },
+                            )
+                            usbDevices.forEach { (vidPid, label) ->
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = { usbForwardVidPid = vidPid; usbExpanded = false },
+                                )
+                            }
+                        }
+                    }
+
                     // File transport picker — Auto / SFTP / SCP (legacy)
                     Spacer(Modifier.height(8.dp))
                     Text(
@@ -3250,6 +3304,7 @@ fun ConnectionEditDialog(
                             moshServerCommand = moshServerCommand.ifBlank { null },
                             postLoginCommand = postLoginCommand.ifBlank { null },
                             postLoginBeforeSessionManager = postLoginBeforeSessionManager,
+                            usbForwardVidPid = usbForwardVidPid,
                             disableAltScreen = disableAltScreen,
                             terminalColorScheme = terminalColorScheme,
                             useAndroidShell = useAndroidShell,

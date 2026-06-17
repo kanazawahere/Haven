@@ -136,7 +136,12 @@ class ConnectionsViewModel @Inject constructor(
     private val agentUiCommandBus: sh.haven.core.data.agent.AgentUiCommandBus,
     private val desktopSessionRegistry: sh.haven.core.data.desktop.DesktopSessionRegistry,
     private val userMessageBus: sh.haven.core.data.message.UserMessageBus,
+    private val usbipForwarder: sh.haven.feature.connections.usb.UsbipConnectionForwarder,
 ) : ViewModel() {
+
+    /** Live USB/IP auto-forwards, keyed by sessionId (Slice 1). Torn down on disconnect. */
+    private val usbForwardHandles =
+        java.util.concurrent.ConcurrentHashMap<String, sh.haven.feature.connections.usb.UsbipConnectionForwarder.Handle>()
 
     /**
      * Installed distros `(id, label)` for the LOCAL profile editor's
@@ -144,6 +149,10 @@ class ConnectionsViewModel @Inject constructor(
      */
     fun installedLocalDistros(): List<Pair<String, String>> =
         localSessionManager.installedDistros()
+
+    /** Attached phone USB devices `(vidPid, label)` for the SSH USB-forward picker. */
+    fun availableUsbDevices(): List<Pair<String, String>> =
+        usbipForwarder.availableDevices()
 
     /**
      * Re-exposed from [CertRenewalGate] so the Connections screen can
@@ -3234,6 +3243,20 @@ class ConnectionsViewModel @Inject constructor(
         }
         sshSessionManager.updateStatus(sessionId, SshSessionManager.SessionState.Status.CONNECTED)
         repository.markConnected(profileId)
+        // USB/IP auto-forward (Slice 1): if this profile pins a USB device, export
+        // it and attach it on the remote. Off the connect path and best-effort —
+        // it never blocks or fails the connection.
+        viewModelScope.launch(Dispatchers.IO) {
+            val profile = repository.getById(profileId) ?: return@launch
+            val vidPid = profile.usbForwardVidPid
+            if (vidPid.isNullOrBlank() || !profile.isSsh) return@launch
+            val client = sshSessionManager.getSession(sessionId)?.client ?: return@launch
+            usbipForwarder.attach(client, vidPid) { msg ->
+                userMessageBus.emit(
+                    sh.haven.core.data.message.UserMessage(msg, sh.haven.core.data.message.UserMessage.Severity.INFO),
+                )
+            }?.let { usbForwardHandles[sessionId] = it }
+        }
         // Persist all open session names for this profile (pipe-delimited)
         sshSessionManager.getSession(sessionId)?.let { session ->
             if (session.sessionManager != SessionManager.NONE) {
@@ -3919,6 +3942,20 @@ class ConnectionsViewModel @Inject constructor(
         val transportLog = listOfNotNull(moshLog, etLog).joinToString("\n").ifEmpty { null }
 
         viewModelScope.launch { connectionLogRepository.logEvent(profileId, ConnectionLog.Status.DISCONNECTED, verboseLog = transportLog) }
+        // Tear down any USB/IP auto-forward this profile holds before the SSH
+        // client goes away (Slice 1). Best-effort; the remote device also detaches
+        // when the forward's socket closes.
+        sshSessionManager.getSessionsForProfile(profileId).forEach { session ->
+            usbForwardHandles.remove(session.sessionId)?.let { handle ->
+                viewModelScope.launch(Dispatchers.IO) {
+                    usbipForwarder.teardown(session.client, handle) { msg ->
+                        userMessageBus.emit(
+                            sh.haven.core.data.message.UserMessage(msg, sh.haven.core.data.message.UserMessage.Severity.INFO),
+                        )
+                    }
+                }
+            }
+        }
         sessionManagerRegistry.disconnectProfile(profileId)
         // Tear down this profile's tunnel-dependent resources: close its VNC/
         // RDP Desktop tab (via the lease's parent-gone callback) AND release

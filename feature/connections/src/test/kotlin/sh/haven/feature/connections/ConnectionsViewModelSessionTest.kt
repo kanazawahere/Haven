@@ -172,6 +172,7 @@ class ConnectionsViewModelSessionTest {
                 every { activeProfiles } returns MutableStateFlow(emptyMap())
             },
             userMessageBus = sh.haven.core.data.message.UserMessageBus(),
+            usbipForwarder = mockk(relaxed = true),
         )
     }
 

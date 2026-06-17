@@ -95,6 +95,7 @@ class McpNoTerminalSessionTest {
             totpSecretRepository = mockk<sh.haven.core.data.repository.TotpSecretRepository>(relaxed = true),
             desktopSessionRegistry = mockk<sh.haven.core.data.desktop.DesktopSessionRegistry>(relaxed = true),
             usbBroker = mockk<sh.haven.core.usb.UsbBroker>(relaxed = true),
+            usbIpServer = mockk<sh.haven.core.usb.UsbIpServer>(relaxed = true),
             presentationManager = sh.haven.core.data.agent.AgentPresentationManager(),
             havenUiBridge = mockk(relaxed = true),
             standingPolicyRepository = mockk(relaxed = true),

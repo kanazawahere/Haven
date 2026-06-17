@@ -100,6 +100,7 @@ internal class McpTools(
     private val totpSecretRepository: sh.haven.core.data.repository.TotpSecretRepository,
     private val desktopSessionRegistry: sh.haven.core.data.desktop.DesktopSessionRegistry,
     private val usbBroker: sh.haven.core.usb.UsbBroker,
+    private val usbIpServer: sh.haven.core.usb.UsbIpServer,
     private val presentationManager: sh.haven.core.data.agent.AgentPresentationManager,
     // Capture + drive Haven's OWN rendered UI for the self-hosting loop (§1a).
     private val havenUiBridge: HavenUiBridge,
@@ -147,13 +148,8 @@ internal class McpTools(
      * tool drives it, so a single instance here is sufficient.
      */
     private val usbProxyServer by lazy { sh.haven.core.usb.UsbProxyServer(usbBroker) }
-
-    /**
-     * USB/IP server — the remote-host counterpart to [usbProxyServer]. Same
-     * broker-built (not DI-wired) pattern so it stays out of the McpTools
-     * constructor signature; only the start/stop_usbip_export tools drive it.
-     */
-    private val usbIpServer by lazy { sh.haven.core.usb.UsbIpServer(usbBroker) }
+    // usbIpServer is the DI singleton (constructor param) — shared with the
+    // connection auto-forward so the two never fight over the listen port.
 
     /**
      * Fire-and-forget scope for agent→user *presentation* staging. present_media

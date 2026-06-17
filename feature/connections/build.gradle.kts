@@ -46,6 +46,7 @@ dependencies {
     implementation(project(":core:mail"))
     implementation(project(":core:fido"))
     implementation(project(":core:local"))
+    implementation(project(":core:usb"))
     implementation(project(":core:wayland"))
     implementation(project(":core:stepca"))
 

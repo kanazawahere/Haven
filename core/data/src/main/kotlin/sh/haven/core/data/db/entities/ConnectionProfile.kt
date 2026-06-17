@@ -196,6 +196,17 @@ data class ConnectionProfile(
     /** When true, post-login command runs before the session manager (default); when false, runs inside it. */
     val postLoginBeforeSessionManager: Boolean = true,
     /**
+     * USB/IP auto-forward: the VID:PID (e.g. "1050:0406") of a phone-attached
+     * USB device to export over usbip when this SSH profile connects. Null = off.
+     * Stored as VID:PID (not the volatile /dev/bus/usb path) so it survives a
+     * replug; resolved to the current device at connect time. On connect Haven
+     * opens the device, starts the userspace usbip server on loopback, adds a
+     * remote forward for port 3240, and best-effort runs `usbip attach` on the
+     * remote so the device appears there as a real node (e.g. a YubiKey for
+     * `ssh-keygen -t ed25519-sk`, touch on the phone). SSH-only.
+     */
+    val usbForwardVidPid: String? = null,
+    /**
      * Preferred file-transfer transport for SSH profiles. "AUTO" (default)
      * tries SFTP and falls back to legacy SCP when the sftp-server subsystem
      * is unavailable; "SFTP" forces SFTP; "SCP" forces legacy scp -t/-f.
