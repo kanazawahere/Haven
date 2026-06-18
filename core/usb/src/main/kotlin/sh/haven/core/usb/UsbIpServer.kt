@@ -167,6 +167,7 @@ class UsbIpServer @Inject constructor(
         val devnum = parts.lastOrNull()?.toIntOrNull() ?: 1
         // Active-config descriptor follows the 18-byte device descriptor.
         val configValue = if (raw.size >= 18 + 6) u8(18 + 5) else 1
+        val config = if (raw.size > 18) raw.copyOfRange(18, raw.size) else ByteArray(0)
         return UsbIpProtocol.Device(
             busid = "$busnum-$devnum",
             busnum = busnum,
@@ -180,7 +181,11 @@ class UsbIpServer @Inject constructor(
             deviceProtocol = u8(6),
             configurationValue = configValue,
             numConfigurations = u8(17),
-            numInterfaces = 1, // we export only interface 0 (FIDO); CCID/others are filtered out
+            // FIDO keys export interface 0 only (CCID stripped, see filterToFidoInterface);
+            // every other device keeps its real count so multi-interface classes
+            // (e.g. CDC serial: control + data) fully enumerate on the host.
+            numInterfaces = if (interface0IsHid(config)) 1
+                else if (config.size >= 5) config[4].toInt() and 0xFF else 1,
         )
     }
 
@@ -262,6 +267,11 @@ class UsbIpServer @Inject constructor(
          */
         fun filterToFidoInterface(config: ByteArray): ByteArray {
             if (config.size < 9 || (config[1].toInt() and 0xFF) != 0x02) return config
+            // Interface-0-only is the FIDO case (a composite key whose CCID interface
+            // would starve FIDO on Android's serialized connection). Any other device
+            // keeps its whole config — e.g. a CDC serial adapter's data interface is
+            // #1, and stripping it drops the bulk endpoints the host's cdc_acm needs.
+            if (!interface0IsHid(config)) return config
             val body = ArrayList<Byte>()
             var i = 9
             var keep = false
@@ -283,6 +293,27 @@ class UsbIpServer @Inject constructor(
             out[3] = ((total shr 8) and 0xFF).toByte() // wTotalLength hi
             out[4] = 1                                  // bNumInterfaces
             return out
+        }
+
+        /**
+         * True when the CONFIGURATION descriptor's interface 0 is HID (class 0x03) —
+         * the only case we strip to interface-0-only (a FIDO key). Walks to the first
+         * INTERFACE descriptor with bInterfaceNumber 0 and reads its bInterfaceClass.
+         */
+        fun interface0IsHid(config: ByteArray): Boolean {
+            if (config.size < 9 || (config[1].toInt() and 0xFF) != 0x02) return false
+            var i = 9
+            while (i + 2 <= config.size) {
+                val len = config[i].toInt() and 0xFF
+                if (len < 2 || i + len > config.size) break
+                if ((config[i + 1].toInt() and 0xFF) == 0x04 && len >= 6 &&
+                    (config[i + 2].toInt() and 0xFF) == 0
+                ) {
+                    return (config[i + 5].toInt() and 0xFF) == 0x03
+                }
+                i += len
+            }
+            return false
         }
 
         /** -EPIPE: the closest generic "transfer failed" errno the vhci client maps. */

@@ -122,8 +122,12 @@ sudo bash -c 'modprobe vhci_hcd; usbip attach -r 127.0.0.1 -b <busid>'
   multi-device "touch to select" probe when no device is named, and that probe
   stalls over the bridge. Naming the device skips it. `fido2-cred -M
   /dev/hidrawN` and `fido2-token` work without the flag.
-- **HID-focused.** Verified end-to-end for FIDO/CTAPHID (the YubiKey); other
-  device classes aren't tested.
+- **Verified for FIDO/CTAPHID (YubiKey) and CDC serial (ESP32-S3
+  USB-Serial/JTAG).** A composite FIDO key exports interface 0 only — its CCID
+  interface would starve FIDO on Android's serialized connection — but every
+  other device exports all its interfaces, so a USB-serial adapter binds
+  `cdc_acm` on the host and `esptool flash_id` connects, uploads the stub, and
+  reads flash over the bridge. Other device classes are still untested.
 - **Remote-only.** This path needs the host's `vhci-hcd` kernel module; it's not
   a proot-guest path (the guest uses the broker above).
 

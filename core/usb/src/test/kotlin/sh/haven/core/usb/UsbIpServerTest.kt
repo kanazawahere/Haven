@@ -129,6 +129,26 @@ class UsbIpServerTest {
     }
 
     @Test
+    fun `filterToFidoInterface passes a CDC serial config through unchanged`() {
+        fun bytes(vararg v: Int) = ByteArray(v.size) { v[it].toByte() }
+        // ESP32-S3 shape: interface 0 = CDC control (class 2), interface 1 = CDC data
+        // (class 10) with the bulk endpoints. Stripping #1 would kill cdc_acm binding.
+        val iface0 = bytes(9, 0x04, 0, 0, 1, 2, 2, 0, 0) +    // interface 0, class 2 (CDC control)
+            bytes(7, 0x05, 0x83, 0x03, 64, 0, 1)             // interrupt IN
+        val iface1 = bytes(9, 0x04, 1, 0, 2, 10, 0, 0, 0) +  // interface 1, class 10 (CDC data)
+            bytes(7, 0x05, 0x02, 0x02, 64, 0, 0) + bytes(7, 0x05, 0x82, 0x02, 64, 0, 0)
+        val header = bytes(9, 0x02, 0, 0, 2, 1, 0, 0x80, 50)
+        val full = header + iface0 + iface1
+        full[2] = (full.size and 0xFF).toByte()
+        full[3] = ((full.size shr 8) and 0xFF).toByte()
+
+        val filtered = UsbIpServer.filterToFidoInterface(full)
+        assertArrayEquals(full, filtered)            // untouched: both interfaces kept
+        assertEquals(2, filtered[4].toInt())         // bNumInterfaces still 2
+        assertEquals(false, UsbIpServer.interface0IsHid(full))
+    }
+
+    @Test
     fun `transfer failure becomes negative-errno reply`() {
         val reply = UsbIpServer.bridgeSubmit(submit(4, UsbIpProtocol.DIR_IN, ep = 4, transferBufferLength = 64), FakeBackend(fail = true), 1000)
         val (status, actualLength) = replyStatusAndLength(reply)
