@@ -30,6 +30,11 @@
 ---
 
 <p align="center">
+  <img src="docs/haven-gpu-gl.gif" width="540" alt="GPU-accelerated Linux OpenGL on Android — Mesa zink on venus, Mali passthrough" /><br/>
+  <sub><b>GPU-accelerated Linux OpenGL</b>, live on the phone — Mesa <b>zink</b> on <b>venus</b> passes the <b>Mali</b> GPU through to a desktop Linux GL app in a Haven cage, with no <code>/dev/dri</code>.</sub>
+</p>
+
+<p align="center">
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3_wayland_desktop.png" width="140" />
   &nbsp;
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1_terminal.png" width="140" />
