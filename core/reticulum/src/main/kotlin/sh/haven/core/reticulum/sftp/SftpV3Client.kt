@@ -226,8 +226,14 @@ class SftpV3Client(private val exec: ReticulumExecSession) {
 
     private fun failAll(cause: IOException) {
         if (!versionDeferred.isCompleted) versionDeferred.completeExceptionally(cause)
-        val snapshot = pending.keys.toList()
-        for (id in snapshot) pending.remove(id)?.completeExceptionally(cause)
+        // Drain the live concurrent map's weakly-consistent value view directly and fail
+        // each pending op (completeExceptionally is idempotent, so a racing dispatch() that
+        // already completed one is harmless). The previous `pending.keys.toList()` snapshot
+        // raced with concurrent pending.remove() in dispatch()/request(): at size==1, Kotlin's
+        // toList() fast-path calls iterator().next(), which threw NoSuchElementException when
+        // the sole entry was removed mid-snapshot.
+        for (deferred in pending.values) deferred.completeExceptionally(cause)
+        pending.clear()
     }
 
     private fun readU32(b: ByteArray, off: Int): Int =
