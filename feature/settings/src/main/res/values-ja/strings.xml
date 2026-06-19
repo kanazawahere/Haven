@@ -381,4 +381,13 @@
     <string name="settings_mcp_trust_loopback_title">ローカルクライアントを信頼</string>
     <string name="settings_mcp_trust_loopback_subtitle_on">有効 — ローカルクライアント（127.0.0.1）はペアリングや承認プロンプトなしで接続します。Wi-Fi/LAN と WireGuard クライアントは引き続き確認を求めます。</string>
     <string name="settings_mcp_trust_loopback_subtitle_off">無効 — ローカルクライアントでもペアリングが必要で、リクエストごとに承認します</string>
+
+    <!-- Terminal reflow, GPU stack, standing policies (#250) -->
+    <string name="settings_reflow_on_keyboard_title">キーボードに合わせて端末をリサイズ</string>
+    <string name="settings_reflow_on_keyboard_subtitle">キーボードが開いたとき、画面を上にスクロールする代わりに端末をその上に収まるようリサイズします。上部にステータス行を表示する全画面アプリに役立ちます。通常のシェルではオフのままにしてください。</string>
+    <string name="settings_gpu_venus_title">実験的な GPU スタック（venus + zink）</string>
+    <string name="settings_gpu_venus_subtitle">アクセラレーションされたデスクトップで、virgl（GL 2.1）の代わりに venus（GPU への Vulkan）+ zink を使って最新の OpenGL（約 3.2 core）を利用します。ネイティブの Vulkan アプリは表示されますが、OpenGL の描画は現在低速です。ゲストに mesa-vulkan-drivers が必要です。オフ = virgl（デフォルト）。</string>
+    <string name="settings_standing_policies_header">常設ポリシー — これらのツールは確認なしで実行されます</string>
+    <string name="settings_standing_policy_meta">%1$s・最大 %2$d 回/分・%3$s に期限切れ</string>
+    <string name="settings_standing_policy_revoke">取り消し</string>
 </resources>

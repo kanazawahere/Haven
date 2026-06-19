@@ -166,4 +166,27 @@
     <!-- RenameKeyDialog (#231) -->
     <string name="keys_rename">名前を変更</string>
     <string name="keys_rename_title">キーの名前を変更</string>
+
+    <!-- FIDO2 / security-key registration (#250) -->
+    <string name="keys_offer_for_connections">接続で使用可能にする</string>
+    <string name="keys_sk_require_pin">サインイン時に PIN を要求</string>
+    <string name="keys_security_key">セキュリティキー（YubiKey）</string>
+    <string name="keys_security_key_hint">FIDO2 キーに新しい SSH キーを作成するか、すでにあるキーをインポートします。</string>
+    <string name="keys_security_key_setup">新しいキーを作成</string>
+    <string name="keys_security_key_setup_hint">セキュリティキー上に SSH キーを作成します（新品の場合は PIN を設定）。ノート PC も ssh-keygen も不要です。</string>
+    <string name="keys_security_key_import">すでにあるキーをインポート</string>
+    <string name="keys_security_key_import_hint">キーにすでに保存されている常駐 SSH-SK 認証情報を追加します（別の場所で ssh-keygen -O resident で作成したもの）。</string>
+    <string name="keys_register_on_security_key">セキュリティキーに SSH キーを作成</string>
+    <string name="keys_register_on_security_key_body">セキュリティキー上に常駐 sk-ssh-ed25519 認証情報を作成します。次に、USB で接続して押すか、NFC の場合は端末の背面にかざしてください。</string>
+    <string name="keys_register_verify_required">サインインのたびに PIN を要求</string>
+    <string name="keys_register_verify_required_hint">オン: SSH ログインに署名するたびにキーが PIN を要求します（verify-required — より安全）。オフ: タッチのみ。</string>
+    <string name="keys_register_pin">セキュリティキーの PIN</string>
+    <string name="keys_register_pin_confirm">PIN を確認</string>
+    <string name="keys_register_pin_hint">キーが新品なら PIN を選び、そうでなければ既存の PIN を入力します。4 文字以上。</string>
+    <string name="keys_register_pin_mismatch">PIN が一致しません</string>
+    <string name="keys_register_action">登録</string>
+    <string name="keys_fido_pin_set_title">セキュリティキーの PIN を作成</string>
+    <string name="keys_fido_pin_set_help">このセキュリティキーにはまだ PIN がありません。1 つ選んでください（4〜63 文字）。キーが署名するときに入力します。</string>
+    <string name="keys_fido_pin_confirm_label">PIN を確認</string>
+    <string name="keys_fido_pin_mismatch">PIN が一致しません</string>
 </resources>

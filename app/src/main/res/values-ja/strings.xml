@@ -146,4 +146,29 @@
     <!-- Local Linux desktop manager -->
     <string name="app_desktop_manager_title">ローカル Linux デスクトップ</string>
     <string name="app_desktop_manager_description">Haven 内でフル機能の Linux デスクトップを実行します。ディストリビューションを選び、デスクトップ環境（Xfce4、Openbox、Sway）をインストールして「起動」をタップするだけ — 別途サーバーや接続は不要です。</string>
+
+    <!-- App windows / installed-app launcher (#250) -->
+    <string name="app_desktop_app_window_pin_home_cd">%1$s をホーム画面に追加</string>
+    <string name="app_desktop_browse_installed_apps">インストール済みアプリを見る</string>
+    <string name="app_desktop_installed_apps_title">インストール済みアプリ</string>
+    <string name="app_desktop_installed_apps_search">アプリを検索</string>
+    <string name="app_desktop_installed_apps_count">%1$d 個のアプリ・アイコン付き %2$d 個</string>
+    <string name="app_desktop_installed_apps_empty">アクティブなディストロにグラフィカルアプリが見つかりません。</string>
+    <string name="app_desktop_installed_apps_close_cd">閉じる</string>
+    <string name="app_desktop_installed_app_icon_cd">%1$s のアイコン</string>
+    <string name="app_desktop_installed_app_launch_cd">%1$s を起動</string>
+    <string name="app_desktop_installed_app_fullscreen_on_cd">%1$s は全画面で開きます — タップでウィンドウ表示</string>
+    <string name="app_desktop_installed_app_fullscreen_off_cd">%1$s はウィンドウで開きます — タップで全画面</string>
+    <string name="app_desktop_app_window_fullscreen">全画面で開く</string>
+    <string name="app_desktop_app_window_run_as_root">root で実行</string>
+    <string name="app_desktop_app_window_run_as_root_hint">パッケージマネージャーやシステムツール向け（fakeroot をインストール）</string>
+    <string name="app_desktop_app_window_resolution">解像度</string>
+    <string name="app_desktop_app_window_scale">スケール</string>
+    <string name="app_desktop_opt_default">デフォルト</string>
+    <string name="app_desktop_res_auto">自動</string>
+    <string name="app_desktop_res_landscape">横向き</string>
+    <string name="app_desktop_res_custom">カスタム</string>
+    <string name="app_desktop_res_custom_hint">幅×高さ（例: 1024x600）</string>
+    <string name="app_desktop_app_window_defaults">デフォルト表示（すべてのアプリウィンドウ）</string>
+    <string name="app_window_scale_saved">このアプリのデフォルトサイズとして保存しました</string>
 </resources>

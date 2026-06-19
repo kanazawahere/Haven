@@ -471,4 +471,22 @@
     <string name="connections_field_imap_port">IMAP ポート</string>
     <string name="connections_field_smtp_port">SMTP ポート</string>
     <string name="connections_toggle_imap_tls">TLS を使用（暗黙的 SSL）</string>
+
+    <!-- USB forwarding, deploy password, FIDO auth, MCP toggle (#250) -->
+    <string name="connections_section_usb_forward">USB デバイスの転送</string>
+    <string name="connections_helper_usb_forward">接続時に、スマートフォンに接続された USB デバイスを USB/IP でこのホストにエクスポートします。YubiKey は ssh-keygen -t ed25519-sk 用にホスト側に表示され、タッチはスマートフォンで行います。自動アタッチにはホスト側で usbip とパスワード不要の sudo が必要です。そうでない場合はエクスポートとトンネルが確立され、表示されたアタッチコマンドを実行します。</string>
+    <string name="connections_field_usb_forward">USB デバイスを転送</string>
+    <string name="connections_usb_forward_none">なし</string>
+    <string name="connections_usb_forward_unattached">%1$s（未アタッチ）</string>
+    <string name="connections_deploy_field_password_optional">パスワード（任意）</string>
+    <string name="connections_deploy_password_hint">このプロファイルの保存済みキーでデプロイするには空のままにします。パスワードが必要なのは、サーバーがパスワードで認証する場合（またはキーのパスフレーズ／踏み台ホストのロック解除）だけです。</string>
+    <string name="connections_fido_key_label">キー: %1$s</string>
+    <string name="connections_fido_wrong_title">セキュリティキーが違います</string>
+    <string name="connections_fido_wrong_body">このキーにはサーバーが要求した認証情報がありません。要求されたキーを提示してタッチしてください。</string>
+    <string name="connections_auth_key_picker">キー: %1$s ▾</string>
+    <string name="connections_auth_key_only">✓ このキーのみ使用</string>
+    <string name="connections_mcp_active">エージェントがこの接続で動作中 — タップで MCP を無効化</string>
+    <string name="connections_mcp_disabled">この接続では MCP が無効 — タップで有効化</string>
+    <string name="connections_toggle_mcp_enabled">この接続で MCP エージェントを許可</string>
+    <string name="connections_helper_mcp_enabled">オフの場合、この接続を対象とする AI エージェント（MCP）ツールは拒否されます。接続自体は通常どおり使用できます。</string>
 </resources>
