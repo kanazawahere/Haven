@@ -29,6 +29,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ContentPaste
@@ -1065,91 +1066,34 @@ private fun SshKeyAuditRow(
                         )
                     }
                 }
-                Text(
-                    text = formatDate(sshKey.createdAt),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (flags.isNotEmpty() || hasCertificate) {
-                Spacer(Modifier.height(8.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    flags.sortedBy { it.ordinal }.forEach { flag -> FlagChip(flag) }
-                    if (hasCertificate) {
-                        val certLabel = if (sshKey.certIssuedAt != null && sshKey.caConfigId != null) {
-                            stringResource(
-                                R.string.keys_chip_certificate_minted,
-                                formatDate(sshKey.certIssuedAt!!),
-                            )
-                        } else {
-                            stringResource(R.string.keys_chip_certificate)
-                        }
-                        AssistChip(
-                            onClick = {},
-                            label = {
-                                Text(
-                                    certLabel,
-                                    style = MaterialTheme.typography.labelSmall,
-                                )
-                            },
-                            leadingIcon = {
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = formatDate(sshKey.createdAt),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    // Compact status badges, top-right of the card (#238) — replaces
+                    // the old full-width chip row + full-width toggle rows (the
+                    // toggles now live in the ⋮ menu). The label rides on each icon's
+                    // content description so it's still announced / long-press hinted.
+                    if (flags.isNotEmpty() || hasCertificate) {
+                        Spacer(Modifier.height(4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            flags.sortedBy { it.ordinal }.forEach { flag -> FlagBadge(flag) }
+                            if (hasCertificate) {
                                 Icon(
-                                    Icons.Filled.Badge,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(2.dp),
+                                    imageVector = Icons.Filled.Badge,
+                                    contentDescription = if (sshKey.certIssuedAt != null && sshKey.caConfigId != null) {
+                                        stringResource(R.string.keys_chip_certificate_minted, formatDate(sshKey.certIssuedAt!!))
+                                    } else {
+                                        stringResource(R.string.keys_chip_certificate)
+                                    },
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp),
                                 )
-                            },
-                            colors = AssistChipDefaults.assistChipColors(),
-                        )
+                            }
+                        }
                     }
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = stringResource(R.string.keys_require_biometric),
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f),
-                )
-                Switch(
-                    checked = KeystoreFlag.BIOMETRIC_PROTECTED in flags,
-                    onCheckedChange = onBiometricToggle,
-                )
-            }
-            // Per-key opt-out of "any saved key" auto-auth (the OpenSSH-style
-            // offer-all default). Hidden for SK/FIDO keys: those are never
-            // auto-offered (pin them to a profile to use them), so the toggle
-            // would be a no-op there.
-            if (!sshKey.keyType.startsWith("sk-")) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(R.string.keys_offer_for_connections),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Switch(
-                        checked = sshKey.enabledForAuth,
-                        onCheckedChange = onEnabledForAuthToggle,
-                    )
-                }
-            }
-            // FIDO2/SK keys: flip verify-required (PIN at sign-in) in place,
-            // without re-registering — the credential was made with a PIN token
-            // so it can do UV at assertion. Sits with the biometric toggle.
-            if (sshKey.keyType.startsWith("sk-")) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(R.string.keys_sk_require_pin),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Switch(
-                        checked = verifyRequired,
-                        onCheckedChange = onSetVerifyRequired,
-                    )
                 }
             }
         }
@@ -1171,6 +1115,41 @@ private fun SshKeyAuditRow(
                 onClick = { onMenuDismiss(); onRename() },
                 leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
             )
+            HorizontalDivider()
+            // Per-key settings — moved off the card into the menu to keep the key
+            // rows compact on tall phones; current state shows as a trailing ✓ and
+            // as the top-right card badges (#238).
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.keys_require_biometric)) },
+                onClick = { onBiometricToggle(KeystoreFlag.BIOMETRIC_PROTECTED !in flags); onMenuDismiss() },
+                leadingIcon = { Icon(Icons.Filled.Fingerprint, contentDescription = null) },
+                trailingIcon = {
+                    if (KeystoreFlag.BIOMETRIC_PROTECTED in flags) {
+                        Icon(Icons.Filled.Check, contentDescription = null)
+                    }
+                },
+            )
+            if (!sshKey.keyType.startsWith("sk-")) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.keys_offer_for_connections)) },
+                    onClick = { onEnabledForAuthToggle(!sshKey.enabledForAuth); onMenuDismiss() },
+                    leadingIcon = { Icon(Icons.Filled.VpnKey, contentDescription = null) },
+                    trailingIcon = {
+                        if (sshKey.enabledForAuth) Icon(Icons.Filled.Check, contentDescription = null)
+                    },
+                )
+            }
+            if (sshKey.keyType.startsWith("sk-")) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.keys_sk_require_pin)) },
+                    onClick = { onSetVerifyRequired(!verifyRequired); onMenuDismiss() },
+                    leadingIcon = { Icon(Icons.Filled.Pin, contentDescription = null) },
+                    trailingIcon = {
+                        if (verifyRequired) Icon(Icons.Filled.Check, contentDescription = null)
+                    },
+                )
+            }
+            HorizontalDivider()
             if (!sshKey.keyType.startsWith("sk-")) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.keys_export_private_key)) },
@@ -1270,6 +1249,36 @@ private fun PasswordAuditRow(
             )
         }
     }
+}
+
+/**
+ * Compact icon-only status badge for the top-right of a key card (#238). Same
+ * icon/label mapping as [FlagChip], but no chip background or text — the label
+ * rides on the content description (a11y + long-press hint) so a stack of keys
+ * stays short on tall phones. [FlagChip] is kept for the password rows.
+ */
+@Composable
+private fun FlagBadge(flag: KeystoreFlag) {
+    val labelRes = when (flag) {
+        KeystoreFlag.HARDWARE_BACKED -> R.string.keys_chip_hardware_backed
+        KeystoreFlag.REQUIRES_PASSPHRASE -> R.string.keys_chip_passphrase
+        KeystoreFlag.REQUIRES_USER_PRESENCE -> R.string.keys_chip_user_presence
+        KeystoreFlag.REQUIRES_USER_VERIFICATION -> R.string.keys_chip_user_verification
+        KeystoreFlag.BIOMETRIC_PROTECTED -> R.string.keys_chip_biometric
+    }
+    val icon = when (flag) {
+        KeystoreFlag.HARDWARE_BACKED -> Icons.Filled.Shield
+        KeystoreFlag.REQUIRES_PASSPHRASE -> Icons.Filled.Key
+        KeystoreFlag.REQUIRES_USER_PRESENCE -> Icons.Filled.TouchApp
+        KeystoreFlag.REQUIRES_USER_VERIFICATION -> Icons.Filled.Fingerprint
+        KeystoreFlag.BIOMETRIC_PROTECTED -> Icons.Filled.Fingerprint
+    }
+    Icon(
+        imageVector = icon,
+        contentDescription = stringResource(labelRes),
+        tint = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.size(18.dp),
+    )
 }
 
 @Composable
