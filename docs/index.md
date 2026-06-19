@@ -23,6 +23,14 @@ title: Haven
   Open source under AGPLv3. No telemetry. No ads. No account.
 </p>
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/GlassHaven/Haven/main/docs/haven-gpu-gl.gif" width="180" alt="GPU-accelerated Linux OpenGL — Mesa zink on venus, Mali passthrough" />
+</p>
+
+<p align="center">
+  <sub><b>GPU-accelerated Linux OpenGL</b>, live on the phone — Mesa <b>zink</b> on <b>venus</b> passes the <b>Mali</b> GPU through to a desktop Linux GL app in a Haven cage, with no <code>/dev/dri</code>.</sub>
+</p>
+
 ## Download
 
 <table>
@@ -60,6 +68,10 @@ Both builds are identical. Minimum Android 8.0 (API 26).
 - **[Security](features/security.md)** — biometric lock, no telemetry, encrypted backup/restore (AES-256-GCM).
 
 Browse the [full feature index](FEATURES.md).
+
+## Languages
+
+Available in 12 languages: English, Chinese (simplified), Spanish, Hindi, Arabic (with RTL support), Portuguese, Bengali, Russian, Japanese, Korean, French, and German. The UI follows the device language. Translation contributions are welcome.
 
 ## Why Haven?
 
