@@ -166,4 +166,27 @@
     <!-- RenameKeyDialog (#231) -->
     <string name="keys_rename">Переименовать</string>
     <string name="keys_rename_title">Переименовать ключ</string>
+
+    <!-- FIDO2 / security-key registration (#250) -->
+    <string name="keys_offer_for_connections">Предлагать для подключений</string>
+    <string name="keys_sk_require_pin">Запрашивать PIN при входе</string>
+    <string name="keys_security_key">Ключ безопасности (YubiKey)</string>
+    <string name="keys_security_key_hint">Создайте новый SSH-ключ на ключе FIDO2 или импортируйте уже имеющиеся на нём ключи.</string>
+    <string name="keys_security_key_setup">Создать на нём новый ключ</string>
+    <string name="keys_security_key_setup_hint">Создайте SSH-ключ на ключе безопасности (задаёт PIN, если он новый). Без ноутбука и ssh-keygen.</string>
+    <string name="keys_security_key_import">Импортировать уже имеющиеся ключи</string>
+    <string name="keys_security_key_import_hint">Добавьте резидентные учётные данные SSH-SK, уже сохранённые на ключе (созданные в другом месте через ssh-keygen -O resident).</string>
+    <string name="keys_register_on_security_key">Создать SSH-ключ на ключе безопасности</string>
+    <string name="keys_register_on_security_key_body">Создаёт резидентные учётные данные sk-ssh-ed25519 на ключе безопасности. Затем: подключите его по USB и нажмите на него, либо приложите к задней панели телефона для NFC.</string>
+    <string name="keys_register_verify_required">Запрашивать PIN при каждом входе</string>
+    <string name="keys_register_verify_required_hint">Включено: ключ запрашивает PIN при каждой подписи входа по SSH (verify-required — надёжнее). Выключено: только касание.</string>
+    <string name="keys_register_pin">PIN ключа безопасности</string>
+    <string name="keys_register_pin_confirm">Подтвердите PIN</string>
+    <string name="keys_register_pin_hint">Выберите PIN, если ключ новый, или введите его текущий PIN. От 4 символов.</string>
+    <string name="keys_register_pin_mismatch">PIN-коды не совпадают</string>
+    <string name="keys_register_action">Зарегистрировать</string>
+    <string name="keys_fido_pin_set_title">Создать PIN для ключа безопасности</string>
+    <string name="keys_fido_pin_set_help">У этого ключа безопасности ещё нет PIN. Выберите его (4–63 символа) — вы будете вводить его при подписи ключом.</string>
+    <string name="keys_fido_pin_confirm_label">Подтвердите PIN</string>
+    <string name="keys_fido_pin_mismatch">PIN-коды не совпадают</string>
 </resources>

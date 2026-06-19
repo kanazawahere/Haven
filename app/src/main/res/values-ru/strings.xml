@@ -152,4 +152,29 @@
     <!-- Local Linux desktop manager -->
     <string name="app_desktop_manager_title">Локальный рабочий стол Linux</string>
     <string name="app_desktop_manager_description">Запустите полноценный рабочий стол Linux внутри Haven. Выберите дистрибутив, установите среду рабочего стола (Xfce4, Openbox или Sway), затем нажмите «Запустить» — отдельный сервер или подключение не нужны.</string>
+
+    <!-- App windows / installed-app launcher (#250) -->
+    <string name="app_desktop_app_window_pin_home_cd">Добавить %1$s на главный экран</string>
+    <string name="app_desktop_browse_installed_apps">Просмотр установленных приложений</string>
+    <string name="app_desktop_installed_apps_title">Установленные приложения</string>
+    <string name="app_desktop_installed_apps_search">Поиск приложений</string>
+    <string name="app_desktop_installed_apps_count">%1$d приложений · %2$d со значками</string>
+    <string name="app_desktop_installed_apps_empty">В активном дистрибутиве не найдено графических приложений.</string>
+    <string name="app_desktop_installed_apps_close_cd">Закрыть</string>
+    <string name="app_desktop_installed_app_icon_cd">Значок %1$s</string>
+    <string name="app_desktop_installed_app_launch_cd">Запустить %1$s</string>
+    <string name="app_desktop_installed_app_fullscreen_on_cd">%1$s открывается в полноэкранном режиме — нажмите для оконного</string>
+    <string name="app_desktop_installed_app_fullscreen_off_cd">%1$s открывается в оконном режиме — нажмите для полноэкранного</string>
+    <string name="app_desktop_app_window_fullscreen">Открыть в полноэкранном режиме</string>
+    <string name="app_desktop_app_window_run_as_root">Запустить от root</string>
+    <string name="app_desktop_app_window_run_as_root_hint">Для пакетных менеджеров и системных утилит (устанавливает fakeroot)</string>
+    <string name="app_desktop_app_window_resolution">Разрешение</string>
+    <string name="app_desktop_app_window_scale">Масштаб</string>
+    <string name="app_desktop_opt_default">По умолчанию</string>
+    <string name="app_desktop_res_auto">Авто</string>
+    <string name="app_desktop_res_landscape">Альбомная</string>
+    <string name="app_desktop_res_custom">Своё</string>
+    <string name="app_desktop_res_custom_hint">Ширина×Высота, напр. 1024x600</string>
+    <string name="app_desktop_app_window_defaults">Экран по умолчанию (все окна приложений)</string>
+    <string name="app_window_scale_saved">Сохранено как размер по умолчанию для этого приложения</string>
 </resources>
