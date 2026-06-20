@@ -1,0 +1,1 @@
+SMB reliability: the connection now re-establishes itself automatically when the underlying link drops (common on mobile/WireGuard), instead of failing reads with "share already closed." This fixes SMB media playback/streaming breaking after the connection had been idle or the tunnel blipped.
