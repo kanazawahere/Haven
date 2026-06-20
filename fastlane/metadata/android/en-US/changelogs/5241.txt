@@ -1,0 +1,1 @@
+Keys tab: reorder your keys with Move up / Move down in each key's ⋮ menu (#238). The chosen order is remembered. Also fixes the agent-driven APK install over a slow backend (SFTP/rclone/Reticulum) so it no longer reports a false timeout while the install actually completes.
