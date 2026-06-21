@@ -1,8 +1,16 @@
 package sh.haven.app
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import sh.haven.core.data.agent.AgentConsentManager
+import sh.haven.core.data.agent.ConsentRequest
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
@@ -198,6 +206,16 @@ class HavenApp : Application(), Configuration.Provider {
             .onEach { agentConsentManager.setPersistentBypassClients(it) }
             .launchIn(appScope)
 
+        // Surface a backgrounded consent block as a heads-up notification so
+        // the user can come approve, instead of the request silently failing
+        // closed because no activity was foreground to render the prompt. The
+        // fail-closed DENY still stands — tapping the notification just opens
+        // Haven so the agent's retry can prompt. (AgentConsentManager design
+        // note §85: "notification explaining what was blocked".)
+        agentConsentManager.blockedWhileBackground
+            .onEach { postConsentBlockedNotification(it) }
+            .launchIn(appScope)
+
         // Schedule the daily step-ca cert-renewal check (#133 phase 2b).
         // Idempotent (KEEP policy); cheap when the user has no CAs
         // configured — the worker enumerates SshKeys and exits early.
@@ -206,6 +224,69 @@ class HavenApp : Application(), Configuration.Provider {
         // Start the Mail-Rules watch. It observes the master switch and does nothing
         // until the user enables inbound-email automation (off by default).
         mailWatchManager.start()
+    }
+
+    /**
+     * Post (or update) a single heads-up notification telling the user an
+     * agent action was blocked because Haven was backgrounded. Tapping it
+     * brings Haven to the foreground so the agent's retry can render the
+     * consent sheet. One stable id so a burst of blocked calls coalesces
+     * into one notification rather than spamming the shade.
+     */
+    private fun postConsentBlockedNotification(req: ConsentRequest) {
+        val mgr = NotificationManagerCompat.from(this)
+        if (!mgr.areNotificationsEnabled()) return
+
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (nm.getNotificationChannel(CONSENT_CHANNEL_ID) == null) {
+            nm.createNotificationChannel(
+                NotificationChannel(
+                    CONSENT_CHANNEL_ID,
+                    "Agent approval requests",
+                    NotificationManager.IMPORTANCE_HIGH,
+                ).apply {
+                    description = "Heads-up when an MCP agent action needs your approval but " +
+                        "Haven is in the background. The action fails closed until you open " +
+                        "Haven and allow or deny it."
+                },
+            )
+        }
+
+        val launch = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        val contentIntent = launch?.let {
+            PendingIntent.getActivity(
+                this, 0, it,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
+
+        val isPairing = req.toolName == AgentConsentManager.PAIRING_TOOL_NAME
+        val title = if (isPairing) "Haven: a client wants to pair" else "Haven: agent needs approval"
+        val line = if (isPairing) {
+            "Open Haven to allow or deny — it's blocked until you do."
+        } else {
+            "‘${req.toolName}’ was blocked while Haven was in the background. " +
+                "Open Haven to allow or deny — it's blocked until you do."
+        }
+
+        val notification = NotificationCompat.Builder(this, CONSENT_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setContentTitle(title)
+            .setContentText(line)
+            .setStyle(NotificationCompat.BigTextStyle().bigText("$line\n\n${req.summary}"))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
+            .setAutoCancel(true)
+            .apply { contentIntent?.let { setContentIntent(it) } }
+            .build()
+
+        try {
+            mgr.notify(CONSENT_BLOCKED_NOTIFICATION_ID, notification)
+        } catch (_: SecurityException) {
+            // POST_NOTIFICATIONS revoked between the enabled-check and notify; ignore.
+        }
     }
 
     /**
@@ -261,6 +342,12 @@ class HavenApp : Application(), Configuration.Provider {
         } catch (_: Exception) {
             // Best-effort cleanup
         }
+    }
+
+    private companion object {
+        const val CONSENT_CHANNEL_ID = "haven-agent-consent"
+        // Stable id so repeated backgrounded blocks update one notification.
+        const val CONSENT_BLOCKED_NOTIFICATION_ID = 0x4A56 // 'HV'
     }
 }
 

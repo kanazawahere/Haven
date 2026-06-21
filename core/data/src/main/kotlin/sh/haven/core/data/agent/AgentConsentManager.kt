@@ -1,8 +1,12 @@
 package sh.haven.core.data.agent
 
 import android.util.Log
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -152,6 +156,22 @@ class AgentConsentManager @Inject constructor() {
     /** All currently-waiting requests, oldest first. Drives the bottom sheet. */
     val pending: StateFlow<List<ConsentRequest>> = _pending.asStateFlow()
 
+    private val _blockedWhileBackground = MutableSharedFlow<ConsentRequest>(
+        extraBufferCapacity = 16,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    /**
+     * Emits whenever a non-[NEVER] request had to fail closed purely because
+     * no Haven activity was foreground to render the prompt (see [requestConsent]
+     * / [requestClientPairing]). The app layer turns this into a heads-up,
+     * tap-to-open notification so the user knows the agent is waiting on them —
+     * the §85 design note's "notification explaining what was blocked".
+     *
+     * Fail-closed is unchanged: the request still returns DENY. This is purely
+     * a "come back and you'll be asked" nudge, never a back-door approval.
+     */
+    val blockedWhileBackground: SharedFlow<ConsentRequest> = _blockedWhileBackground.asSharedFlow()
+
     /**
      * Activity layer reports its visibility through this so we can
      * fail-closed when no one can answer the prompt.
@@ -240,7 +260,16 @@ class AgentConsentManager @Inject constructor() {
             // Fail closed: nothing can render the prompt right now,
             // and the §85 rule forbids letting the call proceed
             // anyway. Caller will translate this into the audit log
-            // as Outcome.DENIED.
+            // as Outcome.DENIED. Nudge the user via a notification (the
+            // app layer renders it) so they can come approve a retry.
+            _blockedWhileBackground.tryEmit(
+                ConsentRequest(
+                    id = nextId.getAndIncrement(),
+                    toolName = toolName,
+                    clientHint = clientHint,
+                    summary = summary,
+                ),
+            )
             return ConsentDecision.DENY
         }
 
@@ -309,6 +338,14 @@ class AgentConsentManager @Inject constructor() {
     ): ConsentDecision {
         if (!foregroundActive) {
             Log.w(LOG_TAG, "requestClientPairing('$clientName'): foreground=false — failing closed")
+            _blockedWhileBackground.tryEmit(
+                ConsentRequest(
+                    id = nextId.getAndIncrement(),
+                    toolName = PAIRING_TOOL_NAME,
+                    clientHint = clientName,
+                    summary = "MCP client '$clientName' tried to connect to Haven.",
+                ),
+            )
             return ConsentDecision.DENY
         }
 

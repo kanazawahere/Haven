@@ -1,6 +1,7 @@
 package sh.haven.core.data.agent
 
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -35,6 +36,52 @@ class AgentConsentManagerTest {
         )
         assertEquals(ConsentDecision.DENY, decision)
     }
+
+    @Test
+    fun `backgrounded block still DENYs but emits a blocked-notification event`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val mgr = AgentConsentManager()
+            val seen = mutableListOf<ConsentRequest>()
+            val collector = launch { mgr.blockedWhileBackground.collect { seen.add(it) } }
+
+            // foregroundActive=false → fail closed.
+            val decision = mgr.requestConsent(
+                toolName = "read_logcat",
+                clientHint = "agent-A",
+                summary = "read 400 logcat lines",
+                level = ConsentLevel.EVERY_CALL,
+            )
+
+            assertEquals("fail-closed must still DENY", ConsentDecision.DENY, decision)
+            assertEquals(1, seen.size)
+            assertEquals("read_logcat", seen.single().toolName)
+            assertEquals("agent-A", seen.single().clientHint)
+            collector.cancel()
+        }
+
+    @Test
+    fun `foregrounded request does not emit a blocked-notification event`() =
+        runTest(UnconfinedTestDispatcher()) {
+            val mgr = AgentConsentManager()
+            mgr.setForegroundActive(true)
+            val seen = mutableListOf<ConsentRequest>()
+            val collector = launch { mgr.blockedWhileBackground.collect { seen.add(it) } }
+
+            val call = async {
+                mgr.requestConsent(
+                    toolName = "run_in_proot",
+                    clientHint = "agent-A",
+                    summary = "ip addr",
+                    level = ConsentLevel.EVERY_CALL,
+                    timeoutMs = Long.MAX_VALUE,
+                )
+            }
+            // It queues a real prompt (no block event); approve it.
+            mgr.respond(mgr.pending.value.single().id, ConsentDecision.ALLOW)
+            assertEquals(ConsentDecision.ALLOW, call.await())
+            assertTrue("no block event when foreground", seen.isEmpty())
+            collector.cancel()
+        }
 
     @Test
     fun `ONCE_PER_SESSION memoises ALLOW across calls`() = runTest(UnconfinedTestDispatcher()) {
