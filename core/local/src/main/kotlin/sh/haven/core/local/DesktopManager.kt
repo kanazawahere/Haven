@@ -398,7 +398,17 @@ class DesktopManager @Inject constructor(
      * output parses unambiguously. Installs the capture toolset on first
      * use via [ProotManager.ensureCaptureTools].
      */
-    suspend fun listWindows(de: ProotManager.DesktopEnvironment): List<WindowInfo> {
+    suspend fun listWindows(de: ProotManager.DesktopEnvironment): List<WindowInfo> =
+        when (de.spec.launch) {
+            is LaunchSpec.X11Vnc -> listWindowsX11(de)
+            is LaunchSpec.NestedWayland -> listWindowsWayland(de)
+            else -> throw IllegalStateException(
+                "Window enumeration is supported for X11/VNC and Sway desktops; " +
+                    "'${de.spec.id}' is ${de.spec.launch::class.simpleName}",
+            )
+        }
+
+    private suspend fun listWindowsX11(de: ProotManager.DesktopEnvironment): List<WindowInfo> {
         val display = requireX11Display(de)
         val (ready, detail) = prootManager.ensureCaptureTools()
         if (!ready) throw IllegalStateException(detail)
@@ -430,6 +440,72 @@ class DesktopManager @Inject constructor(
                 )
             }
             .toList()
+    }
+
+    /**
+     * Enumerate windows on a running nested-Wayland desktop. There's no
+     * portable wlroots window list, so this is compositor-specific: Sway
+     * exposes its layout tree over `swaymsg -t get_tree` (shipped with the
+     * sway package), which we walk for leaf view nodes. Other nested-Wayland
+     * compositors (Hyprland / niri / cage) aren't wired up yet — for those,
+     * use capture_desktop (whole output) which needs no enumeration. The
+     * returned id is the Sway container id and the rect is in output pixels
+     * (1x scale on the headless backend), so it doubles as a crop rect for
+     * capture_desktop.
+     */
+    private suspend fun listWindowsWayland(de: ProotManager.DesktopEnvironment): List<WindowInfo> {
+        val launch = de.spec.launch as? LaunchSpec.NestedWayland
+            ?: throw IllegalStateException("'${de.spec.id}' is not a nested-Wayland desktop")
+        val compositor = launch.compositorCmd.substringBefore(' ').substringAfterLast('/')
+        if (compositor != "sway") {
+            throw IllegalStateException(
+                "Window enumeration for '$compositor' isn't supported yet (Sway is); " +
+                    "use capture_desktop for a whole-output screenshot.",
+            )
+        }
+        val instance = _desktops.value[de]
+            ?: throw IllegalStateException("Desktop '${de.spec.id}' is not running")
+        val xdg = "/tmp/xdg-runtime-${instance.displayNumber}"
+        val script = buildString {
+            append("export XDG_RUNTIME_DIR=$xdg; ")
+            append("WL=\$(ls $xdg 2>/dev/null | grep -E '^wayland-[0-9]+\$' | head -1); ")
+            append("export WAYLAND_DISPLAY=\$WL; ")
+            append("swaymsg -t get_tree -r 2>/dev/null")
+        }
+        val (out, _) = prootManager.runCommandInProot(script)
+        // Strip any proot warning prefix before the JSON object.
+        val start = out.indexOf('{')
+        if (start < 0) return emptyList()
+        val views = mutableListOf<WindowInfo>()
+        fun walk(node: org.json.JSONObject) {
+            val nodes = node.optJSONArray("nodes")
+            val floating = node.optJSONArray("floating_nodes")
+            val childCount = (nodes?.length() ?: 0) + (floating?.length() ?: 0)
+            // A view leaf has a pid and no child containers.
+            val isView = !node.isNull("pid") && childCount == 0 &&
+                (node.optString("app_id").isNotEmpty() || node.optString("name").isNotEmpty())
+            if (isView) {
+                val rect = node.optJSONObject("rect")
+                views.add(
+                    WindowInfo(
+                        id = node.optInt("id").toString(),
+                        title = node.optString("name").ifEmpty { node.optString("app_id") },
+                        x = rect?.optInt("x") ?: 0,
+                        y = rect?.optInt("y") ?: 0,
+                        width = rect?.optInt("width") ?: 0,
+                        height = rect?.optInt("height") ?: 0,
+                    ),
+                )
+            }
+            nodes?.let { for (i in 0 until it.length()) walk(it.getJSONObject(i)) }
+            floating?.let { for (i in 0 until it.length()) walk(it.getJSONObject(i)) }
+        }
+        try {
+            walk(org.json.JSONObject(out.substring(start)))
+        } catch (e: Exception) {
+            Log.w(TAG, "swaymsg tree parse failed: ${e.message}")
+        }
+        return views
     }
 
     /**
@@ -523,24 +599,50 @@ class DesktopManager @Inject constructor(
     private val appProcesses = java.util.concurrent.ConcurrentHashMap<String, Process>()
 
     /**
-     * Launch a GUI [command] into the running X11 desktop [de] with
-     * DISPLAY/XAUTHORITY/HOME and the software-GL fallback exported, so
-     * GPU-less GL apps (KiCad/eeschema) don't crash their canvas. Returns
-     * an opaque appId. Fire-and-forget: callers poll [listWindows] to learn
-     * when the window appears. Throws if [de] is not a running X11 desktop.
+     * Launch a GUI [command] into a running desktop [de] with the right
+     * display env and the software-GL fallback exported, so GPU-less GL apps
+     * (KiCad/eeschema) don't crash their canvas. Returns an opaque appId.
+     * Fire-and-forget: callers poll [listWindows] to learn when the window
+     * appears (X11 and Sway support enumeration; other nested-Wayland
+     * compositors don't, so the caller just won't get a windowId back).
+     *
+     * X11Vnc desktops get DISPLAY/XAUTHORITY; nested-Wayland desktops get
+     * XDG_RUNTIME_DIR + WAYLAND_DISPLAY (resolving the compositor's
+     * `wayland-N` socket, which isn't a fixed number). Throws if [de] is not
+     * a running X11/VNC or nested-Wayland desktop.
      */
     fun launchApp(de: ProotManager.DesktopEnvironment, command: String): String {
-        val display = requireX11Display(de)
+        val instance = _desktops.value[de]
+            ?: throw IllegalStateException("Desktop '${de.spec.id}' is not running")
+        val glEnv = "export HOME=/root; export LIBGL_ALWAYS_SOFTWARE=1; export GALLIUM_DRIVER=llvmpipe; "
+        val displayLabel: String
+        val launchCmd: String
+        when (de.spec.launch) {
+            is LaunchSpec.X11Vnc -> {
+                val display = requireX11Display(de)
+                displayLabel = ":$display"
+                launchCmd =
+                    "export DISPLAY=:$display; export XAUTHORITY=/root/.Xauthority; $glEnv exec $command"
+            }
+            is LaunchSpec.NestedWayland -> {
+                val xdg = "/tmp/xdg-runtime-${instance.displayNumber}"
+                displayLabel = "wayland@$xdg"
+                launchCmd = "export XDG_RUNTIME_DIR=$xdg; " +
+                    "WL=\$(ls $xdg 2>/dev/null | grep -E '^wayland-[0-9]+\$' | head -1); " +
+                    "export WAYLAND_DISPLAY=\$WL; $glEnv exec $command"
+            }
+            else -> throw IllegalStateException(
+                "launch_app_in_desktop supports X11/VNC and nested-Wayland desktops; " +
+                    "'${de.spec.id}' is ${de.spec.launch::class.simpleName}",
+            )
+        }
         val appId = "deapp-${System.currentTimeMillis()}"
-        val env =
-            "export DISPLAY=:$display; export XAUTHORITY=/root/.Xauthority; export HOME=/root; " +
-                "export LIBGL_ALWAYS_SOFTWARE=1; export GALLIUM_DRIVER=llvmpipe; "
-        val proc = prootManager.startCommandInProot("$env exec $command")
+        val proc = prootManager.startCommandInProot(launchCmd)
         appProcesses[appId] = proc
         Thread({
             try {
                 proc.inputStream.bufferedReader().forEachLine { line ->
-                    Log.d(TAG, "$appId[:$display]: $line")
+                    Log.d(TAG, "$appId[$displayLabel]: $line")
                 }
             } catch (_: Exception) {
             } finally {
