@@ -790,6 +790,47 @@ class SshSessionManagerTest {
         assertNull("a failed in-flight connect yields no reusable client", result)
     }
 
+    @Test
+    fun `registerSession reaps a dead same-profile same-kind session`() {
+        val old = manager.registerSession("p1", "old", mockk(relaxed = true))
+        manager.updateStatus(old, SshSessionManager.SessionState.Status.DISCONNECTED)
+        val fresh = manager.registerSession("p1", "new", mockk(relaxed = true))
+
+        assertNull("stale session should be reaped", manager.getSession(old))
+        assertNotNull(manager.getSession(fresh))
+    }
+
+    @Test
+    fun `registerSession keeps a live same-profile session`() {
+        val live = manager.registerSession("p1", "live", mockk(relaxed = true))
+        manager.updateStatus(live, SshSessionManager.SessionState.Status.CONNECTED)
+        val fresh = manager.registerSession("p1", "second", mockk(relaxed = true))
+
+        assertNotNull("a connected session must never be reaped", manager.getSession(live))
+        assertNotNull(manager.getSession(fresh))
+    }
+
+    @Test
+    fun `registerSession does not reap a dead session of a different kind`() {
+        val term = manager.registerSession("p1", "term", mockk(relaxed = true), headless = false)
+        manager.updateStatus(term, SshSessionManager.SessionState.Status.DISCONNECTED)
+        // A headless tunnel reconnecting must not yank a dead interactive tab.
+        val tunnel = manager.registerSession("p1", "tunnel", mockk(relaxed = true), headless = true)
+
+        assertNotNull(manager.getSession(term))
+        assertNotNull(manager.getSession(tunnel))
+    }
+
+    @Test
+    fun `registerSession does not reap dead sessions of other profiles`() {
+        val other = manager.registerSession("p1", "a", mockk(relaxed = true))
+        manager.updateStatus(other, SshSessionManager.SessionState.Status.DISCONNECTED)
+        val fresh = manager.registerSession("p2", "b", mockk(relaxed = true))
+
+        assertNotNull(manager.getSession(other))
+        assertNotNull(manager.getSession(fresh))
+    }
+
     private fun configWithPolicy(
         autoReconnect: Boolean = true,
         maxAttempts: Int = 5,

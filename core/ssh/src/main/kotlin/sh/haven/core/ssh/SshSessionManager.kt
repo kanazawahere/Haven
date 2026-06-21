@@ -261,6 +261,22 @@ class SshSessionManager @Inject constructor(
         client: SshClient,
         headless: Boolean = false,
     ): String {
+        // Reap dead sessions of the same profile AND kind so they don't pile up
+        // across failed-reconnect / re-connect cycles (observed: a stale
+        // DISCONNECTED 'near' lingering beside the live one with its dead
+        // forwards). Same-kind only — a headless tunnel reconnecting must not
+        // yank a dead interactive tab, nor vice versa; never a live or
+        // mid-reconnect session.
+        _sessions.value.values
+            .filter {
+                it.profileId == profileId &&
+                    it.headless == headless &&
+                    (it.status == SessionState.Status.DISCONNECTED || it.status == SessionState.Status.ERROR) &&
+                    it.sessionId !in reconnectingInFlight
+            }
+            .map { it.sessionId }
+            .forEach { removeSession(it) }
+
         val sessionId = UUID.randomUUID().toString()
         _sessions.update { map ->
             map + (sessionId to SessionState(
