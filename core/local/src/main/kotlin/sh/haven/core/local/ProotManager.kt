@@ -1359,6 +1359,30 @@ class ProotManager @Inject constructor(
     }
 
     /**
+     * Ensure `grim` — the wlroots screencopy screenshotter — is present, for
+     * capturing nested-Wayland desktops (Sway / Hyprland / niri / cage). The
+     * wayland counterpart to [ensureCaptureTools]' X11 ImageMagick: those
+     * desktops have no X display, but grim grabs frames straight from the
+     * compositor over wlr-screencopy (the same path wayvnc falls back to).
+     * grim is packaged as "grim" on every supported family. Probe-then-
+     * install like [ensureCaptureTools]; returns (ready, detail).
+     */
+    suspend fun ensureWaylandCaptureTools(): Pair<Boolean, String> {
+        val probeCmd = "command -v grim >/dev/null 2>&1 && echo HAVE || echo MISSING"
+        val (probe, _) = runCommandInProot(probeCmd)
+        if (probe.contains("HAVE")) return true to "grim already present"
+
+        val ops = PackageOps.forFamily(activeDistro.family)
+        val (installOut, _) = runCommandInProot("${ops.updateCmd()} && ${ops.installCmd(listOf("grim"))}")
+        val (recheck, _) = runCommandInProot(probeCmd)
+        return if (recheck.contains("HAVE")) {
+            true to "installed grim"
+        } else {
+            false to "grim install failed: ${installOut.takeLast(800)}"
+        }
+    }
+
+    /**
      * Ensure the headless render tools used by the `view_file` MCP tool are
      * present — `rsvg-convert` (SVG→PNG) and/or `pdftoppm` (PDF→PNG). Only the
      * binaries in [needed] are probed and, if missing, installed. Mirrors

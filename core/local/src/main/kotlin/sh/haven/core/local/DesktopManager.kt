@@ -442,7 +442,17 @@ class DesktopManager @Inject constructor(
      * The PNG is written to `/tmp` (bound to the app cacheDir), read back
      * directly off the app's filesystem, then deleted.
      */
-    suspend fun capture(de: ProotManager.DesktopEnvironment): ByteArray {
+    suspend fun capture(de: ProotManager.DesktopEnvironment): ByteArray =
+        when (de.spec.launch) {
+            is LaunchSpec.X11Vnc -> captureX11(de)
+            is LaunchSpec.NestedWayland -> captureNestedWayland(de)
+            else -> throw IllegalStateException(
+                "Capture is supported for X11/VNC and nested-Wayland desktops; " +
+                    "'${de.spec.id}' is ${de.spec.launch::class.simpleName}",
+            )
+        }
+
+    private suspend fun captureX11(de: ProotManager.DesktopEnvironment): ByteArray {
         val display = requireX11Display(de)
         val (ready, detail) = prootManager.ensureCaptureTools()
         if (!ready) throw IllegalStateException(detail)
@@ -451,6 +461,42 @@ class DesktopManager @Inject constructor(
             "export DISPLAY=:$display; export XAUTHORITY=/root/.Xauthority; " +
                 "rm -f /tmp/$fname; " +
                 "import -window root +repage /tmp/$fname > /tmp/$fname.log 2>&1; echo EXIT:\$?"
+        return runCaptureScript(script, fname, tool = "import")
+    }
+
+    /**
+     * Capture a running nested-Wayland desktop (Sway / Hyprland / niri / cage)
+     * as PNG bytes via `grim`. grim runs as a fresh wayland client — without
+     * the wayvnc shim — so it uses the wlr-screencopy path the wlroots
+     * headless backend actually supports (the ext-image-copy path the shim
+     * blocks reports zero buffer formats, #246). It connects to the
+     * compositor's socket under `XDG_RUNTIME_DIR=/tmp/xdg-runtime-<display>`,
+     * which is reachable here because runCommandInProot binds the same
+     * cacheDir at /tmp as the compositor launch.
+     */
+    private suspend fun captureNestedWayland(de: ProotManager.DesktopEnvironment): ByteArray {
+        val instance = _desktops.value[de]
+            ?: throw IllegalStateException("Desktop '${de.spec.id}' is not running")
+        val (ready, detail) = prootManager.ensureWaylandCaptureTools()
+        if (!ready) throw IllegalStateException(detail)
+        val xdg = "/tmp/xdg-runtime-${instance.displayNumber}"
+        val fname = "haven-cap-${System.currentTimeMillis()}.png"
+        val script = buildString {
+            append("export XDG_RUNTIME_DIR=$xdg; ")
+            // The socket number isn't fixed (cage→wayland-0, Sway→wayland-1),
+            // so resolve whichever the compositor created, same as launch.
+            append("WL=\$(ls $xdg 2>/dev/null | grep -E '^wayland-[0-9]+\$' | head -1); ")
+            append("if [ -z \"\$WL\" ]; then echo 'no wayland socket in '$xdg; exit 1; fi; ")
+            append("export WAYLAND_DISPLAY=\$WL; ")
+            append("rm -f /tmp/$fname; ")
+            append("grim /tmp/$fname > /tmp/$fname.log 2>&1; echo EXIT:\$?")
+        }
+        return runCaptureScript(script, fname, tool = "grim")
+    }
+
+    /** Shared tail of the capture paths: run the script, read the PNG written
+     *  to /tmp (bound to cacheDir), surface the tool log on failure, clean up. */
+    private suspend fun runCaptureScript(script: String, fname: String, tool: String): ByteArray {
         val (out, _) = prootManager.runCommandInProot(script)
         val file = File(context.cacheDir, fname)
         val logFile = File(context.cacheDir, "$fname.log")
@@ -458,7 +504,7 @@ class DesktopManager @Inject constructor(
             if (!file.exists() || file.length() == 0L) {
                 val log = if (logFile.exists()) logFile.readText() else ""
                 throw IllegalStateException(
-                    "Capture produced no image (import: ${log.take(400).trim()}; $out)",
+                    "Capture produced no image ($tool: ${log.take(400).trim()}; $out)",
                 )
             }
             return file.readBytes()
