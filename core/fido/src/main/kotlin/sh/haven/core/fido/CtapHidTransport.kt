@@ -30,6 +30,42 @@ private val BROADCAST_CID = byteArrayOf(0xFF.toByte(), 0xFF.toByte(), 0xFF.toByt
 private const val TRANSFER_TIMEOUT_MS = 30_000
 
 /**
+ * Max raw frames to drain while waiting for the CTAPHID_INIT reply. A busy or
+ * contended key answers INIT with CTAPHID_KEEPALIVE, or the HID IN pipe still
+ * holds stale frames from a prior aborted transaction — both common right after
+ * a stalled SSH reconnect on a flaky link. Bounded so a never-replying key can't
+ * wedge the caller.
+ */
+private const val MAX_INIT_READS = 16
+
+/**
+ * Read raw CTAPHID frames via [recv] until the CTAPHID_INIT reply arrives,
+ * draining CTAPHID_KEEPALIVE ("busy") and any stray frames a busy/contended key
+ * emits first. A single hard `require(cmd == INIT)` on the first frame turned a
+ * transient "busy" (`got 0xbb` = KEEPALIVE) into a FIDO-auth failure → SSH
+ * reconnect storm; draining fixes that. Throws on CTAPHID_ERROR or if no INIT
+ * reply arrives within [maxReads] frames. Pure but for [recv] — unit-tested.
+ */
+internal fun drainToInitReply(
+    maxReads: Int,
+    recv: () -> Triple<ByteArray, Byte, ByteArray>,
+): Triple<ByteArray, Byte, ByteArray> {
+    repeat(maxReads) {
+        val frame = recv()
+        when ((frame.second.toInt() and 0x7F).toByte()) {
+            CTAPHID_INIT -> return frame
+            CTAPHID_KEEPALIVE -> Log.d(TAG, "INIT: draining keepalive (key busy)")
+            CTAPHID_ERROR -> {
+                val code = if (frame.third.isNotEmpty()) frame.third[0].toInt() and 0xFF else -1
+                throw IOException("CTAPHID error during INIT: 0x${"%02x".format(code)}")
+            }
+            else -> Log.w(TAG, "INIT: skipping unexpected 0x${"%02x".format(frame.second)}")
+        }
+    }
+    throw IOException("No CTAPHID_INIT reply after $maxReads frames (key busy)")
+}
+
+/**
  * CTAPHID protocol implementation over Android USB.
  * Handles HID packet framing, channel allocation, and keepalive.
  */
@@ -48,10 +84,10 @@ class CtapHidTransport(
         val nonce = Random.nextBytes(8)
         sendRaw(BROADCAST_CID, CTAPHID_INIT, nonce)
 
-        val (_, cmd, payload) = recvRaw()
-        require(cmd == (CTAPHID_INIT.toInt() or 0x80).toByte()) {
-            "Expected CTAPHID_INIT response, got 0x${"%02x".format(cmd)}"
-        }
+        // Drain keepalive/stale frames instead of failing on the first non-INIT
+        // packet — a busy key (e.g. contended with the USB/IP export, or mid
+        // reconnect on a flaky link) replies KEEPALIVE (0xbb) first.
+        val (_, _, payload) = drainToInitReply(MAX_INIT_READS) { recvRaw() }
         require(payload.size >= 17) { "CTAPHID_INIT response too short: ${payload.size}" }
 
         // Verify nonce matches
