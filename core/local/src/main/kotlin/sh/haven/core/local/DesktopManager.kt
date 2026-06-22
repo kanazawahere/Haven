@@ -338,8 +338,26 @@ class DesktopManager @Inject constructor(
                 killOrphanedNestedWayland(launch.compositorCmd)
             }
             releaseDisplay(instance.displayNumber)
+            cleanupDisplayRuntime(instance.displayNumber)
         }
         _desktops.update { it - de }
+    }
+
+    /**
+     * Remove a finished desktop's per-display runtime debris from the app
+     * cache (the host side of the guest `/tmp` bind): the XDG_RUNTIME_DIR
+     * `xdg-runtime-<display>` with its accumulating `wayland-N` +
+     * `sway-ipc.*.sock` — wlroots compositors never unlink their IPC socket on
+     * exit, so without this they pile up (169 stale sockets observed across
+     * repeated start/stop) — plus the Xwayland socket and X lock. Call only
+     * once the compositor and its orphans for [display] are dead, so we never
+     * unlink a live socket directory.
+     */
+    private fun cleanupDisplayRuntime(display: Int) {
+        val xdg = File(context.cacheDir, "xdg-runtime-$display")
+        if (xdg.exists()) forceDeleteRecursively(xdg)
+        File(context.cacheDir, ".X11-unix/X$display").delete()
+        File(context.cacheDir, ".X$display-lock").delete()
     }
 
     /**
@@ -611,10 +629,22 @@ class DesktopManager @Inject constructor(
      * `wayland-N` socket, which isn't a fixed number). Throws if [de] is not
      * a running X11/VNC or nested-Wayland desktop.
      */
-    fun launchApp(de: ProotManager.DesktopEnvironment, command: String): String {
+    fun launchApp(
+        de: ProotManager.DesktopEnvironment,
+        command: String,
+        gpu: Boolean = false,
+    ): String {
         val instance = _desktops.value[de]
             ?: throw IllegalStateException("Desktop '${de.spec.id}' is not running")
-        val glEnv = "export HOME=/root; export LIBGL_ALWAYS_SOFTWARE=1; export GALLIUM_DRIVER=llvmpipe; "
+        // Default: force software GL so GPU-less GL apps (KiCad/eeschema) don't
+        // crash their canvas. gpu=true instead routes through the venus/virpipe
+        // passthrough env (the gl_smoke_test path) so we can exercise the real
+        // GPU present pipeline rather than llvmpipe.
+        val glEnv = if (gpu) {
+            "export HOME=/root; " + gpuPassthroughEnv("; ")
+        } else {
+            "export HOME=/root; export LIBGL_ALWAYS_SOFTWARE=1; export GALLIUM_DRIVER=llvmpipe; "
+        }
         val displayLabel: String
         val launchCmd: String
         when (de.spec.launch) {
@@ -818,6 +848,9 @@ class DesktopManager @Inject constructor(
         File(rootfsDir, "root").mkdirs()
 
         val xdgInProot = "/tmp/xdg-runtime-$display"
+        // Clear stale per-display debris from any prior unclean stop (a crash
+        // that skipped stopDesktop) before this session repopulates the dir.
+        cleanupDisplayRuntime(display)
 
         // wlroots' SHM allocator (the only buffer path on the headless
         // backend with WLR_RENDERER=pixman) calls POSIX shm_open() which

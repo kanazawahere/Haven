@@ -2142,6 +2142,38 @@ internal class McpTools(
             summarise = { args -> "Launch '${args.optString("command")}' on desktop '${args.optString("deId")}'" },
         ) { args -> launchAppInDesktop(args) },
 
+        "gl_smoke_test" to ToolHandler(
+            description = "Launch a GL app into a RUNNING desktop on the GPU PATH (venus/virpipe — NOT the llvmpipe software fallback that launch_app_in_desktop forces), screenshot it, and heuristically report whether the frame is non-blank. A regression check for the windowed-GL-present pipeline (a blank/white frame = GL didn't present). The verdict is reliable only for a FULL-FRAME GL app (a fullscreen / cage-kiosk GL test app like 'glxgears' or 'es2gears'); for a windowed app the 2D chrome masks a blank 3D pane, so rely on the returned image. Optionally writes the gpu_use_venus pref first. Returns the screenshot plus { passed, distinctColors, topColorFraction, gpuPath, windowId? }. Detects non-blank, not correctness.",
+            inputSchema = JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("deId", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Desktop environment id of a RUNNING desktop (prefer a fullscreen/kiosk GL surface for a clean verdict).")
+                    })
+                    put("command", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "GL app to launch, e.g. 'glxgears' or 'es2gears'.")
+                    })
+                    put("gpuUseVenus", JSONObject().apply {
+                        put("type", "boolean")
+                        put("description", "If set, write the gpu_use_venus pref before launching (true = venus+zink, false = virpipe). Omit to leave it unchanged.")
+                    })
+                    put("timeoutMs", JSONObject().apply {
+                        put("type", "integer")
+                        put("description", "Max ms to wait for the app window before capturing. Default 12000, clamped 0..60000.")
+                    })
+                    put("maxWidth", JSONObject().apply {
+                        put("type", "integer")
+                        put("description", "Downscale the returned image to at most this width. Default 1024 (clamped 160..4096).")
+                    })
+                })
+                put("required", JSONArray().put("deId").put("command"))
+            },
+            consentLevel = ConsentLevel.ONCE_PER_SESSION,
+            summarise = { args -> "GL smoke-test '${args.optString("command")}' on desktop '${args.optString("deId")}'" },
+        ) { args -> glSmokeTest(args) },
+
         "view_file" to ToolHandler(
             description = "Render a file from the ACTIVE proot guest to an INLINE image the agent can see directly — no desktop, X server, VNC client, or GPU needed (fully headless / GL-free). Handles .kicad_sch and .kicad_pcb (via kicad-cli), .pdf (first page, or `page`), .svg, and raster images (png/jpg/jpeg/webp/bmp/gif). The result is downscaled to maxWidth and returned as an image content block, so it works even when no VNC desktop is running. Prefer this over capture_desktop for looking at design output (schematics, PCBs, PDFs, plots).",
             inputSchema = JSONObject().apply {
@@ -9211,6 +9243,89 @@ internal class McpTools(
                     },
                 )
             }
+        }
+    }
+
+    /**
+     * Launch a GL app on the GPU path, screenshot it, and heuristically judge
+     * whether the frame is non-blank — a regression check for the windowed-GL
+     * present pipeline (memory: project_3d_desktop_gl_prusaslicer_test, where a
+     * blank canvas came back pure white). Reliable only for a full-frame GL app;
+     * the returned image is the ground truth. Reuses [encodeCapture]'s image
+     * path so `McpServer` lifts `__imageBase64` into an MCP image block.
+     */
+    private suspend fun glSmokeTest(args: JSONObject): JSONObject {
+        val deId = args.optString("deId").takeIf { it.isNotBlank() }
+            ?: throw McpError(-32602, "deId is required")
+        val command = args.optString("command").takeIf { it.isNotBlank() }
+            ?: throw McpError(-32602, "command is required")
+        val timeoutMs = args.optInt("timeoutMs", 12000).coerceIn(0, 60000)
+        val maxWidth = args.optInt("maxWidth", 1024).coerceIn(160, 4096)
+        val de = desktopByIdOrThrow(deId)
+        val dm = localSessionManager.desktopManager
+
+        if (args.has("gpuUseVenus")) {
+            preferencesRepository.setGpuUseVenus(args.getBoolean("gpuUseVenus"))
+        }
+
+        val before: Set<String> = try {
+            dm.listWindows(de).map { it.id }.toSet()
+        } catch (e: Exception) {
+            emptySet()
+        }
+        val appId = dm.launchApp(de, command, gpu = true)
+
+        var windowId: String? = null
+        if (timeoutMs > 0) {
+            val deadline = System.currentTimeMillis() + timeoutMs
+            while (System.currentTimeMillis() < deadline) {
+                kotlinx.coroutines.delay(600)
+                val fresh = try {
+                    dm.listWindows(de).firstOrNull { it.id !in before }
+                } catch (e: Exception) {
+                    null
+                }
+                if (fresh != null) {
+                    windowId = fresh.id
+                    break
+                }
+            }
+        }
+        // Let the GL app paint a few frames before sampling.
+        kotlinx.coroutines.delay(1500)
+
+        val png = dm.capture(de)
+        val (b64, w, h) = encodeCapture(png, null, maxWidth, "jpeg")
+
+        // Analyse the FULL-resolution capture (not the downscaled JPEG) so the
+        // subsample sees real pixels.
+        val bmp = BitmapFactory.decodeByteArray(png, 0, png.size)
+            ?: throw McpError(-32603, "Could not decode captured image")
+        val px = IntArray(bmp.width * bmp.height)
+        bmp.getPixels(px, 0, bmp.width, 0, 0, bmp.width, bmp.height)
+        val verdict = sh.haven.core.local.GlCanvasProbe.analyze(px, bmp.width, bmp.height)
+        val venus = preferencesRepository.gpuUseVenus.first()
+
+        return JSONObject().apply {
+            put("deId", de.spec.id)
+            put("command", command)
+            put("appId", appId)
+            put("gpuPath", if (venus) "venus+zink" else "virpipe")
+            put("windowId", windowId ?: JSONObject.NULL)
+            put("passed", verdict.nonBlank)
+            put("distinctColors", verdict.distinctColors)
+            put("topColorFraction", verdict.topColorFraction)
+            put("sampled", verdict.sampled)
+            put(
+                "note",
+                "non-blank heuristic over the whole frame; reliable for a full-frame GL app, " +
+                    "not a correctness check — inspect the image",
+            )
+            put("width", w)
+            put("height", h)
+            put("format", "jpeg")
+            put("__imageBase64", b64)
+            put("__mimeType", "image/jpeg")
         }
     }
 
