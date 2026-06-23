@@ -1,0 +1,5 @@
+Local (proot) terminal: don't lose your shell when the app is backgrounded.
+
+On some devices, leaving Haven and coming back to the local Linux terminal dropped you into a fresh shell — your scrollback and any running command were gone, leaving only the prompt. The proot shell is now kept running when the Activity is recreated (background under memory pressure, "Don't keep activities", etc.); on return, Haven reattaches to the same shell and replays the screen instead of starting a blank one.
+
+If you've seen this, an extra confirmation on your device is welcome (issue #272).
