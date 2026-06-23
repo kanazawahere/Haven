@@ -37,6 +37,54 @@ class AgentUiCommandBus @Inject constructor() {
     )
     val commands: SharedFlow<AgentUiCommand> = _commands.asSharedFlow()
 
+    /**
+     * Single-consume latch for SFTP-targeted commands, to close the
+     * **cold-start race**: when an agent verb (e.g. `encrypt_file`,
+     * `navigate_sftp_browser`) emits before the file-browser screen — and
+     * thus [sh.haven.feature.sftp.SftpViewModel] — has mounted, only the
+     * always-present app-level nav collector (`HavenNavHost`) sees the
+     * `replay = 0` emission; it switches to the Files tab, but the
+     * SftpViewModel subscribes *after* the emission and misses it.
+     *
+     * So the bus also holds the most recent SFTP-targeted command here.
+     * The SFTP collector [takePendingSftpCommand]s on subscription (catching
+     * a missed cold-start command) and [clearPendingSftp]s after handling a
+     * live one (so the latch can't re-fire on a later remount / rotation).
+     * Non-SFTP commands never touch the latch.
+     */
+    private val pendingSftpCommand = java.util.concurrent.atomic.AtomicReference<AgentUiCommand?>(null)
+
     /** Returns true when the command was buffered/delivered, false on overflow. */
-    fun emit(command: AgentUiCommand): Boolean = _commands.tryEmit(command)
+    fun emit(command: AgentUiCommand): Boolean {
+        if (command.isSftpTargeted()) pendingSftpCommand.set(command)
+        return _commands.tryEmit(command)
+    }
+
+    /** Drain a command that arrived before the SFTP collector subscribed (cold-start). Single-consume. */
+    fun takePendingSftpCommand(): AgentUiCommand? = pendingSftpCommand.getAndSet(null)
+
+    /**
+     * Peek the latched cold-start SFTP command **without** consuming it.
+     * `HavenNavHost` uses this to switch to the Files tab (which mounts
+     * [sh.haven.feature.sftp.SftpViewModel]); the SftpViewModel then consumes
+     * it via [takePendingSftpCommand]. Without this peek the nav collector,
+     * which also missed the `replay = 0` emission, would never switch tabs, so
+     * the SftpViewModel would never be created to drain the latch.
+     */
+    fun peekPendingSftpCommand(): AgentUiCommand? = pendingSftpCommand.get()
+
+    /** Clear the latch once [command] has been handled live, so a remount doesn't re-fire it. */
+    fun clearPendingSftp(command: AgentUiCommand) {
+        pendingSftpCommand.compareAndSet(command, null)
+    }
+
+    private fun AgentUiCommand.isSftpTargeted(): Boolean = when (this) {
+        is AgentUiCommand.NavigateToSftpPath,
+        is AgentUiCommand.OpenConvertDialog,
+        is AgentUiCommand.OpenInEditor,
+        is AgentUiCommand.EncryptFile,
+        is AgentUiCommand.DecryptFile,
+        -> true
+        else -> false
+    }
 }

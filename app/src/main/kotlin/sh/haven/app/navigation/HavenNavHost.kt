@@ -67,6 +67,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.launch
 import sh.haven.core.data.preferences.UserPreferencesRepository
 import sh.haven.core.data.repository.ConnectionRepository
@@ -326,7 +327,16 @@ fun HavenNavHost(
     // The matching feature ViewModel collects the same bus and adjusts its
     // internal state in parallel.
     LaunchedEffect(agentUiCommandBus, screens) {
-        agentUiCommandBus.commands.collect { command ->
+        agentUiCommandBus.commands
+            // Cold-start: an SFTP-targeted command emitted before any collector
+            // subscribed (Compose hadn't built yet) is held in the bus latch.
+            // Peek it (don't consume — SftpViewModel consumes it via
+            // takePendingSftpCommand) and switch to Files, which mounts the
+            // SftpViewModel so it can drain the latch and run the action.
+            .onSubscription {
+                if (agentUiCommandBus.peekPendingSftpCommand() != null) requestScreen(Screen.Sftp)
+            }
+            .collect { command ->
             val screen = when (command) {
                 is sh.haven.core.data.agent.AgentUiCommand.NavigateToSftpPath -> Screen.Sftp
                 is sh.haven.core.data.agent.AgentUiCommand.OpenConvertDialog -> Screen.Sftp

@@ -113,6 +113,73 @@ class AgentUiCommandBusTest {
         job.cancel()
     }
 
+    // ── Cold-start latch (SFTP-targeted commands) ───────────────────────
+
+    @Test
+    fun `SFTP command emitted before subscription is held in the latch`() {
+        // The cold-start race: an agent verb emits before SftpViewModel has
+        // mounted. replay=0 means a late subscriber misses it — but the latch
+        // retains it so the collector can drain it on subscription.
+        val bus = AgentUiCommandBus()
+        val cmd = AgentUiCommand.EncryptFile("p1", "/a/doc.bin", listOf("age1xyz"))
+        bus.emit(cmd)
+        assertEquals(cmd, bus.takePendingSftpCommand())
+    }
+
+    @Test
+    fun `takePendingSftpCommand is single-consume`() {
+        val bus = AgentUiCommandBus()
+        bus.emit(AgentUiCommand.DecryptFile("p1", "/a/doc.bin.age"))
+        assertTrue(bus.takePendingSftpCommand() != null)
+        // A second drain (e.g. a rotation remount) must not re-fire it.
+        assertEquals(null, bus.takePendingSftpCommand())
+    }
+
+    @Test
+    fun `clearPendingSftp drops the latch so a remount does not re-fire`() {
+        val bus = AgentUiCommandBus()
+        val cmd = AgentUiCommand.NavigateToSftpPath("p1", "/a")
+        bus.emit(cmd)
+        // Live collector handled it, then clears the latch.
+        bus.clearPendingSftp(cmd)
+        assertEquals(null, bus.takePendingSftpCommand())
+    }
+
+    @Test
+    fun `latest SFTP command wins the latch`() {
+        val bus = AgentUiCommandBus()
+        bus.emit(AgentUiCommand.NavigateToSftpPath("p1", "/a"))
+        val second = AgentUiCommand.NavigateToSftpPath("p1", "/b")
+        bus.emit(second)
+        assertEquals(second, bus.takePendingSftpCommand())
+    }
+
+    @Test
+    fun `peekPendingSftpCommand returns the latch without consuming it`() {
+        // HavenNavHost peeks to switch to Files; SftpViewModel then consumes.
+        // If peek consumed, the SftpViewModel would mount to an empty latch and
+        // the cold-start command would be lost again.
+        val bus = AgentUiCommandBus()
+        val cmd = AgentUiCommand.EncryptFile("p1", "/a/doc.bin", listOf("age1xyz"))
+        bus.emit(cmd)
+        assertEquals(cmd, bus.peekPendingSftpCommand())
+        // Peek again — still there.
+        assertEquals(cmd, bus.peekPendingSftpCommand())
+        // The consuming take still returns it after the peeks.
+        assertEquals(cmd, bus.takePendingSftpCommand())
+        assertEquals(null, bus.peekPendingSftpCommand())
+    }
+
+    @Test
+    fun `non-SFTP commands are not latched`() {
+        // Terminal/desktop/connect verbs have their own collectors; the latch
+        // is scoped to SFTP commands so it can't steal another collector's.
+        val bus = AgentUiCommandBus()
+        bus.emit(AgentUiCommand.FocusTerminalSession("sess-1"))
+        bus.emit(AgentUiCommand.ConnectProfile("p1"))
+        assertEquals(null, bus.takePendingSftpCommand())
+    }
+
     @Test
     fun `commands flow type is a SharedFlow`() {
         // Compile-time guarantee that the public surface is read-only —

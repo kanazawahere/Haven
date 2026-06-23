@@ -18,6 +18,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -203,8 +204,43 @@ class SftpViewModel @Inject constructor(
         // matching pager switch happens in HavenNavHost; both collectors
         // run in parallel against the same SharedFlow.
         viewModelScope.launch {
-            agentUiCommandBus.commands.collect { command ->
-                when (command) {
+            agentUiCommandBus.commands
+                // Cold-start race: an SFTP command emitted before this collector
+                // subscribed (the Files screen hadn't mounted yet) is held in the
+                // bus latch. onSubscription runs once we're subscribed — drain it.
+                // It must NOT be handled inline: onSubscription executes
+                // synchronously inside SftpViewModel.<init> (viewModelScope is
+                // Main.immediate), before fields declared below the init block —
+                // e.g. _activeProfileId — are initialized, and possibly during the
+                // pager's forced remeasure when nav has just switched to Files.
+                // Handle it on a FRESH dispatch — launch on the non-immediate
+                // Dispatchers.Main (whose dispatch() always posts to the Looper, so
+                // the body runs after construction unwinds) rather than the
+                // viewModelScope default (Main.immediate, which would run it inline).
+                // (Re-emitting is NOT enough — the buffered value is collected
+                // synchronously within the same init run.) The live collect path
+                // below is safe: nothing is buffered for it during init, so it only
+                // ever runs post-construction. clearPendingSftp keeps the latch from
+                // re-firing on a remount. See AgentUiCommandBus.
+                .onSubscription {
+                    agentUiCommandBus.takePendingSftpCommand()?.let { cmd ->
+                        viewModelScope.launch(Dispatchers.Main) { handleAgentCommand(cmd) }
+                    }
+                }
+                .collect { command ->
+                    agentUiCommandBus.clearPendingSftp(command)
+                    handleAgentCommand(command)
+                }
+        }
+    }
+
+    /**
+     * Apply an agent-issued UI command to this file browser. Called live from
+     * the bus collector and once on subscription to drain a cold-start command
+     * the bus latched before this ViewModel existed (see AgentUiCommandBus).
+     */
+    private fun handleAgentCommand(command: sh.haven.core.data.agent.AgentUiCommand) {
+                    when (command) {
                     is sh.haven.core.data.agent.AgentUiCommand.NavigateToSftpPath -> {
                         if (_activeProfileId.value != command.profileId) {
                             selectProfile(command.profileId)
@@ -269,8 +305,6 @@ class SftpViewModel @Inject constructor(
                     }
                     else -> Unit
                 }
-            }
-        }
     }
 
     private val _connectedProfiles = MutableStateFlow<List<ConnectionProfile>>(emptyList())
