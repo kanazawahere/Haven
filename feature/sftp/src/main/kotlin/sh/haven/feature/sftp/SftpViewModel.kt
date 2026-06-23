@@ -3109,23 +3109,33 @@ class SftpViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 _loading.value = true
-                val folder = DocumentFile.fromTreeUri(appContext, folderUri) ?: return@launch
-                val folderName = folder.name ?: "upload"
 
-                // Collect all files recursively
-                data class FileItem(val doc: DocumentFile, val relativePath: String)
-                val files = mutableListOf<FileItem>()
-                fun walk(dir: DocumentFile, prefix: String) {
-                    for (child in dir.listFiles()) {
-                        val childPath = if (prefix.isEmpty()) child.name!! else "$prefix/${child.name}"
-                        if (child.isDirectory) {
-                            walk(child, childPath)
-                        } else {
-                            files.add(FileItem(child, childPath))
+                // Enumerate the picked tree OFF the main thread: DocumentFile
+                // listFiles()/length() are synchronous ContentResolver queries, so
+                // recursively walking a large or slow provider (e.g. Termux storage)
+                // on the main thread freezes the UI into a blank stall (#273). Each
+                // file's length is captured here too, to avoid a main-thread query
+                // per file in the upload loop below.
+                data class FileItem(val doc: DocumentFile, val relativePath: String, val length: Long)
+                val enumerated = withContext(Dispatchers.IO) {
+                    val folder = DocumentFile.fromTreeUri(appContext, folderUri)
+                        ?: return@withContext null
+                    val name = folder.name ?: "upload"
+                    val files = mutableListOf<FileItem>()
+                    fun walk(dir: DocumentFile, prefix: String) {
+                        for (child in dir.listFiles()) {
+                            val childPath = if (prefix.isEmpty()) child.name!! else "$prefix/${child.name}"
+                            if (child.isDirectory) {
+                                walk(child, childPath)
+                            } else {
+                                files.add(FileItem(child, childPath, child.length()))
+                            }
                         }
                     }
-                }
-                walk(folder, folderName)
+                    walk(folder, name)
+                    Triple(name, files, files.sumOf { it.length })
+                } ?: return@launch
+                val (folderName, files, initialTotalBytes) = enumerated
 
                 // Check if the folder already exists in the destination
                 val (proceed, _) = checkConflict(folderName, null)
@@ -3136,14 +3146,14 @@ class SftpViewModel @Inject constructor(
 
                 val totalFiles = files.size
                 var completedFiles = 0
-                var totalBytes = files.sumOf { it.doc.length() }
+                var totalBytes = initialTotalBytes
                 var transferredBytes = 0L
 
                 for (item in files) {
                     val destPath = destBase.trimEnd('/') + "/" + item.relativePath
                     val destDir = destPath.substringBeforeLast('/')
                     val fileName = item.doc.name ?: continue
-                    val fileSize = item.doc.length()
+                    val fileSize = item.length
 
                     _transferProgress.value = TransferProgress(
                         "${completedFiles + 1}/$totalFiles: $fileName",
