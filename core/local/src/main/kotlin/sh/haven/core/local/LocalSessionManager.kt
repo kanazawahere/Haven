@@ -374,14 +374,58 @@ class LocalSessionManager @Inject constructor(
     fun getActiveSession(sessionId: String): LocalSession? =
         _sessions.value[sessionId]?.localSession
 
+    /**
+     * Detach the terminal UI from a local session WITHOUT killing the proot
+     * PTY. Called when the Activity (and its TerminalViewModel) is torn down
+     * while the process stays alive — background under memory pressure, "Don't
+     * keep activities", etc. Mirrors SSH, whose detach keeps the connection so
+     * a new ViewModel can [reattachTerminalSession]; previously this closed the
+     * PTY, so the shell + any running process were lost and the user came back
+     * to a blank, freshly-spawned shell (#272).
+     *
+     * The live emulator is gone with the old ViewModel, so the output sink is
+     * rewired to feed only the scrollback ring during the gap — those bytes are
+     * replayed into the new emulator on reattach. localSession is kept non-null
+     * (so [isReadyForTerminal] stays false and the next ViewModel reattaches
+     * rather than forking a second shell).
+     */
     fun detachTerminalSession(sessionId: String) {
-        val session = _sessions.value[sessionId] ?: return
-        session.localSession?.close()
-        _sessions.update { map ->
-            val existing = map[sessionId] ?: return@update map
-            map + (sessionId to existing.copy(localSession = null))
-        }
+        // No-op by design (#272): the proot PTY is intentionally kept running and
+        // localSession kept non-null, so a new TerminalViewModel reattaches via
+        // [reattachTerminalSession] instead of the shell being killed and
+        // restarted blank. The old emulator's callback is left in place — it
+        // harmlessly feeds the now-dead emulator (the PTY reader guards against
+        // it throwing) and the persistent scrollback ring until reattach swaps
+        // it. Agent-owned (headless) sessions are likewise undisturbed, so the
+        // registry emulator the agent reads keeps updating.
     }
+
+    /**
+     * Rewire a detached [LocalSession] to a new emulator pipeline after the
+     * Activity/ViewModel was recreated (#272). Same PTY/shell; re-establishes
+     * the scrollback-ring mirror plus the new UI sink. Returns the live session,
+     * or null if none is attached. Pair with [snapshotScrollback] to replay the
+     * buffered output into the fresh emulator so the screen is restored.
+     */
+    fun reattachTerminalSession(
+        sessionId: String,
+        onDataReceived: (ByteArray, Int, Int) -> Unit,
+    ): LocalSession? {
+        val live = _sessions.value[sessionId]?.localSession ?: return null
+        val ring = agentScrollback.computeIfAbsent(sessionId) { ScrollbackRing(agentScrollbackBytes) }
+        live.replaceDataCallback { data, off, len ->
+            ring.append(data, off, len)
+            onDataReceived(data, off, len)
+        }
+        return live
+    }
+
+    /**
+     * The bytes buffered in [sessionId]'s scrollback ring (raw PTY output), or
+     * null if empty — replayed into a fresh emulator on reattach (#272).
+     */
+    fun snapshotScrollback(sessionId: String): ByteArray? =
+        agentScrollback[sessionId]?.snapshot()?.takeIf { it.isNotEmpty() }
 
     fun updateStatus(sessionId: String, status: SessionState.Status) {
         _sessions.update { map ->

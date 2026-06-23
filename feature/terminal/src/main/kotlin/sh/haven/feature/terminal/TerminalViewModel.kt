@@ -1437,6 +1437,90 @@ class TerminalViewModel @Inject constructor(
                 continue
             }
 
+            // UI reattach: the proot PTY survived a ViewModel teardown (Activity
+            // destroyed while the process stayed alive). The shell is still
+            // running but its old emulator died with the previous ViewModel.
+            // Build a fresh emulator, replay the buffered output so the screen +
+            // scrollback are restored, and rewire the live stream to it — instead
+            // of killing the shell and starting a blank one (#272). Detected by a
+            // live LocalSession with no agent-registry entry (handled above) and
+            // isReadyForTerminal == false (a PTY is still attached).
+            if (localSessionManager.getActiveSession(sessionId) != null &&
+                !localSessionManager.isReadyForTerminal(sessionId)
+            ) {
+                val session = localSessions[sessionId] ?: continue
+                val tabLabel = generateTabLabel(session.label, session.profileId, currentTabs)
+
+                lateinit var reEmulator: TerminalEmulator
+                val reWriteBuffer = EmulatorWriteBuffer({ reEmulator }, createRecorderIfEnabled(sessionId))
+                val reMouseTracker = MouseModeTracker()
+                val reOscHandler = OscHandler()
+                val reCwdFlow = MutableStateFlow<String?>(null)
+                val reHyperlinkFlow = MutableStateFlow<String?>(null)
+                reOscHandler.onCwdChanged = { reCwdFlow.value = it }
+                reOscHandler.onHyperlink = { uri -> reHyperlinkFlow.value = uri }
+                val reFeedOutput: (ByteArray, Int, Int) -> Unit = { data, offset, length ->
+                    synchronized(reOscHandler) {
+                        reOscHandler.process(data, offset, length)
+                        reMouseTracker.process(reOscHandler.outputBuf, 0, reOscHandler.outputLen)
+                        val len = reOscHandler.outputLen
+                        if (len > 0) reWriteBuffer.append(reOscHandler.outputBuf, 0, len)
+                    }
+                }
+                val localProfile = profilesById[session.profileId]
+                val localScheme = effectiveColorScheme(localProfile)
+                val reInitialScheme = initialEmulatorScheme(localScheme)
+                val reCoalescer = InputCoalescer { data -> localSessionManager.getActiveSession(sessionId)?.sendInput(data) }
+                reEmulator = TerminalEmulatorFactory.create(
+                    initialRows = 24,
+                    initialCols = 80,
+                    defaultForeground = Color(reInitialScheme.foreground),
+                    defaultBackground = Color(reInitialScheme.background),
+                    enableAltScreen = localProfile?.disableAltScreen != true && localProfile?.sessionManager != "screen",
+                    onKeyboardInput = { data -> reCoalescer.send(applyModifiers(data)) },
+                    onResize = { dims ->
+                        for (tab in _tabs.value) tab.resize(dims.columns, dims.rows)
+                        localSessionManager.getActiveSession(sessionId)?.resize(dims.columns, dims.rows)
+                    },
+                    maxScrollbackLines = terminalScrollbackRows.value,
+                )
+                // Replay buffered output into the fresh emulator BEFORE wiring the
+                // live stream, so the restore and new output don't interleave.
+                localSessionManager.snapshotScrollback(sessionId)?.let { buffered ->
+                    reFeedOutput(buffered, 0, buffered.size)
+                }
+                val reattached = localSessionManager.reattachTerminalSession(sessionId) { data, offset, length ->
+                    reFeedOutput(data, offset, length)
+                } ?: continue
+                currentTabs.add(
+                    TerminalTab(
+                        sessionId = session.sessionId,
+                        profileId = session.profileId,
+                        colorTag = localProfile?.colorTag ?: 0,
+                        label = tabLabel,
+                        transportType = "LOCAL",
+                        emulator = reEmulator,
+                        mouseMode = reMouseTracker.mouseMode,
+                        activeMouseMode = reMouseTracker.activeMouseMode,
+                        bracketPasteMode = reMouseTracker.bracketPasteMode,
+                        altScreen = reMouseTracker.altScreen,
+                        oscHandler = reOscHandler,
+                        feedOutput = reFeedOutput,
+                        cwd = reCwdFlow,
+                        hyperlinkUri = reHyperlinkFlow,
+                        isReconnecting = MutableStateFlow(false),
+                        secondsUntilDisconnect = NEVER_STALLS,
+                        sendInput = { data -> reattached.sendInput(data) },
+                        resize = { cols, rows -> reattached.resize(cols, rows) },
+                        close = { reattached.close() },
+                        colorScheme = localScheme,
+                    )
+                )
+                Log.d(TAG, "Reattached to existing local session $sessionId")
+                trackedSessionIds.add(session.sessionId)
+                continue
+            }
+
             if (!localSessionManager.isReadyForTerminal(sessionId)) continue
 
             val session = localSessions[sessionId] ?: continue

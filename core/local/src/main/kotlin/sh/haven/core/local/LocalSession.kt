@@ -23,9 +23,32 @@ class LocalSession(
     private val command: String,
     private val args: Array<String>,
     private val env: Array<String>,
-    private val onDataReceived: (ByteArray, Int, Int) -> Unit,
+    onDataReceived: (ByteArray, Int, Int) -> Unit,
     private val onExited: ((exitCode: Int) -> Unit)? = null,
 ) : Closeable {
+
+    // Swappable so the PTY can outlive the emulator: when the Activity (and its
+    // TerminalViewModel) is torn down while the proot shell keeps running, the
+    // new ViewModel rewires this to a fresh emulator instead of the shell being
+    // killed and restarted blank (#272). Volatile: set on the main thread,
+    // read on the PTY reader thread.
+    @Volatile
+    private var onData: (ByteArray, Int, Int) -> Unit = onDataReceived
+
+    /** Rewire the PTY output sink (UI reattach after Activity recreation). */
+    fun replaceDataCallback(callback: (ByteArray, Int, Int) -> Unit) {
+        onData = callback
+    }
+
+    /**
+     * Dispatch bytes through the current output sink as if the PTY reader thread
+     * produced them. Exists so the callback-swap can be tested without a native
+     * PTY (forkpty isn't available off-device).
+     */
+    @androidx.annotation.VisibleForTesting
+    internal fun dispatchForTest(data: ByteArray, offset: Int, length: Int) {
+        onData(data, offset, length)
+    }
 
     @Volatile
     private var closed = false
@@ -75,7 +98,15 @@ class LocalSession(
                     val n = inputStream!!.read(buf)
                     if (n <= 0) break
                     readCount++
-                    onDataReceived(buf, 0, n)
+                    // Guard the sink: after the Activity is destroyed the old
+                    // emulator callback may still be wired until reattach swaps
+                    // it (#272). A throw there must not break the PTY reader and
+                    // kill the shell.
+                    try {
+                        onData(buf, 0, n)
+                    } catch (e: Exception) {
+                        if (!closed) Log.w(TAG, "output sink threw: ${e.message}")
+                    }
                 }
             } catch (e: Exception) {
                 if (!closed) {
