@@ -1,0 +1,3 @@
+New "Native X11 (GPU)" desktop for Linux distros.
+
+Runs X11 apps on Haven's GPU-accelerated native surface (via the built-in compositor's Xwayland) with no VNC round-trip — lighter and faster than the Openbox/Xfce4 VNC desktops for X11 apps. Install it from Desktop → Manage like any other desktop. EGL-based apps get GPU acceleration; some GLX-only apps that need DRI3 fall back to software.
