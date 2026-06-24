@@ -1,0 +1,3 @@
+Selectable package mirror for Linux distros.
+
+Desktop → Manage → Package mirror lets you pick a regional mirror (Europe, Asia, Americas) for distro package downloads, instead of always using each distro's default CDN. Useful when the default is slow or unreliable from where you are. Applies to Alpine, Debian, Ubuntu, Arch and Void, takes effect immediately on installed distros, and Default restores the original CDN.
