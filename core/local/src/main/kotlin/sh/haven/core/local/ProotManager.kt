@@ -15,6 +15,8 @@ import sh.haven.core.local.proot.DesktopEnvironmentSpec
 import sh.haven.core.local.proot.Distro
 import sh.haven.core.local.proot.DistroCatalog
 import sh.haven.core.local.proot.LaunchSpec
+import sh.haven.core.local.proot.MirrorCatalog
+import sh.haven.core.local.proot.MirrorRegion
 import sh.haven.core.local.proot.PackageFamily
 import sh.haven.core.local.proot.PackageOps
 import sh.haven.core.local.proot.RootfsFormat
@@ -29,6 +31,7 @@ import javax.inject.Singleton
 
 private const val TAG = "ProotManager"
 private const val PREF_ACTIVE_DISTRO_ID = "active_distro_id"
+private const val PREF_MIRROR_REGION = "mirror_region"
 
 /**
  * Delete [root] and everything under it, even when in-proot package
@@ -170,6 +173,42 @@ class ProotManager @Inject constructor(
     val activeDistro: Distro
         get() = DistroCatalog.lookup(activeDistroId)
             ?: error("Unknown distro id: $activeDistroId")
+
+    // --- Package mirror region (#263 / issue #162) ---
+
+    private val _mirrorRegion = MutableStateFlow(
+        prefs.getString(PREF_MIRROR_REGION, null)
+            ?.let { runCatching { MirrorRegion.valueOf(it) }.getOrNull() }
+            ?: MirrorRegion.DEFAULT,
+    )
+
+    /**
+     * Selected package-mirror region. Applied to a rootfs at install time
+     * (in [runPostExtractSetup], before the baseline + DE installs) and
+     * re-applied to every installed distro when changed via
+     * [setMirrorRegion], so a Settings change takes effect without a
+     * reinstall. [MirrorRegion.DEFAULT] keeps each distro's shipped CDN.
+     */
+    val mirrorRegionFlow: StateFlow<MirrorRegion> = _mirrorRegion.asStateFlow()
+    val mirrorRegion: MirrorRegion get() = _mirrorRegion.value
+
+    /**
+     * Change the package-mirror region. Persists the choice and rewrites
+     * the repo config of every already-installed distro in place (cheap
+     * local file edits; idempotent). Future installs pick it up in
+     * [runPostExtractSetup].
+     */
+    fun setMirrorRegion(region: MirrorRegion) {
+        if (region == _mirrorRegion.value) return
+        prefs.edit().putString(PREF_MIRROR_REGION, region.name).apply()
+        _mirrorRegion.value = region
+        for (distro in installedDistros) {
+            val changed = MirrorCatalog.apply(rootfsDirFor(distro.id), distro.id, region)
+            if (changed.isNotEmpty()) {
+                Log.d(TAG, "Mirror region $region applied to ${distro.id}: $changed")
+            }
+        }
+    }
 
     /**
      * Distros that are installed on this device — derived from the
@@ -765,6 +804,15 @@ class ProotManager @Inject constructor(
      * and the UI's retry path will offer Wipe & retry instead.
      */
     private suspend fun runPostExtractSetup(distro: Distro, installStartedAt: Long): Boolean {
+        // Apply the selected package-mirror region BEFORE hooks + baseline
+        // so every network fetch in this install (and later DE installs)
+        // uses the chosen mirror. No-op when region is DEFAULT or the
+        // distro has no mirror config. (#263 / issue #162.)
+        val rewritten = MirrorCatalog.apply(rootfsDirFor(distro.id), distro.id, _mirrorRegion.value)
+        if (rewritten.isNotEmpty()) {
+            Log.d(TAG, "[mirror ${distro.id}] region=${_mirrorRegion.value} rewrote $rewritten")
+        }
+
         for (hook in distro.postExtractHooks) {
             _state.value = SetupState.Initializing(hook.id)
             Log.d(TAG, "[hook ${hook.id}] start")

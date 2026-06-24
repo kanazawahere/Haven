@@ -84,6 +84,13 @@
     <!-- Desktop manager: header / intro -->
     <string name="app_desktop_manager_title">Local Linux desktop</string>
     <string name="app_desktop_manager_description">Run a full Linux desktop inside Haven. Pick a distro, install a desktop environment (Xfce4, Openbox, or Sway), then Launch — no separate server or connection needed.</string>
+    <!-- Desktop manager: package mirror (#263) -->
+    <string name="app_desktop_mirror_title">Package mirror</string>
+    <string name="app_desktop_mirror_description">Where distro packages are downloaded from. Pick a region closer to you for faster, more reliable installs. Default uses each distro\'s own CDN.</string>
+    <string name="app_desktop_mirror_default">Default (CDN)</string>
+    <string name="app_desktop_mirror_europe">Europe</string>
+    <string name="app_desktop_mirror_asia">Asia</string>
+    <string name="app_desktop_mirror_americas">Americas</string>
     <!-- Desktop manager: app windows -->
     <string name="app_desktop_app_windows_title">Application windows</string>
     <string name="app_desktop_app_windows_description">Launch a single application in a floating window over the current screen. Apps run in the active Linux distro and must be installed there.</string>

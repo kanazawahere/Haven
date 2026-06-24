@@ -123,6 +123,14 @@ class DesktopViewModel @Inject constructor(
         prootManager.setActiveDistroId(distroId)
     }
 
+    /** Selected package-mirror region (#263). Pass-through to ProotManager. */
+    val mirrorRegion: StateFlow<sh.haven.core.local.proot.MirrorRegion>
+        get() = prootManager.mirrorRegionFlow
+
+    fun setMirrorRegion(region: sh.haven.core.local.proot.MirrorRegion) {
+        prootManager.setMirrorRegion(region)
+    }
+
     /**
      * Local-shell open requests keyed by the resolved profile id. Collected
      * by HavenNavHost (which is always composed, unlike TerminalScreen) so

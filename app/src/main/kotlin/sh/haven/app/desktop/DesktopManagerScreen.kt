@@ -73,6 +73,8 @@ import sh.haven.core.local.ProotManager
 import sh.haven.core.local.proot.Compatibility
 import sh.haven.core.local.proot.Distro
 import sh.haven.core.local.proot.DistroCatalog
+import sh.haven.core.local.proot.MirrorCatalog
+import sh.haven.core.local.proot.MirrorRegion
 import sh.haven.core.local.proot.PackageFamily
 import sh.haven.core.data.preferences.AppWindowDef
 import sh.haven.feature.connections.R
@@ -102,6 +104,7 @@ fun DesktopManagerScreen(viewModel: DesktopViewModel = hiltViewModel()) {
     val installedDistros = viewModel.installedDistros
     val availableDistros = viewModel.availableDistros
     val isRootfsReady = rootfsSetupState is ProotManager.SetupState.Ready
+    val mirrorRegion by viewModel.mirrorRegion.collectAsState()
 
     var setupDesktopDe by remember {
         mutableStateOf<ProotManager.DesktopEnvironment?>(null)
@@ -131,6 +134,8 @@ fun DesktopManagerScreen(viewModel: DesktopViewModel = hiltViewModel()) {
             availableDistros = availableDistros,
             rootfsSetupState = rootfsSetupState,
             isRootfsReady = isRootfsReady,
+            mirrorRegion = mirrorRegion,
+            onSetMirrorRegion = { viewModel.setMirrorRegion(it) },
             storedVncPortFor = { viewModel.storedVncPortFor(it) },
             onSwitchDistro = { viewModel.switchActiveDistro(it) },
             onOpenShellForDistro = { viewModel.openShellForDistro(it) },
@@ -536,6 +541,66 @@ private fun ScaleChips(includeDefault: Boolean, scale: Float?, onPick: (Float?) 
 }
 
 @Composable
+private fun mirrorRegionLabel(r: MirrorRegion): String = when (r) {
+    MirrorRegion.DEFAULT -> stringResource(AppR.string.app_desktop_mirror_default)
+    MirrorRegion.EUROPE -> stringResource(AppR.string.app_desktop_mirror_europe)
+    MirrorRegion.ASIA -> stringResource(AppR.string.app_desktop_mirror_asia)
+    MirrorRegion.AMERICAS -> stringResource(AppR.string.app_desktop_mirror_americas)
+}
+
+/** Global package-mirror region picker (#263), styled like the distro chip. */
+@Composable
+private fun MirrorRegionRow(region: MirrorRegion, onSelect: (MirrorRegion) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Text(
+        stringResource(AppR.string.app_desktop_mirror_title),
+        style = MaterialTheme.typography.titleSmall,
+    )
+    Spacer(Modifier.height(2.dp))
+    Text(
+        stringResource(AppR.string.app_desktop_mirror_description),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(4.dp))
+    Box {
+        AssistChip(
+            onClick = { open = true },
+            label = { Text(mirrorRegionLabel(region)) },
+            trailingIcon = {
+                Icon(
+                    Icons.Filled.ExpandMore,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
+            },
+        )
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            MirrorRegion.entries.forEach { r ->
+                DropdownMenuItem(
+                    text = { Text(mirrorRegionLabel(r)) },
+                    leadingIcon = if (r == region) {
+                        {
+                            Icon(
+                                Icons.Filled.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    } else {
+                        null
+                    },
+                    onClick = {
+                        onSelect(r)
+                        open = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun DesktopManagerSection(
     installedDesktops: Set<ProotManager.DesktopEnvironment>,
     desktopStates: Map<ProotManager.DesktopEnvironment, DesktopManager.DesktopInstance>,
@@ -545,6 +610,8 @@ private fun DesktopManagerSection(
     availableDistros: List<Distro>,
     rootfsSetupState: ProotManager.SetupState,
     isRootfsReady: Boolean,
+    mirrorRegion: MirrorRegion,
+    onSetMirrorRegion: (MirrorRegion) -> Unit,
     storedVncPortFor: (ProotManager.DesktopEnvironment) -> Int?,
     onSwitchDistro: (String) -> Unit,
     onOpenShellForDistro: (String) -> Unit,
@@ -762,6 +829,13 @@ private fun DesktopManagerSection(
                     }
                     else -> { /* Ready / NotInstalled — silent */ }
                 }
+                Spacer(Modifier.height(8.dp))
+            }
+
+            // Package-mirror region (#263). Global across distros; shown once
+            // any installed distro supports a mirror swap (all current ones do).
+            if (installedDistros.any { MirrorCatalog.hasMirrors(it.id) }) {
+                MirrorRegionRow(region = mirrorRegion, onSelect = onSetMirrorRegion)
                 Spacer(Modifier.height(8.dp))
             }
 
