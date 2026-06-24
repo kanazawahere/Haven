@@ -1,0 +1,3 @@
+Audio for Linux apps (experimental).
+
+Settings → Proot audio routes sound from apps in your Linux distro out to the device speaker, via an in-guest PulseAudio bridge — no extra setup. Output only (no mic). It streams continuously while on, so turn it off when you're not using it. Apps launched from a terminal or desktop session pick it up automatically.
