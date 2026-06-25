@@ -37,11 +37,18 @@ title: Haven
 <thead><tr><th>Channel</th><th>Notes</th></tr></thead>
 <tbody>
 <tr><td><a href="https://f-droid.org/en/packages/sh.haven.app"><b>F-Droid</b></a></td><td>Built from source, auto-updated, recommended for most users.</td></tr>
-<tr><td><a href="https://github.com/GlassHaven/Haven/releases/latest"><b>GitHub Releases</b></a></td><td>Signed APKs (arm64 &amp; x86_64), released first, same binary as F-Droid.</td></tr>
+<tr><td><a href="https://github.com/GlassHaven/Haven/releases/latest"><b>GitHub Releases</b></a></td><td>Signed APKs (arm64 &amp; x86_64), released first, same features as F-Droid.</td></tr>
 </tbody>
 </table>
 
-Both builds are identical. Minimum Android 8.0 (API 26).
+Same features either way. Minimum Android 8.0 (API 26).
+
+**Pick one channel and stay on it.** GitHub Releases and F-Droid are signed with
+**different keys** (GitHub uses Haven's own release key; F-Droid signs with its
+per-app key), so Android treats them as separate apps — you can't update in place
+from one to the other. Switching channels needs an uninstall + reinstall, which
+clears app data, so back up first via **Settings → Backup**. Obtainium and direct
+sideloads track the GitHub Releases key.
 
 ## Screenshots
 

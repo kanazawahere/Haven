@@ -76,7 +76,20 @@ Available in 12 languages: English, Chinese (simplified), Spanish, Hindi, Arabic
 | [GitHub Releases](https://github.com/GlassHaven/Haven/releases/latest) | Signed APK, all features |
 | [F-Droid](https://f-droid.org/en/packages/sh.haven.app) | Built from source, all features |
 
-Both builds are identical — SSH, Mosh, Eternal Terminal, VNC, RDP, SFTP, SMB, email, and cloud storage. IronRDP (Rust) is built from source via `cargo-ndk`. rclone (Go) is built from source via `gomobile`.
+Both builds have the same features — SSH, Mosh, Eternal Terminal, VNC, RDP, SFTP, SMB, email, and cloud storage. IronRDP (Rust) is built from source via `cargo-ndk`. rclone (Go) is built from source via `gomobile`.
+
+> **Pick one channel and stay on it.** The two channels are signed with
+> **different keys** — GitHub Releases use Haven's own release key; F-Droid
+> builds from source and signs with F-Droid's per-app key. Android treats
+> different signing keys as different apps, so you **can't update in place from
+> one channel to the other** — switching means uninstall + reinstall, which
+> clears app data (back up first via **Settings → Backup**). Direct sideloads
+> and Obtainium track the GitHub Releases key.
+>
+> Signing certificate SHA-256 (to verify a sideloaded APK with
+> `apksigner verify --print-certs`):
+> - GitHub Releases: `ea03a3a70e1c11d0a78932f959b21f20d8735d9cd750997657cb7f7d7c2b90b3`
+> - F-Droid: `ea05a89431961b8ac53c36725452673c2be1c2d7b6e48771617b974e6092b332`
 
 ## Build from source
 
