@@ -16,6 +16,46 @@ and re-exposes it (see [Vision](https://github.com/GlassHaven/Haven/blob/main/VI
 The spark was a **YubiKey**: plug it into the phone and use it for SSH/FIDO on a
 machine that has no key of its own, with the **touch happening on the phone**.
 
+## Device-class support
+
+What reaches each consumer depends on the device class. **Guest** = the local
+proot Linux guest, via the `haven-usb` shim; **Remote** = a Linux host over
+USB/IP. (✅ works · ⚠️ feasible but not yet built · ❌ not feasible by this route.)
+
+| Device class | Guest (proot) | Remote (USB/IP) | Notes |
+|---|:---:|:---:|---|
+| HID — keyboards, FIDO/CTAPHID security keys | ✅ `hidraw` shim | ✅ | Verified: YubiKey FIDO/SSH |
+| CDC-ACM serial — USB-serial, ESP32 | ✅ serial shim | ✅ | Verified: ESP32-S3 `esptool` |
+| Other bulk/control — printers, scanners, SDR, MTP/PTP cameras, `fastboot` | ⚠️ needs a libusb/usbfs shim | ✅ | Userspace-driven; see [Extending guest support](#extending-guest-support) |
+| Mass storage — flash drives | ❌ no block layer | ✅ real kernel | Guest: read files via Android mount + `/storage` |
+| Network — RNDIS / CDC-ECM / NCM | ❌ no netdev | ✅ | |
+| Webcam (UVC) / Audio (UAC) | ❌ | ❌ | **Isochronous** — no Android `UsbDeviceConnection` API |
+
+### Why these limits
+
+The broker moves **control and bulk/interrupt** transfers over Android's
+`UsbDeviceConnection` — that's all the Android API exposes. Two hard walls follow:
+
+- **Kernel-object classes.** Mass storage (`/dev/sd*` + `mount`), network
+  (a netdev), webcams (`/dev/video`), and audio (ALSA) need a kernel **class
+  driver** to materialise a kernel object. proot has no kernel, so they can't
+  appear in the guest. The **remote USB/IP** path sidesteps this — it attaches
+  the device to a *real* Linux kernel, so any non-isochronous class works there.
+- **Isochronous transfers.** `UsbDeviceConnection` has no isochronous API, so
+  UVC webcams and UAC audio — which live on isochronous endpoints — can't be
+  bridged on *either* path, guest or remote.
+
+### Extending guest support
+
+Today the guest shim emulates two specific char devices (`hidraw`, serial). The
+general next step is a **libusb / usbfs shim** — emulate `/dev/bus/usb/*` (or
+interpose libusb) and route its URBs over the same proxy. `UsbDeviceConnection`
+already provides exactly libusb's primitives (descriptors, `claimInterface`,
+control, bulk), so one shim would unlock **any userspace-driven class** —
+printers (CUPS), scanners (SANE), SDR, MTP/PTP (libgphoto2/libmtp), `fastboot` —
+with no per-class code. It does **not** move the two walls above: kernel-object
+classes still need the remote path, and isochronous still has no Android API.
+
 ## To the agent (MCP)
 
 `list_usb_devices`, `request_usb_permission`, `usb_control_transfer`, and
@@ -42,14 +82,10 @@ All USB I/O stays in the Android layer (`UsbDeviceConnection`), so the guest nev
 needs a real device node or root. The shim is built for both glibc and musl, so it
 works the same on every distro Haven offers.
 
-> **Not supported: USB mass-storage / block devices.** A USB drive is USB
-> Mass Storage class — it needs the kernel's `usb-storage`/SCSI/block layer to
-> become a `/dev/sd*` block device, which proot has no access to, and the
-> `haven-usb` shim only emulates *character* devices (HID `hidraw`, CDC serial).
-> So a flash drive does **not** appear as a disk inside the guest even with
-> forwarding on, and `fdisk`/partitioning isn't possible there. To use the
-> drive's *files*, let Android mount it (USB-OTG storage) and read/write them
-> under `/storage` (bound into every guest); partitioning must be done
+> **Not block storage.** A USB drive (mass-storage class) can't appear as a disk
+> here, and `fdisk` isn't possible — see [Device-class support](#device-class-support)
+> for why. To use a drive's *files*, let Android mount it (USB-OTG storage) and
+> read/write them under `/storage` (bound into every guest); partitioning is
 > host-side.
 
 ## To a remote host over USB/IP
