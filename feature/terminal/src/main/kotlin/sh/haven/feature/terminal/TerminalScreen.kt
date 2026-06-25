@@ -132,6 +132,7 @@ fun TerminalScreen(
     navigateToProfileId: String? = null,
     newSessionProfileId: String? = null,
     openLocalShellProfileId: String? = null,
+    openLocalShellDeId: String? = null,
     isActive: Boolean = false,
     terminalModifier: Modifier = Modifier,
     fontSize: Int = UserPreferencesRepository.DEFAULT_FONT_SIZE,
@@ -477,7 +478,7 @@ fun TerminalScreen(
     // here runs once the screen is composed after the pager switch.
     LaunchedEffect(openLocalShellProfileId) {
         if (openLocalShellProfileId != null) {
-            viewModel.addLocalTabForProfile(openLocalShellProfileId)
+            viewModel.addLocalTabForProfile(openLocalShellProfileId, desktopDeId = openLocalShellDeId)
         }
     }
 

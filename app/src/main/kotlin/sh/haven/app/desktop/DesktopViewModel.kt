@@ -140,8 +140,11 @@ class DesktopViewModel @Inject constructor(
      * addLocalTabForProfile. SharedFlow with replay=0 — a screen rotation
      * shouldn't re-open a shell. See GlassHaven/Haven#168.
      */
-    private val _openLocalShellRequests = MutableSharedFlow<String>(extraBufferCapacity = 4)
-    val openLocalShellRequests: SharedFlow<String> = _openLocalShellRequests.asSharedFlow()
+    /** A request to open a local shell tab, optionally joining a running desktop (#285). */
+    data class LocalShellRequest(val profileId: String, val desktopDeId: String? = null)
+
+    private val _openLocalShellRequests = MutableSharedFlow<LocalShellRequest>(extraBufferCapacity = 4)
+    val openLocalShellRequests: SharedFlow<LocalShellRequest> = _openLocalShellRequests.asSharedFlow()
 
     /**
      * Open a terminal tab into the given distro. Restores the entry-point
@@ -180,7 +183,39 @@ class DesktopViewModel @Inject constructor(
                     it.connectionType == "LOCAL" && it.label == "Local Shell" && !it.useAndroidShell
                 } ?: seeded
             }
-            _openLocalShellRequests.emit(profile.id)
+            _openLocalShellRequests.emit(LocalShellRequest(profile.id))
+        }
+    }
+
+    /**
+     * Open a terminal tab whose environment joins the RUNNING desktop [de]
+     * (#285) — DISPLAY / WAYLAND_DISPLAY / XDG_RUNTIME_DIR — so the user can
+     * drive the desktop's apps from a shell. Reuses the canonical "Local Shell"
+     * profile; unlike [openShellForDistro] it does NOT switch the active distro
+     * (desktops run on the active distro, and their sockets live in the shared
+     * cacheDir). The deId rides the request so the terminal resolves and merges
+     * the desktop env at session creation.
+     */
+    fun openTerminalInDesktop(de: ProotManager.DesktopEnvironment) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val all = connectionRepository.getAll()
+            val profile = all.firstOrNull {
+                it.connectionType == "LOCAL" && !it.useAndroidShell
+            } ?: run {
+                val seeded = ConnectionProfile(
+                    label = "Local Shell",
+                    host = "localhost",
+                    username = "",
+                    port = 0,
+                    connectionType = "LOCAL",
+                    useAndroidShell = false,
+                )
+                connectionRepository.save(seeded)
+                connectionRepository.getAll().firstOrNull {
+                    it.connectionType == "LOCAL" && it.label == "Local Shell" && !it.useAndroidShell
+                } ?: seeded
+            }
+            _openLocalShellRequests.emit(LocalShellRequest(profile.id, de.spec.id))
         }
     }
 

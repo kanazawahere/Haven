@@ -1917,7 +1917,7 @@ class TerminalViewModel @Inject constructor(
      * the profile's display name when called from outside the
      * clone-current-tab path.
      */
-    fun addLocalTabForProfile(profileId: String, label: String? = null) {
+    fun addLocalTabForProfile(profileId: String, label: String? = null, desktopDeId: String? = null) {
         viewModelScope.launch {
             _newTabLoading.value = true
             try {
@@ -1927,10 +1927,13 @@ class TerminalViewModel @Inject constructor(
                 val resolvedLabel = label
                     ?: profile?.label
                     ?: profileId.take(8)
+                // Join a running desktop session (#285) when a deId was supplied.
+                val desktopEnv = localSessionManager.resolveDesktopEnv(desktopDeId)
                 val sessionId = localSessionManager.registerSession(
                     profileId, resolvedLabel,
                     useAndroidShell = existingSession?.useAndroidShell ?: profile?.useAndroidShell ?: false,
                     prootDistroId = existingSession?.prootDistroId ?: profile?.prootDistroId,
+                    desktopEnv = desktopEnv,
                 )
                 localSessionManager.connectSession(sessionId)
                 syncSessions()

@@ -106,6 +106,9 @@
     <string name="app_desktop_app_window_command_label">Command</string>
     <string name="app_desktop_app_window_command_placeholder">e.g. imv /root/board.png</string>
 
+    <!-- Desktop manager: open a terminal joined to a running desktop's session (#285) -->
+    <string name="app_desktop_open_terminal_cd">Open terminal in %1$s</string>
+
     <!-- Desktop manager: installed-apps launcher (xfce4-style menu) -->
     <string name="app_desktop_browse_installed_apps">Browse installed apps</string>
     <string name="app_desktop_installed_apps_title">Installed apps</string>

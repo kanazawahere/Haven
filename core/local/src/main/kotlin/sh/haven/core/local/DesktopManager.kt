@@ -410,6 +410,64 @@ class DesktopManager @Inject constructor(
     }
 
     /**
+     * Resolve the client environment a process needs to talk to a RUNNING
+     * desktop session — DISPLAY / WAYLAND_DISPLAY / XDG_RUNTIME_DIR — so a
+     * local shell (or any guest process) can drive the desktop's apps from
+     * the command line (#285). The desktop's sockets live under the shared
+     * app cacheDir (bound at /tmp in every proot launch), so a plain local
+     * shell already SEES them; it just needs these vars pointed at the right
+     * socket. Wayland socket names aren't a fixed number, so they're
+     * discovered now via a one-shot `ls` in the active proot.
+     *
+     * Returns concrete KEY→VALUE env. Throws if [de] is not running.
+     */
+    suspend fun resolveClientEnv(de: ProotManager.DesktopEnvironment): Map<String, String> {
+        val instance = _desktops.value[de]
+            ?: throw IllegalStateException("Desktop '${de.spec.id}' is not running")
+        return when (de.spec.launch) {
+            is LaunchSpec.X11Vnc -> mapOf(
+                "DISPLAY" to ":${instance.displayNumber}",
+                "XAUTHORITY" to "/root/.Xauthority",
+            )
+            is LaunchSpec.NestedWayland -> {
+                val xdg = "/tmp/xdg-runtime-${instance.displayNumber}"
+                val sock = resolveSock(xdg, Regex("^wayland-[0-9]+$"))
+                    ?: throw IllegalStateException(
+                        "No wayland socket under $xdg — is '${de.spec.id}' fully up?",
+                    )
+                mapOf("XDG_RUNTIME_DIR" to xdg, "WAYLAND_DISPLAY" to sock)
+            }
+            is LaunchSpec.NativeCompositor -> {
+                // The native compositor binds cacheDir/wayland-xdg at
+                // /tmp/xdg-runtime inside ITS OWN proot; a shell that only binds
+                // cacheDir→/tmp sees the same dir at /tmp/wayland-xdg. The Wayland
+                // socket is the fixed wayland-0. For X11 apps, DISPLAY is whatever
+                // X socket labwc's Xwayland created under the shared /tmp/.X11-unix.
+                val env = mutableMapOf(
+                    "XDG_RUNTIME_DIR" to "/tmp/wayland-xdg",
+                    "WAYLAND_DISPLAY" to "wayland-0",
+                )
+                resolveSock("/tmp/.X11-unix", Regex("^X[0-9]+$"))?.let {
+                    env["DISPLAY"] = ":" + it.removePrefix("X")
+                }
+                env
+            }
+        }
+    }
+
+    /**
+     * Discover a socket filename under [dir] (inside the active proot)
+     * matching [pattern], via a one-shot `ls`. Filters to trimmed lines that
+     * match so any proot-warning prefix on stdout is ignored. Null if none.
+     */
+    private suspend fun resolveSock(dir: String, pattern: Regex): String? {
+        val (out, _) = prootManager.runCommandInProot("ls $dir 2>/dev/null")
+        return out.lineSequence()
+            .map { it.trim() }
+            .firstOrNull { pattern.matches(it) }
+    }
+
+    /**
      * Enumerate visible top-level windows on a running X11 desktop using
      * `xdotool`. Each window is emitted as a single pipe-delimited line
      * (window names have '|' and newlines squashed to spaces) so the

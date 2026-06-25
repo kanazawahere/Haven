@@ -439,6 +439,8 @@ fun HavenNavHost(
     // and the Desktop tab is outside the pager's composition window — the bus
     // event was dropped and no tab opened. HavenNavHost is always composed.
     var pendingLocalShellProfileId by rememberSaveable { mutableStateOf<String?>(null) }
+    // Desktop id to join (DISPLAY/WAYLAND_DISPLAY) when the pending shell opens (#285).
+    var pendingLocalShellDeId by rememberSaveable { mutableStateOf<String?>(null) }
 
     // SMB auto-connect params
     var pendingSmbProfileId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -454,8 +456,9 @@ fun HavenNavHost(
     // and animates to the Terminal page; TerminalScreen creates the tab once
     // composed (see pendingLocalShellProfileId).
     LaunchedEffect(desktopViewModel) {
-        desktopViewModel.openLocalShellRequests.collect { profileId ->
-            pendingLocalShellProfileId = profileId
+        desktopViewModel.openLocalShellRequests.collect { req ->
+            pendingLocalShellProfileId = req.profileId
+            pendingLocalShellDeId = req.desktopDeId
             requestScreen(Screen.Terminal)
         }
     }
@@ -575,6 +578,7 @@ fun HavenNavHost(
                         navigateToProfileId = pendingTerminalProfileId,
                         newSessionProfileId = pendingNewSessionProfileId,
                         openLocalShellProfileId = pendingLocalShellProfileId,
+                        openLocalShellDeId = pendingLocalShellDeId,
                         isActive = pagerState.settledPage == pageOf(Screen.Terminal),
                         fontSize = terminalFontSize,
                         terminalFontPath = terminalFontPath,
@@ -672,6 +676,7 @@ fun HavenNavHost(
                         if (pendingLocalShellProfileId != null) {
                             kotlinx.coroutines.delay(6000)
                             pendingLocalShellProfileId = null
+                            pendingLocalShellDeId = null
                         }
                     }
                 }

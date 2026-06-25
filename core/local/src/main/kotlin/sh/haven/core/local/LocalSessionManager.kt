@@ -23,6 +23,22 @@ import javax.inject.Singleton
 private const val TAG = "LocalSessionManager"
 
 /**
+ * Merge [overlay] into [base] env entries with KEY-OVERRIDE semantics: an
+ * overlay key replaces the matching base `KEY=...` entry rather than relying on
+ * execve duplicate-key ordering (which is libc-defined). New keys append. Used
+ * to point a local shell at a running desktop's display sockets (#285).
+ */
+internal fun mergeEnv(base: Array<String>, overlay: Map<String, String>): Array<String> {
+    val merged = LinkedHashMap<String, String>(base.size + overlay.size)
+    for (entry in base) {
+        val eq = entry.indexOf('=')
+        if (eq < 0) merged[entry] = "" else merged[entry.substring(0, eq)] = entry.substring(eq + 1)
+    }
+    overlay.forEach { (k, v) -> merged[k] = v }
+    return merged.map { (k, v) -> "$k=$v" }.toTypedArray()
+}
+
+/**
  * Manages active local terminal sessions.
  * Follows the same lifecycle pattern as MoshSessionManager.
  */
@@ -77,6 +93,13 @@ class LocalSessionManager @Inject constructor(
         val useAndroidShell: Boolean = false,
         /** Distro to open the proot shell in; null = the active distro. */
         val prootDistroId: String? = null,
+        /**
+         * Extra env merged (key-override) into the proot launch so this shell
+         * joins a running desktop session — DISPLAY / WAYLAND_DISPLAY /
+         * XDG_RUNTIME_DIR (#285). Null = a plain shell. Resolved by the
+         * suspend caller via [resolveDesktopEnv]; ignored for Android shells.
+         */
+        val desktopEnv: Map<String, String>? = null,
     ) {
         enum class Status { CONNECTING, CONNECTED, DISCONNECTED, ERROR }
     }
@@ -99,6 +122,7 @@ class LocalSessionManager @Inject constructor(
         label: String,
         useAndroidShell: Boolean = false,
         prootDistroId: String? = null,
+        desktopEnv: Map<String, String>? = null,
     ): String {
         // Reap any superseded dead shells for this profile before minting a
         // fresh one. A local shell never reconnects, so a DISCONNECTED entry is
@@ -117,6 +141,7 @@ class LocalSessionManager @Inject constructor(
                 status = SessionState.Status.CONNECTING,
                 useAndroidShell = useAndroidShell,
                 prootDistroId = prootDistroId,
+                desktopEnv = desktopEnv,
             ))
         }
         return sessionId
@@ -307,6 +332,21 @@ class LocalSessionManager @Inject constructor(
     }
 
     /**
+     * Resolve the desktop client env (DISPLAY / WAYLAND_DISPLAY /
+     * XDG_RUNTIME_DIR) for a running desktop [deId], for passing as
+     * [registerSession]'s `desktopEnv` so the shell joins that desktop (#285).
+     * Null when [deId] is null. Throws if the id is unknown or not running.
+     * Suspend (the Wayland socket name is probed in-guest), so callers must be
+     * suspend — done in the UI/MCP entry points, not [createTerminalSession].
+     */
+    suspend fun resolveDesktopEnv(deId: String?): Map<String, String>? {
+        if (deId == null) return null
+        val de = ProotManager.DesktopEnvironment.entries.firstOrNull { it.spec.id == deId }
+            ?: throw IllegalArgumentException("Unknown desktop id: $deId")
+        return desktopManager.resolveClientEnv(de)
+    }
+
+    /**
      * Create a [LocalSession] for a connected session.
      * The PTY process starts immediately and output flows via [onDataReceived].
      */
@@ -321,7 +361,15 @@ class LocalSessionManager @Inject constructor(
         if (session.status != SessionState.Status.CONNECTED) return null
         if (session.localSession != null) return null
 
-        val (cmd, args, env) = buildCommand(session.useAndroidShell, plain = plain, distroId = session.prootDistroId)
+        val (cmd, args, baseEnv) = buildCommand(session.useAndroidShell, plain = plain, distroId = session.prootDistroId)
+        // Join a running desktop session (#285): override DISPLAY / WAYLAND_DISPLAY
+        // / XDG_RUNTIME_DIR so the shell can drive the desktop's apps. The desktop's
+        // sockets are in the shared cacheDir (bound at /tmp), so only the env needs
+        // pointing. Irrelevant for Android shells (no proot /tmp bind).
+        val env = session.desktopEnv
+            ?.takeIf { it.isNotEmpty() && !session.useAndroidShell }
+            ?.let { mergeEnv(baseEnv, it) }
+            ?: baseEnv
 
         // Permanent agent-scope mirror of PTY stdout, wired here so EVERY local
         // shell — UI-opened or headless — feeds the ring that

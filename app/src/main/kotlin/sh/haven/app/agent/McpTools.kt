@@ -2208,6 +2208,24 @@ internal class McpTools(
             consentLevel = ConsentLevel.ONCE_PER_SESSION,
             summarise = { args -> "Launch '${args.optString("command")}' on desktop '${args.optString("deId")}'" },
         ) { args -> launchAppInDesktop(args) },
+        "open_desktop_terminal" to ToolHandler(
+            description = "Open an interactive local PRoot shell whose environment JOINS a RUNNING desktop (deId) — exports DISPLAY (X11/VNC) or WAYLAND_DISPLAY + XDG_RUNTIME_DIR (nested-Wayland / native labwc) — so you can drive the desktop's apps from the command line (e.g. launch/inspect GUI programs in the same session a user is viewing over VNC). Returns a sessionId usable with send_terminal_input / read_terminal_scrollback, plus the resolved display/waylandDisplay/xdgRuntimeDir. Always a fresh session (a reused plain shell would lack the display env). The desktop must already be RUNNING (start_desktop). Unlike launch_app_in_desktop (fire-and-forget single app), this gives you an interactive shell.",
+            inputSchema = JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("deId", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Desktop environment id of a RUNNING desktop (e.g. \"openbox\", \"xfce4\", \"sway\").")
+                    })
+                    put("plain", JSONObject().apply {
+                        put("type", "boolean")
+                        put("description", "Skip the user's sessionManager preference and exec a bare login shell. Default false.")
+                    })
+                })
+                put("required", JSONArray().put("deId"))
+            },
+            consentLevel = ConsentLevel.NEVER,
+        ) { args -> openDesktopTerminal(args) },
 
         "gl_smoke_test" to ToolHandler(
             description = "Launch a GL app into a RUNNING desktop on the GPU PATH (venus/virpipe — NOT the llvmpipe software fallback that launch_app_in_desktop forces), screenshot it, and heuristically report whether the frame is non-blank. A regression check for the windowed-GL-present pipeline (a blank/white frame = GL didn't present). The verdict is reliable only for a FULL-FRAME GL app (a fullscreen / cage-kiosk GL test app like 'glxgears' or 'es2gears'); for a windowed app the 2D chrome masks a blank 3D pane, so rely on the returned image. Optionally writes the gpu_use_venus pref first. Returns the screenshot plus { passed, distinctColors, topColorFraction, gpuPath, windowId? }. Detects non-blank, not correctness.",
@@ -7102,8 +7120,22 @@ internal class McpTools(
         }
     }
 
-    private suspend fun openLocalShell(args: JSONObject = JSONObject()): JSONObject = withContext(Dispatchers.IO) {
-        val plain = args.optBoolean("plain", false)
+    private suspend fun openLocalShell(args: JSONObject = JSONObject()): JSONObject =
+        attachAgentShell(plain = args.optBoolean("plain", false), desktopEnv = null, reuse = true)
+
+    /**
+     * Open (or, when [reuse], adopt) the canonical "Local Shell" PRoot session,
+     * spin up a headless PTY + agent emulator, and return its session JSON.
+     * When [desktopEnv] is non-null the shell joins a running desktop (#285)
+     * via DISPLAY / WAYLAND_DISPLAY / XDG_RUNTIME_DIR — pass [reuse]=false in
+     * that case so a fresh session actually carries the env (a reused plain
+     * shell would lack it).
+     */
+    private suspend fun attachAgentShell(
+        plain: Boolean,
+        desktopEnv: Map<String, String>?,
+        reuse: Boolean,
+    ): JSONObject = withContext(Dispatchers.IO) {
         // Find or seed the canonical "Local Shell" profile, mirroring
         // ConnectionsViewModel.connectLocalTerminal so the agent and
         // the user reach the same place. We deliberately do NOT trigger
@@ -7135,12 +7167,19 @@ internal class McpTools(
         // on the same profile is a valid pattern, but the simple "give
         // me a sessionId I can type into" use case is best served by
         // the shortest path.
-        val alive = localSessionManager.getSessionsForProfile(profile.id)
-            .firstOrNull { it.status == LocalSessionManager.SessionState.Status.CONNECTED }
+        val alive = if (reuse) {
+            localSessionManager.getSessionsForProfile(profile.id)
+                .firstOrNull { it.status == LocalSessionManager.SessionState.Status.CONNECTED }
+        } else {
+            null
+        }
         val sessionId = if (alive != null) {
             alive.sessionId
         } else {
-            val sid = localSessionManager.registerSession(profile.id, profile.label, profile.useAndroidShell, profile.prootDistroId)
+            val sid = localSessionManager.registerSession(
+                profile.id, profile.label, profile.useAndroidShell, profile.prootDistroId,
+                desktopEnv = desktopEnv,
+            )
             try {
                 localSessionManager.connectSession(sid)
             } catch (e: Exception) {
@@ -7220,6 +7259,35 @@ internal class McpTools(
             put("reused", alive != null)
             put("plain", plain)
             put("ready", ready)
+        }
+    }
+
+    /**
+     * Open a local PRoot shell whose environment joins a RUNNING desktop (#285)
+     * — DISPLAY / WAYLAND_DISPLAY / XDG_RUNTIME_DIR — so the agent can drive the
+     * desktop's apps from a shell. Always a fresh session (a reused plain shell
+     * would lack the display env). Returns the session JSON plus the resolved
+     * display vars for verification.
+     */
+    private suspend fun openDesktopTerminal(args: JSONObject): JSONObject {
+        val deId = args.optString("deId").takeIf { it.isNotBlank() }
+            ?: throw McpError(-32602, "deId is required")
+        val de = desktopByIdOrThrow(deId)
+        val env = try {
+            localSessionManager.desktopManager.resolveClientEnv(de)
+        } catch (e: Exception) {
+            throw McpError(-32603, e.message ?: "Failed to resolve desktop env for $deId")
+        }
+        val base = attachAgentShell(
+            plain = args.optBoolean("plain", false),
+            desktopEnv = env,
+            reuse = false,
+        )
+        return base.apply {
+            put("desktopDeId", de.spec.id)
+            put("display", env["DISPLAY"] ?: JSONObject.NULL)
+            put("waylandDisplay", env["WAYLAND_DISPLAY"] ?: JSONObject.NULL)
+            put("xdgRuntimeDir", env["XDG_RUNTIME_DIR"] ?: JSONObject.NULL)
         }
     }
 

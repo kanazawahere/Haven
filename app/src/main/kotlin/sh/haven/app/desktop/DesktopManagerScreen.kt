@@ -144,6 +144,7 @@ fun DesktopManagerScreen(viewModel: DesktopViewModel = hiltViewModel()) {
             onInstall = { setupDesktopDe = it },
             onStart = { viewModel.startDesktop(it) },
             onStop = { viewModel.stopDesktop(it) },
+            onOpenTerminalInDesktop = { viewModel.openTerminalInDesktop(it) },
             onUninstall = { viewModel.uninstallDesktop(it) },
             onRetryRootfs = { viewModel.retryRootfsInstall() },
         )
@@ -620,6 +621,7 @@ private fun DesktopManagerSection(
     onInstall: (ProotManager.DesktopEnvironment) -> Unit,
     onStart: (ProotManager.DesktopEnvironment) -> Unit,
     onStop: (ProotManager.DesktopEnvironment) -> Unit,
+    onOpenTerminalInDesktop: (ProotManager.DesktopEnvironment) -> Unit,
     onUninstall: (ProotManager.DesktopEnvironment) -> Unit,
     onRetryRootfs: () -> Unit,
 ) {
@@ -893,6 +895,7 @@ private fun DesktopManagerSection(
                     onInstall = { onInstall(de) },
                     onStart = { onStart(de) },
                     onStop = { onStop(de) },
+                    onOpenTerminal = { onOpenTerminalInDesktop(de) },
                     onUninstall = { onUninstall(de) },
                 )
             }
@@ -912,6 +915,7 @@ private fun DesktopRow(
     onInstall: () -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
+    onOpenTerminal: () -> Unit,
     onUninstall: () -> Unit,
 ) {
     val compatibility = activeFamily?.let { de.spec.compatibilityOn(it) }
@@ -1016,10 +1020,17 @@ private fun DesktopRow(
             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
         } else {
             when (instance?.state) {
-                DesktopManager.DesktopState.RUNNING ->
+                DesktopManager.DesktopState.RUNNING -> {
+                    IconButton(onClick = onOpenTerminal) {
+                        Icon(
+                            Icons.Filled.Terminal,
+                            contentDescription = stringResource(AppR.string.app_desktop_open_terminal_cd, de.label),
+                        )
+                    }
                     IconButton(onClick = onStop) {
                         Icon(Icons.Filled.Stop, contentDescription = stringResource(R.string.connections_desktop_stop))
                     }
+                }
                 DesktopManager.DesktopState.STARTING ->
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                 else -> {
