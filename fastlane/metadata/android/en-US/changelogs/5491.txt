@@ -1,0 +1,3 @@
+Encrypted SSH key now prompts for its passphrase on connect (#292)
+
+If you switched a saved connection from a password to a passphrase-protected key, tapping Connect could fail with "incorrect passphrase provided" and never ask for the key's passphrase. Haven now shows the passphrase prompt whenever an encrypted key can't be unlocked with a stored or saved value, so key-based auth works again. Also carries the v5.59.95 change: revealing a saved password behind biometric auth (#274).
