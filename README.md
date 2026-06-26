@@ -67,7 +67,9 @@ See [docs/FEATURES.md](docs/FEATURES.md) for the full feature index.
 
 ## Languages
 
-Available in 12 languages: English, Chinese (simplified), Spanish, Hindi, Arabic (with RTL support), Portuguese, Bengali, Russian, Japanese, Korean, French, and German. The UI follows the device language. Community translation contributions welcome.
+Available in 12 languages: English, Chinese (simplified), Spanish, Hindi, Arabic (with RTL support), Portuguese, Bengali, Russian, Japanese, Korean, French, and German. The UI follows the device language.
+
+**Want to help translate?** Improve a translation or add a new language straight from the [web translation page](https://glasshaven.github.io/Haven/translate.html) — no cloning or setup; your changes become a GitHub pull request. See [Languages & translation](docs/features/i18n.md) for details.
 
 ## Install
 

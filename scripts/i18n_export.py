@@ -58,14 +58,21 @@ def parse_translations(path):
 
 
 def discover_modules():
-    """Module dirs that own a source strings.xml, excluding test artifacts."""
+    """First-party app/feature/core modules that own a source strings.xml.
+
+    Only these three trees are scanned: their strings.xml are tracked in the
+    main repo, so the export is byte-identical in CI. Submodule-provided
+    resources (e.g. termlib) are deliberately excluded — their checkout state
+    varies, which would make the staleness check (git diff) false-fail.
+    """
     mods = []
-    for src in REPO.glob("**/src/main/res/values/strings.xml"):
-        rel = src.relative_to(REPO).as_posix()
-        if "/build/" in rel or "test-app/" in rel:
-            continue
-        module = rel.split("/src/main/res/")[0]
-        mods.append((module, src))
+    for base in ("app", "feature", "core"):
+        for src in (REPO / base).glob("**/src/main/res/values/strings.xml"):
+            rel = src.relative_to(REPO).as_posix()
+            if "/build/" in rel or "test-app/" in rel:
+                continue
+            module = rel.split("/src/main/res/")[0]
+            mods.append((module, src))
     return sorted(mods)
 
 

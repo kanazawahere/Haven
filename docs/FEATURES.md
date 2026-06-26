@@ -19,8 +19,9 @@ page below; the [landing page](index.md) has a short summary.
 - **[Reticulum mesh](features/reticulum.md)** — rnsh shell, file transfer, and `-L`/`-D` port forwarding over Reticulum, pure Kotlin. The one transport that keeps working with no internet at all.
 - **[Agent transport (MCP)](features/agent-mcp.md)** — an optional MCP server exposing ~130 consent-gated, audited tools, including ones that drive Haven's own UI for a self-hosting build → install → verify loop.
 - **[Security & privacy](features/security.md)** — biometric lock, no telemetry, encrypted backup/restore (AES-256-GCM).
+- **[Languages & translation](features/i18n.md)** — 12 languages, follows the device locale, in-app language picker; contribute corrections or whole new languages from the web translation page, no setup required.
 
-**Languages** — the UI is translated into 12 languages (English, Chinese, Spanish, Hindi, Arabic with RTL, Portuguese, Bengali, Russian, Japanese, Korean, French, German) and follows the device language. [Help translate Haven](translate.html).
+**Languages** — the UI is translated into 12 languages (English, Chinese, Spanish, Hindi, Arabic with RTL, Portuguese, Bengali, Russian, Japanese, Korean, French, German) and follows the device language. See [Languages & translation](features/i18n.md), or jump straight to the [translation page](translate.html).
 
 ---
 
