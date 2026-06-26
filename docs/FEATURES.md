@@ -20,8 +20,8 @@ page below; the [landing page](index.md) has a short summary.
 - **[Agent transport (MCP)](features/agent-mcp.md)** — an optional MCP server exposing ~130 consent-gated, audited tools, including ones that drive Haven's own UI for a self-hosting build → install → verify loop.
 - **[Security & privacy](features/security.md)** — biometric lock, no telemetry, encrypted backup/restore (AES-256-GCM).
 
-**Languages** — the UI is translated into 12 languages (English, Chinese, Spanish, Hindi, Arabic with RTL, Portuguese, Bengali, Russian, Japanese, Korean, French, German) and follows the device language.
+**Languages** — the UI is translated into 12 languages (English, Chinese, Spanish, Hindi, Arabic with RTL, Portuguese, Bengali, Russian, Japanese, Korean, French, German) and follows the device language. [Help translate Haven](translate.html).
 
 ---
 
-[Vision](https://github.com/GlassHaven/Haven/blob/main/VISION.md) · [Backup file format](backup-format.md) · [Privacy policy](privacy-policy.html)
+[Vision](https://github.com/GlassHaven/Haven/blob/main/VISION.md) · [Translate](translate.html) · [Backup file format](backup-format.md) · [Privacy policy](privacy-policy.html)

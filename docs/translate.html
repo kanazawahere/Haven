@@ -1,0 +1,76 @@
+---
+layout: default
+title: Translate Haven
+---
+
+<link rel="stylesheet" href="i18n/translate.css" />
+
+<h1>Translate Haven</h1>
+
+<p class="tr-intro">
+  Help translate Haven into your language. Pick a language, fill in the missing
+  strings (the English source is shown for each), then propose your changes as a
+  GitHub pull request — <strong>GitHub handles sign-in and forking for you</strong>,
+  so there's no account to create on this site. Contributions are reviewed before
+  they ship.
+</p>
+
+<div class="tr-controls">
+  <label>Language
+    <select id="tr-locale"></select>
+  </label>
+  <span id="tr-newlang" hidden>
+    Android locale code
+    <input id="tr-newcode" type="text" placeholder="e.g. it, tr, zh-rTW" size="10" list="tr-codes" />
+    <datalist id="tr-codes">
+      <option value="it">Italian</option>
+      <option value="tr">Turkish</option>
+      <option value="nl">Dutch</option>
+      <option value="pl">Polish</option>
+      <option value="uk">Ukrainian</option>
+      <option value="vi">Vietnamese</option>
+      <option value="id">Indonesian</option>
+      <option value="cs">Czech</option>
+      <option value="th">Thai</option>
+      <option value="fa">Persian</option>
+      <option value="zh-rTW">Chinese (Traditional)</option>
+    </datalist>
+  </span>
+</div>
+
+<div class="tr-progress" id="tr-progress" hidden>
+  <div class="tr-bar"><div class="tr-bar-fill" id="tr-bar-fill"></div></div>
+  <span id="tr-progress-label"></span>
+</div>
+
+<div class="tr-filters" id="tr-filters" hidden>
+  <input id="tr-search" type="search" placeholder="Search name, English text, or module…" />
+  <select id="tr-module"><option value="">All modules</option></select>
+  <label class="tr-check"><input type="checkbox" id="tr-untranslated" checked /> Only untranslated</label>
+</div>
+
+<div id="tr-status" class="tr-status">Loading strings…</div>
+<div id="tr-list" class="tr-list"></div>
+
+<div class="tr-actionbar" id="tr-actionbar" hidden>
+  <button id="tr-propose" disabled>Propose 0 changes</button>
+</div>
+
+<div class="tr-modal" id="tr-modal" hidden>
+  <div class="tr-modal-box">
+    <button class="tr-modal-close" id="tr-modal-close" aria-label="Close">×</button>
+    <h2>Propose your translation</h2>
+    <div class="tr-modal-help">
+      One file per module you changed. For each:
+      <ol>
+        <li><strong>Copy</strong> the file contents below.</li>
+        <li>Click <strong>Open in GitHub editor</strong> (sign in if prompted).</li>
+        <li>Select all (<kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>A</kbd>) and paste.</li>
+        <li><strong>Commit changes</strong> → <strong>Propose changes</strong>. GitHub forks the repo and opens a pull request for you.</li>
+      </ol>
+    </div>
+    <div id="tr-modal-body"></div>
+  </div>
+</div>
+
+<script src="i18n/translate.js"></script>

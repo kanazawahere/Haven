@@ -80,6 +80,13 @@ jobs:
       - uses: ./.github/actions/setup-toolchain
       - name: Check for hardcoded UI strings (#210)
         run: ./scripts/check-i18n-hardcoded.sh
+      - name: Check translation export is current
+        # docs/i18n/strings.json feeds the Pages translation page. Regenerate
+        # and fail if it drifted from the strings.xml sources (rerun
+        # scripts/i18n_export.py and commit the result).
+        run: |
+          python3 scripts/i18n_export.py
+          git diff --exit-code docs/i18n/strings.json
       - name: Run lint
         run: ./gradlew lintDebug
       - name: Upload lint results

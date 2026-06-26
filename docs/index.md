@@ -3,6 +3,10 @@ layout: default
 title: Haven
 ---
 
+<p align="center" style="font-size:.9em">
+  <b>English</b> · <a href="zh/">简体中文</a> · <a href="es/">Español</a> · <a href="fr/">Français</a> · <a href="de/">Deutsch</a> · <a href="pt/">Português</a> · <a href="ru/">Русский</a> · <a href="ja/">日本語</a> · <a href="ko/">한국어</a> · <a href="ar/">العربية</a> · <a href="hi/">हिन्दी</a> · <a href="bn/">বাংলা</a>
+</p>
+
 <p align="center">
   <a href="https://github.com/GlassHaven/Haven/releases/latest">
     <img src="https://img.shields.io/github/v/release/GlassHaven/Haven?style=flat-square" alt="Release" />
@@ -21,14 +25,6 @@ title: Haven
 
 <p align="center">
   Open source under AGPLv3. No telemetry. No ads. No account.
-</p>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/GlassHaven/Haven/main/docs/haven-gpu-gl.gif" width="180" alt="GPU-accelerated Linux OpenGL — Mesa zink on venus, Mali passthrough" />
-</p>
-
-<p align="center">
-  <sub><b>GPU-accelerated Linux OpenGL</b>, live on the phone — Mesa <b>zink</b> on <b>venus</b> passes the <b>Mali</b> GPU through to a desktop Linux GL app in a Haven cage, with no <code>/dev/dri</code>.</sub>
 </p>
 
 ## Download
@@ -78,7 +74,9 @@ Browse the [full feature index](FEATURES.md).
 
 ## Languages
 
-Available in 12 languages: English, Chinese (simplified), Spanish, Hindi, Arabic (with RTL support), Portuguese, Bengali, Russian, Japanese, Korean, French, and German. The UI follows the device language. Translation contributions are welcome.
+Available in 12 languages: English, Chinese (simplified), Spanish, Hindi, Arabic (with RTL support), Portuguese, Bengali, Russian, Japanese, Korean, French, and German. The UI follows the device language.
+
+**[🌍 Help translate Haven →](translate.html)** — browse every in-app string with context, see what's missing in your language, and propose a translation as a GitHub pull request.
 
 ## Why Haven?
 
