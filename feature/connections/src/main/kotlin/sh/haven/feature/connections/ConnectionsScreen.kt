@@ -668,27 +668,14 @@ fun ConnectionsScreen(
             assignedKeyLabel = assignedKey?.label,
             onDismiss = { viewModel.dismissPasswordFallback() },
             onConnect = { username, password, rememberPassword ->
-                // Tunnel-mode (#121a): if the prompt was opened because
-                // the jump host of a VNC/RDP/SMB dependent needs a
-                // password, route to the tunnel-replay path. Otherwise
-                // run the normal SSH login flow.
-                val pending = pendingTunnelDependent
-                if (pending != null) {
-                    viewModel.connectTunnelDependentAfterAuth(
-                        jumpProfile = profile,
-                        dependentProfile = pending,
-                        password = password,
-                        rememberPassword = rememberPassword,
-                    )
-                } else {
-                    viewModel.connect(
-                        profile,
-                        password,
-                        rememberPassword = rememberPassword,
-                        usernameOverride = username,
-                    )
-                }
-                viewModel.dismissPasswordFallback()
+                // Tunnel-mode (#121a) vs normal SSH login + the dismiss are all
+                // handled inside answerPasswordFallback, shared with the MCP
+                // answer_auth_prompt verb so both paths stay identical.
+                viewModel.answerPasswordFallback(
+                    password,
+                    username = username,
+                    rememberPassword = rememberPassword,
+                )
             },
         )
     }

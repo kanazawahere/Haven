@@ -138,6 +138,7 @@ class ConnectionsViewModel @Inject constructor(
     private val userMessageBus: sh.haven.core.data.message.UserMessageBus,
     private val usbipForwarder: sh.haven.feature.connections.usb.UsbipConnectionForwarder,
     private val biometricGate: sh.haven.core.data.keystore.BiometricGate,
+    private val pendingAuthPromptHolder: sh.haven.core.data.agent.PendingAuthPromptHolder,
 ) : ViewModel() {
 
     /**
@@ -190,6 +191,14 @@ class ConnectionsViewModel @Inject constructor(
                     } else {
                         Log.w(TAG, "ConnectProfile: profile ${command.profileId} not found")
                     }
+                } else if (command is sh.haven.core.data.agent.AgentUiCommand.AnswerAuthPrompt) {
+                    // MCP answer_auth_prompt: supply the secret to the live
+                    // password/passphrase fallback and re-drive the connect.
+                    answerPasswordFallback(
+                        command.password,
+                        username = command.username,
+                        rememberPassword = command.rememberPassword,
+                    )
                 }
             }
         }
@@ -476,6 +485,30 @@ class ConnectionsViewModel @Inject constructor(
     /** When non-null, key auth failed and the UI should show a password dialog as fallback. */
     private val _passwordFallback = MutableStateFlow<ConnectionProfile?>(null)
     val passwordFallback: StateFlow<ConnectionProfile?> = _passwordFallback.asStateFlow()
+
+    // Mirror the password/passphrase fallback dialog to a process-wide holder so
+    // the MCP agent can observe it (get_pending_auth_prompt) and answer it
+    // (answer_auth_prompt) without a human tap. This init block is declared
+    // AFTER _passwordFallback so the collector never captures the field before
+    // it's initialised (Main.immediate runs init collectors synchronously).
+    init {
+        viewModelScope.launch {
+            _passwordFallback.collect { profile ->
+                pendingAuthPromptHolder.set(
+                    profile?.let {
+                        val encrypted = it.keyId?.let { id ->
+                            sshKeyRepository.getById(id)?.isEncrypted
+                        } ?: false
+                        sh.haven.core.data.agent.PendingAuthPrompt(
+                            profileId = it.id,
+                            label = it.label,
+                            requiresPassphrase = encrypted,
+                        )
+                    }
+                )
+            }
+        }
+    }
 
     /**
      * VNC/RDP/SMB-over-SSH-tunnel paths used to fail silently when the
@@ -1296,6 +1329,41 @@ class ConnectionsViewModel @Inject constructor(
         // dependent so the next password dialog (e.g. an explicit SSH
         // login) doesn't accidentally trigger a tunnel retry.
         _pendingTunnelDependent.value = null
+    }
+
+    /**
+     * Answer the active password / key-passphrase fallback prompt with
+     * [password] (and optional [username] / [rememberPassword]) and re-drive
+     * the stalled connect — the same logic the dialog's onConnect runs. Used by
+     * both the UI dialog and the MCP `answer_auth_prompt` verb. No-op when no
+     * prompt is pending.
+     */
+    fun answerPasswordFallback(
+        password: String,
+        username: String? = null,
+        rememberPassword: Boolean = false,
+    ) {
+        val profile = _passwordFallback.value ?: return
+        val pending = _pendingTunnelDependent.value
+        if (pending != null) {
+            // Tunnel-mode (#121a): the prompt was opened for a VNC/RDP/SMB
+            // dependent whose jump host needs a password — route to the
+            // tunnel-replay path.
+            connectTunnelDependentAfterAuth(
+                jumpProfile = profile,
+                dependentProfile = pending,
+                password = password,
+                rememberPassword = rememberPassword,
+            )
+        } else {
+            connect(
+                profile,
+                password,
+                rememberPassword = rememberPassword,
+                usernameOverride = username,
+            )
+        }
+        dismissPasswordFallback()
     }
 
     /**

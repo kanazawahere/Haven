@@ -112,6 +112,12 @@ internal class McpTools(
     // enforcement happens in McpServer via StandingPolicyEnforcer.
     private val standingPolicyRepository: sh.haven.core.data.repository.StandingPolicyRepository,
     private val mcpTunnelManager: McpTunnelManager,
+    // Pending password/passphrase fallback prompt, mirrored from
+    // ConnectionsViewModel so get_pending_auth_prompt / answer_auth_prompt can
+    // observe and answer it without a human tap. Defaulted so tests that don't
+    // exercise those verbs construct McpTools without supplying it.
+    private val pendingAuthPromptHolder: sh.haven.core.data.agent.PendingAuthPromptHolder =
+        sh.haven.core.data.agent.PendingAuthPromptHolder(),
     /**
      * The MCP HTTP server's live bound port. Evaluated lazily so the
      * reverse-tunnel auto-detect follows an 8731+ fallback instead of a
@@ -3142,6 +3148,35 @@ internal class McpTools(
             consentLevel = ConsentLevel.ONCE_PER_SESSION,
             summarise = { args -> "Connect to \"${profileLabel(args.optString("profileId"))}\"?" },
         ) { args -> connectProfile(args) },
+
+        "get_pending_auth_prompt" to ToolHandler(
+            description = "Return the password / key-passphrase prompt Haven is currently waiting on for a stalled connect (its in-app fallback dialog), or { pending: false } if none. A connect started via connect_profile that needs a secret which isn't stored (a wrong/missing host password, or an assigned encrypted SSH key whose passphrase failed, #292) surfaces here instead of failing silently: { pending: true, profileId, label, requiresPassphrase } — requiresPassphrase=true means it wants the encrypted key's passphrase, false means a host/account password. Answer it with answer_auth_prompt. Read-only.",
+            inputSchema = emptyObjectSchema(),
+        ) { _ -> getPendingAuthPrompt() },
+
+        "answer_auth_prompt" to ToolHandler(
+            description = "Answer the prompt reported by get_pending_auth_prompt — supply the secret a user would type into Haven's fallback dialog and Haven re-drives the connect through the same path a UI tap uses. Pass `password` (the host password or the encrypted key's passphrase). Optional `username` overrides the login user; `rememberPassword` stores it on the profile. Returns { answered:false } when no prompt is pending. A wrong value just re-surfaces the prompt (poll get_pending_auth_prompt; it clears on success) — confirm the result with list_sessions.",
+            inputSchema = JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("password", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "The host/account password or the encrypted key's passphrase to unlock the stalled connect.")
+                    })
+                    put("username", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Optional. Override the login username for this attempt.")
+                    })
+                    put("rememberPassword", JSONObject().apply {
+                        put("type", "boolean")
+                        put("description", "Optional. Persist the password on the profile (default false).")
+                    })
+                })
+                put("required", JSONArray().put("password"))
+            },
+            consentLevel = ConsentLevel.ONCE_PER_SESSION,
+            summarise = { _ -> "Answer Haven's pending connection password prompt?" },
+        ) { args -> answerAuthPrompt(args) },
     )
 
     /** Return the list of tool definitions for MCP `tools/list`. */
@@ -8615,6 +8650,40 @@ internal class McpTools(
             put(
                 "note",
                 "Connect dispatched asynchronously through the same path a UI tap uses. Poll list_sessions for status."
+            )
+        }
+    }
+
+    private fun getPendingAuthPrompt(): JSONObject {
+        val p = pendingAuthPromptHolder.prompt.value
+            ?: return JSONObject().put("pending", false)
+        return JSONObject().apply {
+            put("pending", true)
+            put("profileId", p.profileId)
+            put("label", p.label)
+            put("requiresPassphrase", p.requiresPassphrase)
+        }
+    }
+
+    private suspend fun answerAuthPrompt(args: JSONObject): JSONObject {
+        val pending = pendingAuthPromptHolder.prompt.value
+            ?: return JSONObject().apply {
+                put("answered", false)
+                put("note", "No auth prompt is pending. Start a connect with connect_profile first.")
+            }
+        val password = args.optString("password")
+        if (password.isEmpty()) throw IllegalArgumentException("password required")
+        val username = args.optString("username").ifBlank { null }
+        val remember = args.optBoolean("rememberPassword", false)
+        agentUiCommandBus.emit(
+            sh.haven.core.data.agent.AgentUiCommand.AnswerAuthPrompt(password, username, remember)
+        )
+        return JSONObject().apply {
+            put("answered", true)
+            put("profileId", pending.profileId)
+            put(
+                "note",
+                "Answer dispatched. get_pending_auth_prompt clears on success and re-surfaces on a wrong secret; confirm with list_sessions."
             )
         }
     }

@@ -177,6 +177,11 @@ class McpServer @Inject constructor(
     // grants consulted at the consent gate (VISION.md "Consent tiers").
     private val standingPolicyEnforcer: StandingPolicyEnforcer,
     private val standingPolicyRepository: sh.haven.core.data.repository.StandingPolicyRepository,
+    // Defaulted so the manual McpServer constructions in unit tests (which
+    // don't exercise the auth-prompt verbs) compile without it; Hilt always
+    // injects the real @Singleton in production.
+    private val pendingAuthPromptHolder: sh.haven.core.data.agent.PendingAuthPromptHolder =
+        sh.haven.core.data.agent.PendingAuthPromptHolder(),
 ) : Closeable {
 
     /**
@@ -365,6 +370,7 @@ class McpServer @Inject constructor(
         havenUiBridge = havenUiBridge,
         standingPolicyRepository = standingPolicyRepository,
         mcpTunnelManager = mcpTunnelManager,
+        pendingAuthPromptHolder = pendingAuthPromptHolder,
         mcpPortProvider = { port },
     )
 

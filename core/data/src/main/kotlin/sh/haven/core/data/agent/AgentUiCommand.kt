@@ -161,6 +161,19 @@ sealed class AgentUiCommand {
     ) : AgentUiCommand()
 
     /**
+     * Answer the password / key-passphrase prompt currently shown by
+     * ConnectionsViewModel (its `_passwordFallback` dialog): supply the secret
+     * a human would type, then re-drive the stalled connect through the same
+     * path. Used by the MCP `answer_auth_prompt` verb. No-op when no prompt is
+     * pending.
+     */
+    data class AnswerAuthPrompt(
+        val password: String,
+        val username: String? = null,
+        val rememberPassword: Boolean = false,
+    ) : AgentUiCommand()
+
+    /**
      * Encrypt the file at [path] on [profileId] to [recipients] (age
      * `age1…` strings), producing `<name>.age` in the same folder. The
      * collector ([sh.haven.feature.sftp.SftpViewModel]) selects the

@@ -352,6 +352,10 @@ fun HavenNavHost(
                     // Connect lands the user on the Connections tab so they
                     // can see the connecting → connected status flip.
                     Screen.Connections
+                is sh.haven.core.data.agent.AgentUiCommand.AnswerAuthPrompt ->
+                    // Answering the password/passphrase fallback re-drives the
+                    // connect — same as ConnectProfile, show the Connections tab.
+                    Screen.Connections
             }
             // Reactive: e.g. OpenRemoteDesktop waits for Desktop to appear
             // rather than silently no-op'ing when it's still hidden.
