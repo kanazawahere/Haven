@@ -469,7 +469,20 @@ class TerminalViewModel @Inject constructor(
                 "RETICULUM" -> reticulumSessionManager.detachTerminalSession(tab.sessionId)
                 "MOSH" -> moshSessionManager.detachTerminalSession(tab.sessionId)
                 "ET" -> etSessionManager.detachTerminalSession(tab.sessionId)
-                "LOCAL" -> localSessionManager.detachTerminalSession(tab.sessionId)
+                "LOCAL" -> {
+                    localSessionManager.detachTerminalSession(tab.sessionId)
+                    // Drop the now-stale emulator from the singleton registry so a
+                    // recreated ViewModel reattaches (fresh emulator + scrollback
+                    // replay + live rewire) instead of re-adopting this torn-down
+                    // emulator (#272). Because the registry is @Singleton and every
+                    // tab registers into it, the adoption path always found an entry
+                    // and short-circuited the reattach path — leaving the proot
+                    // terminal blank on return-from-background despite the shell
+                    // staying alive. read_terminal_scrollback (the agent ring) is
+                    // unaffected; only the grid snapshot is briefly unavailable
+                    // until the UI rebuilds, which is correct (the old grid is stale).
+                    terminalSessionRegistry.unregister(tab.sessionId)
+                }
             }
         }
         trackedSessionIds.clear()
