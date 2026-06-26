@@ -1,0 +1,4 @@
+Encrypted SSH keys: passphrase handling (#290)
+
+• Fixed: "Remember passphrase" is now saved when a profile uses a session manager (tmux/zellij/screen) and you pick from the session list — it was being forgotten on that path.
+• New: optional "Store passphrase on this device" per key (Keys tab) — uses hardware-backed encrypted storage so one encrypted key connects across all profiles without re-entering its passphrase. Off by default.
