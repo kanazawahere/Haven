@@ -1,0 +1,3 @@
+Terminal: CJK / compose-mode input
+
+CJK and accented input now work in the terminal without leaving the privacy-preserving Secure keyboard. Add the new "中" Compose key to your toolbar (toolbar settings → add key); tapping it buffers IME/CJK input and commits it on Enter. Also drivable over MCP as set_compose_mode. (#293)
