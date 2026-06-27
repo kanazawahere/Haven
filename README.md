@@ -26,11 +26,15 @@
   <a href="https://f-droid.org/en/packages/sh.haven.app">F-Droid</a>
 </p>
 
+<p align="center">
+  <video src="https://github.com/GlassHaven/Haven/releases/download/v5.60.4/haven-transparency.mp4" width="640" muted loop controls>
+    <a href="https://github.com/GlassHaven/Haven/releases/download/v5.60.4/haven-transparency.mp4">▶ Watch: terminal transparency over a live device wallpaper</a>
+  </video>
+</p>
+
 ---
 
 <p align="center">
-  <img src="docs/haven-gpu-gl.gif" width="140" alt="GPU-accelerated Linux OpenGL — Mesa zink on venus, Mali passthrough" />
-  &nbsp;
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3_wayland_desktop.png" width="140" />
   &nbsp;
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1_terminal.png" width="140" />
@@ -42,10 +46,6 @@
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4_cloud_storage.png" width="140" />
   &nbsp;
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/7_keys.png" width="140" />
-</p>
-
-<p align="center">
-  <sub>Leftmost: <b>GPU-accelerated Linux OpenGL</b> running live on the phone — Mesa <b>zink</b> on <b>venus</b> passes the <b>Mali</b> GPU through to a desktop Linux GL app in a Haven cage, with no <code>/dev/dri</code>.</sub>
 </p>
 
 ---

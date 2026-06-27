@@ -27,6 +27,17 @@ title: Haven
   Open source under AGPLv3. No telemetry. No ads. No account.
 </p>
 
+<p align="center">
+  <video autoplay loop muted playsinline width="720" style="max-width:100%;border-radius:8px">
+    <source src="https://github.com/GlassHaven/Haven/releases/download/v5.60.4/haven-transparency.webm" type="video/webm">
+    <source src="https://github.com/GlassHaven/Haven/releases/download/v5.60.4/haven-transparency.mp4" type="video/mp4">
+  </video>
+</p>
+
+<p align="center" style="font-size:.85em">
+  Terminal transparency over a live device wallpaper, running on the phone.
+</p>
+
 ## Download
 
 <table>
