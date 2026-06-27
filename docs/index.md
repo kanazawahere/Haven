@@ -35,7 +35,7 @@ title: Haven
 </p>
 
 <p align="center" style="font-size:.85em">
-  Terminal transparency over a live device wallpaper, running on the phone.
+  Terminal transparency over a live device wallpaper (<a href="https://magicfluids.com/">MagicFluids</a>), running on the phone.
 </p>
 
 ## Download

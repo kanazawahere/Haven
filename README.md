@@ -33,7 +33,7 @@
 </p>
 
 <p align="center">
-  <sub>▶ <a href="https://github.com/GlassHaven/Haven/releases/download/v5.60.4/haven-transparency.mp4">Watch</a>: the terminal — and every Haven screen — made translucent over the device wallpaper (new in 5.60.4)</sub>
+  <sub>▶ <a href="https://github.com/GlassHaven/Haven/releases/download/v5.60.4/haven-transparency.mp4">Watch</a>: the terminal — and every Haven screen — made translucent over the device wallpaper (new in 5.60.4). Live wallpaper: <a href="https://magicfluids.com/">MagicFluids</a>.</sub>
 </p>
 
 ---
