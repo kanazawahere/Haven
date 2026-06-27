@@ -1,0 +1,5 @@
+Terminal fixes: blank screen on return, and a fish/SSH startup hang
+
+The local Linux (proot) terminal no longer comes back blank after the app is backgrounded and the system reclaims it — the shell stays alive and its screen is now restored on return (#272).
+
+Connecting over SSH to a shell that probes the terminal on startup (e.g. fish) no longer hangs ~10s on "could not read response to Primary Device Attribute query" — the startup output is now delivered to the emulator so the probe is answered immediately (#289).
