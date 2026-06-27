@@ -465,7 +465,16 @@ class TerminalViewModel @Inject constructor(
         // (foreground service keeps SSH connections open).
         for (tab in _tabs.value) {
             when (tab.transportType) {
-                "SSH" -> sessionManager.detachTerminalSession(tab.sessionId)
+                "SSH" -> {
+                    sessionManager.detachTerminalSession(tab.sessionId)
+                    // Drop the torn-down emulator from the singleton registry so the
+                    // reattach re-registers the fresh one, keeping MCP agent reads
+                    // (read_terminal_snapshot) consistent with the UI after a
+                    // background→return. The UI itself already renders the fresh
+                    // tab emulator + replayed scrollback (#272-SSH); without this the
+                    // registry kept the stale pre-teardown emulator.
+                    terminalSessionRegistry.unregister(tab.sessionId)
+                }
                 "RETICULUM" -> reticulumSessionManager.detachTerminalSession(tab.sessionId)
                 "MOSH" -> moshSessionManager.detachTerminalSession(tab.sessionId)
                 "ET" -> etSessionManager.detachTerminalSession(tab.sessionId)
@@ -1015,6 +1024,15 @@ class TerminalViewModel @Inject constructor(
             }
 
             val termSession = existingTermSession?.also {
+                // Replay the buffered scrollback into the fresh emulator BEFORE
+                // rewiring the live stream, so the prior screen is restored on
+                // Activity recreation instead of coming back blank (#272-SSH).
+                // Only this recreation-reattach path runs here (existingTermSession
+                // is non-null only when !isReadyForTerminal); the #289 connect-window
+                // backlog is already consumed by then, so there's no double-feed.
+                sessionManager.snapshotScrollback(sessionId)?.let { buffered ->
+                    feedOutput(buffered, 0, buffered.size)
+                }
                 // Reattach: rewire data callback to the new emulator/OSC handler
                 it.replaceDataCallback { data, offset, length ->
                     feedOutput(data, offset, length)

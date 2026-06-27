@@ -978,6 +978,16 @@ class SshSessionManager @Inject constructor(
     }
 
     /**
+     * The full bytes buffered in [sessionId]'s agent scrollback ring (raw
+     * SSH stdout, capped at the ring size), or null if empty — replayed
+     * into a fresh emulator when a recreated ViewModel reattaches so the
+     * prior screen is restored instead of coming back blank (#272-SSH).
+     * Mirrors LocalSessionManager.snapshotScrollback.
+     */
+    fun snapshotScrollback(sessionId: String): ByteArray? =
+        agentScrollback[sessionId]?.snapshot()?.takeIf { it.isNotEmpty() }
+
+    /**
      * Monotonic count of bytes appended to a session's agent scrollback
      * ring over its lifetime. Unlike the ring's [snapshot] size (which
      * saturates at the ring capacity), this never saturates and never
