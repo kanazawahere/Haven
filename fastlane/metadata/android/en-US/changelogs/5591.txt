@@ -1,0 +1,1 @@
+• Local shell sessions that exit immediately now record the exit code and the last output in the connection log (Settings → View connection log), so a session manager (tmux/zellij) or a shell that fails to start is diagnosable instead of just vanishing. (#294)
