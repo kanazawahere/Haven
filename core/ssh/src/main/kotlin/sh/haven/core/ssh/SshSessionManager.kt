@@ -883,7 +883,12 @@ class SshSessionManager @Inject constructor(
                     }
                 }
 
-                val newClient = SshClient()
+                val newClient = SshClient().apply {
+                    // Carry FIDO wiring from the client we're replacing so a
+                    // security-key profile can re-authenticate on reconnect —
+                    // otherwise addFidoIdentity NPEs on the null authenticator.
+                    fidoAuthenticator = _sessions.value[sessionId]?.client?.fidoAuthenticator
+                }
                 val hostKeyEntry = newClient.connectBlocking(config, proxy = proxy)
 
                 // Silent TOFU on reconnect: auto-accept new, abort on change
