@@ -243,6 +243,10 @@ private fun LogItem(
                 SelectionContainer {
                     Text(
                         text = verboseText,
+                        // onSurfaceVariant to match the surfaceVariant background —
+                        // without it the default content colour is black and the log
+                        // is unreadable on a dark theme (#286 sweep).
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontFamily = FontFamily.Monospace,
                             fontSize = 10.sp,

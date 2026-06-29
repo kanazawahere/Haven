@@ -547,6 +547,10 @@ private fun MessageList(
                     fontSize = fs,
                     lineHeight = lh,
                     fontWeight = if (msg.unread) FontWeight.Bold else FontWeight.Normal,
+                    // Explicit colour — without it the sender defaults to black and
+                    // is unreadable on a dark theme (the sibling subject sets a
+                    // colour; this one didn't). #286 sweep.
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(0.38f),
