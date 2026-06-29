@@ -1150,10 +1150,16 @@ private fun VncViewer(
         // visual transparency on this Row, which previously had no
         // background at all.
         if (!fullscreen) {
+            // Surface (not a bare .background) so the toolbar also sets its
+            // content colour: without onSurface the icons fall back to the
+            // default (black) and vanish on a dark surface (#286).
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -1218,6 +1224,7 @@ private fun VncViewer(
                 IconButton(onClick = onToggleFullscreen) {
                     Icon(Icons.Default.Fullscreen, contentDescription = stringResource(R.string.vnc_cd_fullscreen))
                 }
+            }
             }
         }
     } // end Column
@@ -1300,6 +1307,9 @@ private fun VncViewer(
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                // alpha-copied colour defeats contentColorFor, so set it
+                // explicitly or the icons render black on the dark sheet (#286).
+                contentColor = MaterialTheme.colorScheme.onSurface,
                 shadowElevation = 8.dp,
             ) {
                 Column(
