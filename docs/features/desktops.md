@@ -5,10 +5,10 @@ title: Desktops
 
 # Desktops
 
-Remote and on-device desktops: a VNC viewer, an RDP client, a GPU-accelerated
-native Wayland compositor that runs inside Haven, and a multi-distro manager for
-full Linux desktops on the phone. For the local *shell* side of the on-device
-distros, see [Local Linux](local-linux.md).
+Remote and on-device desktops: a VNC viewer, an RDP client, a SPICE client, a
+GPU-accelerated native Wayland compositor that runs inside Haven, and a
+multi-distro manager for full Linux desktops on the phone. For the local *shell*
+side of the on-device distros, see [Local Linux](local-linux.md).
 
 ## Desktop (VNC)
 
@@ -17,6 +17,10 @@ Remote desktop viewer with RFB 3.8 protocol support. Pinch-to-zoom, two-finger p
 ## Desktop (RDP)
 
 Remote Desktop Protocol client built on [IronRDP](https://github.com/Devolutions/IronRDP) via UniFFI Kotlin bindings. Connects to Windows Remote Desktop, xrdp (Linux), and GNOME Remote Desktop. **EGFX (MS-RDPEGFX) graphics-pipeline support** — ClearCodec and RemoteFX Progressive decoders light up the fast graphics path on modern Windows (verified against Windows Server 2025), with a slow-path fallback for servers that don't negotiate it. Pinch-to-zoom, pan, keyboard with scancode mapping, mouse input. SSH tunnel support with auto-connect through saved SSH profiles. Saved connection profiles with optional stored password.
+
+## Desktop (SPICE)
+
+[SPICE](https://www.spice-space.org/) client for QEMU/KVM and libvirt virtual machines, built on a vendored Rust SPICE core exposed through UniFFI Kotlin bindings (the same approach as the RDP client). The display channel decodes the SPICE image codecs — raw bitmap, **LZ**, **GLZ** and **ZLIB-GLZ** dictionary compression, and **QUIC** (SFALIC), plus the image cache — alongside server draw operations, hardware-cursor shape and position, and multiple display surfaces. Input covers the keyboard (scancodes), an absolute pointer, mouse buttons and the scroll wheel. The viewer shares the VNC/RDP gestures: two-finger pinch-zoom and pan, and a soft keyboard. SSH tunnelling is supported — the SPICE core dials its own TCP socket, so Haven opens a local `-L` forward through a saved SSH profile and points the client at `127.0.0.1`. Decoding is verified pixel-correct against QEMU and Windows Server 2025 guests (the GLZ and QUIC paths). Configure SPICE connections in the Connections tab or via the agent (MCP).
 
 ## Native Wayland Desktop
 
