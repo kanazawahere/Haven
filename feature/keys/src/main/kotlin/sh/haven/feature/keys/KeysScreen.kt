@@ -1177,7 +1177,14 @@ private fun SshKeyAuditRow(
                     modifier = Modifier.padding(end = 12.dp),
                 )
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = sshKey.label, style = MaterialTheme.typography.bodyLarge)
+                    // Explicit onSurface — this Box/Column row has no Surface/ListItem
+                    // ancestor, so the default content colour is black and the name
+                    // vanishes on a dark theme (the sibling Texts already set a colour).
+                    Text(
+                        text = sshKey.label,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
                     Text(
                         text = sshKey.keyType,
                         style = MaterialTheme.typography.bodySmall,
