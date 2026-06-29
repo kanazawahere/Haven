@@ -131,6 +131,7 @@ dependencies {
     implementation(project(":core:et"))
     implementation(project(":core:vnc"))
     implementation(project(":core:rdp"))
+    implementation(project(":core:spice"))
     implementation(project(":core:smb"))
     implementation(project(":core:rclone"))
     implementation(project(":core:ffmpeg"))

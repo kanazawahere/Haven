@@ -285,6 +285,42 @@ fun DesktopScreen(
                             onRetry = { desktopViewModel.retryTab(tab.id) },
                         )
 
+                        // SPICE reuses the RDP content renderer: a bitmap canvas
+                        // + PC set-1 scancode keyboard, which SPICE also uses.
+                        is DesktopTab.Spice -> RdpSessionContent(
+                            connected = tab.connected,
+                            frame = tab.frame,
+                            error = tab.error,
+                            toolbarLayout = toolbarLayout,
+                            onTap = { x, y -> desktopViewModel.sendClick(x, y) },
+                            onDragStart = { x, y ->
+                                desktopViewModel.sendPointer(x, y)
+                                desktopViewModel.pressButton(1)
+                            },
+                            onDrag = { x, y -> desktopViewModel.sendPointer(x, y) },
+                            onDragEnd = { desktopViewModel.releaseButton(1) },
+                            onScrollUp = { desktopViewModel.scrollUp() },
+                            onScrollDown = { desktopViewModel.scrollDown() },
+                            onTypeChar = { ch ->
+                                sh.haven.feature.rdp.typeRdpChar(
+                                    ch = ch,
+                                    sendKey = { sc, pressed -> desktopViewModel.sendSpiceKey(sc, pressed) },
+                                    sendUnicode = { /* SPICE has no unicode-key verb */ },
+                                )
+                            },
+                            onKeyDown = { scancode -> desktopViewModel.sendSpiceKey(scancode, true) },
+                            onKeyUp = { scancode -> desktopViewModel.sendSpiceKey(scancode, false) },
+                            onDisconnect = { desktopViewModel.closeTab(tab.id) },
+                            onFullscreenChanged = onFullscreenChanged,
+                            cursor = tab.cursor,
+                            pointerPos = tab.pointerPos,
+                            inputMode = inputMode,
+                            onSetInputMode = onSetInputMode,
+                            currentOrientation = desktopOrientation,
+                            onCycleOrientation = { desktopViewModel.cycleDesktopOrientation() },
+                            onRetry = { desktopViewModel.retryTab(tab.id) },
+                        )
+
                         is DesktopTab.Wayland -> WaylandDesktopView(
                             modifier = Modifier.fillMaxSize(),
                             toolbarLayout = toolbarLayout,
