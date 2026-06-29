@@ -10943,6 +10943,13 @@
      }
     },
     {
+     "name": "connections_section_spice",
+     "en": "SPICE settings",
+     "comment": "Import rclone.conf (#251)",
+     "args": [],
+     "t": {}
+    },
+    {
      "name": "connections_section_smb",
      "en": "SMB settings",
      "comment": "Import rclone.conf (#251)",
@@ -11985,6 +11992,13 @@
       "ru": "Оставьте имя пользователя пустым для классического VncAuth (8-символьный пароль). Заполните имя пользователя для VeNCrypt (wayvnc, TigerVNC) — поддерживает более длинные пароли и TLS-шифрование.",
       "zh": "经典 VncAuth（8 字符密码）请将用户名留空。VeNCrypt（wayvnc、TigerVNC）请填写用户名 — 支持更长的密码和 TLS 加密。"
      }
+    },
+    {
+     "name": "connections_helper_spice_auth",
+     "en": "SPICE uses a single optional ticket/password. Leave blank for an unticketed server.",
+     "comment": "Connection edit dialog: remaining field labels, toggles and helper text.",
+     "args": [],
+     "t": {}
     },
     {
      "name": "connections_helper_rdp_host_via_ssh",

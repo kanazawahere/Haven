@@ -401,6 +401,7 @@
     <string name="rclone_import_menu">Import rclone config…</string>
     <string name="connections_section_vnc">VNC settings</string>
     <string name="connections_section_rdp">RDP settings</string>
+    <string name="connections_section_spice">SPICE settings</string>
     <string name="connections_section_smb">SMB settings</string>
     <string name="connections_section_email">Email account</string>
     <string name="connections_auth_method_proton_srp">ProtonMail SRP</string>
@@ -461,6 +462,7 @@
     <string name="connections_hint_ifac_passphrase">IFAC passphrase (optional)</string>
     <string name="connections_helper_vnc_host_via_ssh">Where the VNC server is reachable from the SSH server — usually 127.0.0.1 if they\'re the same machine (wayvnc etc. bind loopback only).</string>
     <string name="connections_helper_vnc_auth">Leave username blank for classic VncAuth (8-char password). Fill username for VeNCrypt (wayvnc, TigerVNC) — supports longer passwords and TLS encryption.</string>
+    <string name="connections_helper_spice_auth">SPICE uses a single optional ticket/password. Leave blank for an unticketed server.</string>
     <string name="connections_helper_rdp_host_via_ssh">Where the RDP server is reachable from the SSH server — usually 127.0.0.1 if they\'re the same machine.</string>
     <string name="connections_helper_rdp_nla">Default on. Turn off if the server rejects Haven\'s NLA (some Windows Server 2025 setups — the server must have \"Require NLA\" disabled for SSL-only to connect).</string>
     <string name="connections_action_manage_tunnels">Manage tunnels…</string>

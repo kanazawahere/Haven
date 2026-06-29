@@ -185,6 +185,7 @@ fun ConnectionEditDialog(
         existing?.isLocal == true -> "LOCAL"
         existing?.isVnc == true -> "VNC"
         existing?.isRdp == true -> "RDP"
+        existing?.isSpice == true -> "SPICE"
         existing?.isSmb == true -> "SMB"
         existing?.isRclone == true -> "RCLONE"
         existing?.isEmail == true -> "EMAIL"
@@ -200,6 +201,7 @@ fun ConnectionEditDialog(
         "RETICULUM" -> "RETICULUM"
         "VNC" -> "VNC"
         "RDP" -> "RDP"
+        "SPICE" -> "SPICE"
         "SMB" -> "SMB"
         "RCLONE" -> "RCLONE"
         "EMAIL" -> "EMAIL"
@@ -214,6 +216,7 @@ fun ConnectionEditDialog(
             when {
                 existing?.isVnc == true -> (existing.vncPort ?: 5900).toString()
                 existing?.isRdp == true -> existing.rdpPort.toString()
+                existing?.isSpice == true -> (existing.spicePort ?: 5900).toString()
                 existing?.isSmb == true -> existing.smbPort.toString()
                 else -> existing?.port?.toString() ?: "22"
             }
@@ -227,6 +230,11 @@ fun ConnectionEditDialog(
     var rdpSshProfileId by rememberSaveable { mutableStateOf(existing?.rdpSshProfileId) }
     var rdpUseNla by rememberSaveable { mutableStateOf(existing?.rdpUseNla ?: true) }
     var rdpColorDepth by rememberSaveable { mutableStateOf(existing?.rdpColorDepth ?: 32) }
+    var spicePassword by rememberSaveable { mutableStateOf(existing?.spicePassword ?: "") }
+    var spiceSshForward by rememberSaveable {
+        mutableStateOf(existing?.let { it.connectionType == "SPICE" && it.spiceSshForward && it.spiceSshProfileId != null } ?: false)
+    }
+    var spiceSshProfileId by rememberSaveable { mutableStateOf(existing?.spiceSshProfileId) }
     var smbShare by rememberSaveable { mutableStateOf(existing?.smbShare ?: "") }
     var smbPassword by rememberSaveable { mutableStateOf(existing?.smbPassword ?: "") }
     var smbDomain by rememberSaveable { mutableStateOf(existing?.smbDomain ?: "") }
@@ -977,6 +985,7 @@ fun ConnectionEditDialog(
                     "LOCAL" to "Local Shell (PRoot)",
                     "VNC" to "VNC (Desktop)",
                     "RDP" to "RDP (Desktop)",
+                    "SPICE" to "SPICE (Desktop)",
                     "SMB" to "SMB (File Share)",
                     "RCLONE" to "Cloud Storage (rclone)",
                     "EMAIL" to "Email (IMAP / Proton)",
@@ -1011,6 +1020,7 @@ fun ConnectionEditDialog(
                                     val defaultPort = when (value) {
                                         "VNC" -> "5900"
                                         "RDP" -> "3389"
+                                        "SPICE" -> "5900"
                                         "SMB" -> "445"
                                         "ET" -> "22"
                                         else -> "22"
@@ -1035,6 +1045,7 @@ fun ConnectionEditDialog(
                                 "LOCAL" -> "Local Shell"
                                 "VNC" -> "My VNC Desktop"
                                 "RDP" -> "My RDP Desktop"
+                                "SPICE" -> "My SPICE Desktop"
                                 "SMB" -> "My File Share"
                                 "RCLONE" -> "My Google Drive"
                                 "EMAIL" -> "My Mail"
@@ -1886,6 +1897,100 @@ fun ConnectionEditDialog(
                             }
                         }
                     }
+                } else if (connectionType == "SPICE") {
+                    ConnectionSection(stringResource(R.string.connections_section_spice))
+                    // SPICE: tunnel toggle first (changes what Host means), then
+                    // host/port/password. Auth is a single optional ticket — no
+                    // username/domain/colour-depth (the framebuffer is 32bpp).
+                    BooleanToggleRow(
+                        label = stringResource(R.string.connections_field_tunnel_through_ssh),
+                        checked = spiceSshForward,
+                        onCheckedChange = { newValue ->
+                            spiceSshForward = newValue
+                            if (newValue) {
+                                if (host.isBlank() || host == "localhost") host = "127.0.0.1"
+                            } else {
+                                spiceSshProfileId = null
+                                if (host == "127.0.0.1" || host == "localhost") host = ""
+                            }
+                        },
+                    )
+                    if (spiceSshForward) {
+                        val sshCandidates = sshProfiles.filter { it.isSsh }
+                        if (sshCandidates.isNotEmpty()) {
+                            Spacer(Modifier.height(4.dp))
+                            var sshExpanded by remember { mutableStateOf(false) }
+                            val selectedSsh = sshCandidates.firstOrNull { it.id == spiceSshProfileId }
+                            ExposedDropdownMenuBox(
+                                expanded = sshExpanded,
+                                onExpandedChange = { sshExpanded = it },
+                            ) {
+                                OutlinedTextField(
+                                    value = selectedSsh?.label ?: stringResource(R.string.connections_dropdown_select_ssh),
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text(stringResource(R.string.connections_field_ssh_connection)) },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(sshExpanded) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = sshExpanded,
+                                    onDismissRequest = { sshExpanded = false },
+                                ) {
+                                    sshCandidates.forEach { candidate ->
+                                        DropdownMenuItem(
+                                            text = { Text(candidate.label) },
+                                            onClick = {
+                                                spiceSshProfileId = candidate.id
+                                                sshExpanded = false
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            Text(
+                                stringResource(R.string.connections_helper_add_ssh_first),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = host,
+                        onValueChange = { host = it },
+                        label = { Text(stringResource(R.string.common_host)) },
+                        placeholder = { Text(if (spiceSshForward) "127.0.0.1" else "192.168.1.100") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = port,
+                        onValueChange = { port = it.filter { c -> c.isDigit() } },
+                        label = { Text(stringResource(R.string.connections_field_port)) },
+                        placeholder = { Text("5900") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.width(120.dp),
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = spicePassword,
+                        onValueChange = { spicePassword = it },
+                        label = { Text(stringResource(R.string.connections_field_password_optional)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        stringResource(R.string.connections_helper_spice_auth),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 } else if (connectionType == "SMB") {
                     ConnectionSection(stringResource(R.string.connections_section_smb))
                     // SMB: host (with discovery), share, username, port, password, domain, SSH tunnel
@@ -3098,11 +3203,11 @@ fun ConnectionEditDialog(
                 // Port knocking. Visible for any profile with a remote
                 // TCP host — skipped for LOCAL (no host), RCLONE (its own
                 // protocol), and RETICULUM (mesh, not TCP).
-                if (connectionType in setOf("VNC", "RDP", "SMB", "EMAIL")) {
+                if (connectionType in setOf("VNC", "RDP", "SPICE", "SMB", "EMAIL")) {
                     ConnectionSection(stringResource(R.string.connections_section_routing))
                     routingBody()
                 }
-                if (connectionType in setOf("VNC", "RDP", "SMB", "EMAIL")) {
+                if (connectionType in setOf("VNC", "RDP", "SPICE", "SMB", "EMAIL")) {
                     ConnectionSection(stringResource(R.string.connections_section_port_knock))
                     portKnockBody()
                     ConnectionSection(stringResource(R.string.connections_section_spa))
@@ -3131,6 +3236,7 @@ fun ConnectionEditDialog(
                 "SSH" -> host.isNotBlank()
                 "VNC" -> host.isNotBlank() && (!vncSshForward || vncSshProfileId != null)
                 "RDP" -> host.isNotBlank() && rdpUsername.isNotBlank() && (!rdpSshForward || rdpSshProfileId != null)
+                "SPICE" -> host.isNotBlank() && (!spiceSshForward || spiceSshProfileId != null)
                 "SMB" -> host.isNotBlank() && smbShare.isNotBlank() && (!smbSshForward || smbSshProfileId != null)
                 // OAuth providers authenticate on connect (no Configure step); every
                 // other provider must have its remote written via Configure first (#295).
@@ -3212,6 +3318,37 @@ fun ConnectionEditDialog(
                             rdpSshProfileId = if (rdpSshForward) rdpSshProfileId else null,
                             rdpUseNla = rdpUseNla,
                             rdpColorDepth = rdpColorDepth,
+                            colorTag = colorTag,
+                            groupId = groupId,
+                            portKnockSequence = portKnockSequence.ifBlank { null },
+                            portKnockDelayMs = portKnockDelayMs.toIntOrNull()
+                                ?.coerceAtLeast(0) ?: KnockSequence.DEFAULT_DELAY_MS,
+                            spaKey = spaKey.ifBlank { null },
+                            spaKeyBase64 = spaKeyBase64,
+                            spaHmacKey = spaHmacKey.ifBlank { null },
+                            spaHmacKeyBase64 = spaHmacKeyBase64,
+                            spaAccessSpec = spaAccessSpec.ifBlank { null },
+                            spaAllowMode = spaAllowMode,
+                            spaExplicitIp = spaExplicitIp.ifBlank { null },
+                            spaPort = spaPort.toIntOrNull()?.takeIf { it in 1..65535 }
+                                ?: SpaConfig.DEFAULT_SPA_PORT,
+                        )
+                    } else if (connectionType == "SPICE") {
+                        val spicePortInt = port.toIntOrNull() ?: 5900
+                        (existing ?: ConnectionProfile(
+                            label = label,
+                            host = host,
+                            username = "",
+                        )).copy(
+                            label = label.ifBlank { "SPICE: $host" },
+                            host = host,
+                            port = spicePortInt,
+                            username = "",
+                            connectionType = "SPICE",
+                            spicePort = spicePortInt,
+                            spicePassword = spicePassword.ifBlank { null },
+                            spiceSshForward = spiceSshForward,
+                            spiceSshProfileId = if (spiceSshForward) spiceSshProfileId else null,
                             colorTag = colorTag,
                             groupId = groupId,
                             portKnockSequence = portKnockSequence.ifBlank { null },

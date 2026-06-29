@@ -3013,7 +3013,7 @@ internal class McpTools(
         ) { args -> setProfileRouting(args) },
 
         "create_connection" to ToolHandler(
-            description = "Create a saved connection profile. Supports connectionType=SSH, SMB, VNC, RDP, EMAIL. SSH-family fields: username (required), password (optional, stored), keyId (optional — references list_ssh_keys), ignoreSavedKeys (force password-only auth, never offer saved keys), useMosh (turn an SSH profile into a Mosh profile), sessionManager (optional: TMUX | ZELLIJ | SCREEN | BYOBU — attach through that multiplexer; omit for a plain shell). SMB: smbShare (required), username + password, smbDomain. VNC: vncUsername, vncPassword, vncPort, and vncSshForward + vncSshProfileId to tunnel VNC through a saved SSH profile. RDP: rdpUsername (required), rdpPassword, rdpDomain, rdpPort. EMAIL: emailProvider (\"imap\" default, or \"proton\"); username = the email address; password = the account/app-password; for IMAP set emailServer (required) + emailPort (993) + emailSmtpPort (465) + emailTls (true), plus emailSmtpServer when the SMTP host differs (e.g. smtp.gmail.com); for Proton add emailMailboxPassword if two-password mode. EMAIL host is optional (the tunnel-ingress/bastion SPA/knock guards), not the mail server. The new profile id is returned for follow-up calls (set_profile_routing, connect_profile). For Reticulum / rclone / local create the profile in the UI — those paths need OAuth / destination-hash flows the agent can't drive.",
+            description = "Create a saved connection profile. Supports connectionType=SSH, SMB, VNC, RDP, EMAIL. SSH-family fields: username (required), password (optional, stored), keyId (optional — references list_ssh_keys), ignoreSavedKeys (force password-only auth, never offer saved keys), useMosh (turn an SSH profile into a Mosh profile), sessionManager (optional: TMUX | ZELLIJ | SCREEN | BYOBU — attach through that multiplexer; omit for a plain shell). SMB: smbShare (required), username + password, smbDomain. VNC: vncUsername, vncPassword, vncPort, and vncSshForward + vncSshProfileId to tunnel VNC through a saved SSH profile. RDP: rdpUsername (required), rdpPassword, rdpDomain, rdpPort. SPICE: spicePassword (optional ticket — no username/domain), spicePort (default 5900), and spiceSshForward + spiceSshProfileId to tunnel SPICE through a saved SSH profile. EMAIL: emailProvider (\"imap\" default, or \"proton\"); username = the email address; password = the account/app-password; for IMAP set emailServer (required) + emailPort (993) + emailSmtpPort (465) + emailTls (true), plus emailSmtpServer when the SMTP host differs (e.g. smtp.gmail.com); for Proton add emailMailboxPassword if two-password mode. EMAIL host is optional (the tunnel-ingress/bastion SPA/knock guards), not the mail server. The new profile id is returned for follow-up calls (set_profile_routing, connect_profile). For Reticulum / rclone / local create the profile in the UI — those paths need OAuth / destination-hash flows the agent can't drive.",
             inputSchema = JSONObject().apply {
                 put("type", "object")
                 put("properties", JSONObject().apply {
@@ -3032,6 +3032,9 @@ internal class McpTools(
                     put("rdpUsername", JSONObject().apply { put("type", "string"); put("description", "Windows username (RDP). Required when connectionType=RDP.") })
                     put("rdpPassword", JSONObject().apply { put("type", "string"); put("description", "Windows password (RDP).") })
                     put("rdpDomain", JSONObject().apply { put("type", "string"); put("description", "AD domain (RDP). Optional.") })
+                    put("spicePassword", JSONObject().apply { put("type", "string"); put("description", "SPICE only: ticket/password (stored). Optional — omit for an unticketed server.") })
+                    put("spiceSshForward", JSONObject().apply { put("type", "boolean"); put("description", "SPICE only: tunnel through a saved SSH profile (set spiceSshProfileId). The SPICE target is reached at 127.0.0.1:<port> from the SSH server. Default false.") })
+                    put("spiceSshProfileId", JSONObject().apply { put("type", "string"); put("description", "SPICE only: id of the SSH profile (from list_connections) to tunnel through when spiceSshForward is true.") })
                     put("emailProvider", JSONObject().apply { put("type", "string"); put("description", "EMAIL only: \"imap\" (generic IMAP/SMTP, default) or \"proton\".") })
                     put("emailServer", JSONObject().apply { put("type", "string"); put("description", "EMAIL/imap only: IMAP server hostname (required for imap). Reached through the tunnel when one is set.") })
                     put("emailSmtpServer", JSONObject().apply { put("type", "string"); put("description", "EMAIL/imap only: SMTP submission host, when it differs from the IMAP host (e.g. smtp.gmail.com vs imap.gmail.com). Optional — defaults to emailServer.") })
@@ -3068,7 +3071,7 @@ internal class McpTools(
         ) { args -> createConnection(args) },
 
         "update_connection" to ToolHandler(
-            description = "Edit fields on an existing connection profile (load → change → save). Pass profileId (required) plus only the fields you want to change — anything omitted is left as-is. Common SSH-family fields: label, host, port, username, password (stored, mapped to the profile's transport), keyId, ignoreSavedKeys (force password-only auth), useMosh. Desktop tunnels: vncSshForward + vncSshProfileId, rdpSshForward + rdpSshProfileId, smbSshForward + smbSshProfileId. Passwords are stored encrypted and never echoed back. For routing/proxy use set_profile_routing; for port-knock/SPA use set_port_knock/set_spa. Returns the updated profile (secrets redacted).",
+            description = "Edit fields on an existing connection profile (load → change → save). Pass profileId (required) plus only the fields you want to change — anything omitted is left as-is. Common SSH-family fields: label, host, port, username, password (stored, mapped to the profile's transport), keyId, ignoreSavedKeys (force password-only auth), useMosh. Desktop tunnels: vncSshForward + vncSshProfileId, rdpSshForward + rdpSshProfileId, spiceSshForward + spiceSshProfileId, smbSshForward + smbSshProfileId. Passwords are stored encrypted and never echoed back. For routing/proxy use set_profile_routing; for port-knock/SPA use set_port_knock/set_spa. Returns the updated profile (secrets redacted).",
             inputSchema = JSONObject().apply {
                 put("type", "object")
                 put("properties", JSONObject().apply {
@@ -3087,6 +3090,8 @@ internal class McpTools(
                     put("rdpSshProfileId", JSONObject().apply { put("type", "string"); put("description", "RDP only: SSH profile id to tunnel through. Empty string clears.") })
                     put("smbSshForward", JSONObject().apply { put("type", "boolean"); put("description", "SMB only: tunnel through a saved SSH profile (set smbSshProfileId).") })
                     put("smbSshProfileId", JSONObject().apply { put("type", "string"); put("description", "SMB only: SSH profile id to tunnel through. Empty string clears.") })
+                    put("spiceSshForward", JSONObject().apply { put("type", "boolean"); put("description", "SPICE only: tunnel through a saved SSH profile (set spiceSshProfileId).") })
+                    put("spiceSshProfileId", JSONObject().apply { put("type", "string"); put("description", "SPICE only: SSH profile id to tunnel through. Empty string clears.") })
                 })
                 put("required", JSONArray().put("profileId"))
             },
@@ -8374,7 +8379,7 @@ internal class McpTools(
         if (args.has("keyId") && !newKeyId.isNullOrBlank() && sshKeyRepository.getById(newKeyId) == null) {
             throw IllegalArgumentException("key $newKeyId not found")
         }
-        for (refKey in listOf("vncSshProfileId", "rdpSshProfileId", "smbSshProfileId")) {
+        for (refKey in listOf("vncSshProfileId", "rdpSshProfileId", "smbSshProfileId", "spiceSshProfileId")) {
             if (args.has(refKey)) {
                 val ref = args.optString(refKey).ifBlank { null }
                 if (ref != null && connectionRepository.getById(ref) == null) {
@@ -8401,11 +8406,13 @@ internal class McpTools(
             vncPort = if (portChanged && existing.connectionType == "VNC") newPort else existing.vncPort,
             rdpPort = if (portChanged && existing.connectionType == "RDP") newPort else existing.rdpPort,
             smbPort = if (portChanged && existing.connectionType == "SMB") newPort else existing.smbPort,
+            spicePort = if (portChanged && existing.connectionType == "SPICE") newPort else existing.spicePort,
             username = if (args.has("username")) args.optString("username") else existing.username,
             sshPassword = if (existing.connectionType == "SSH") newPassword(existing.sshPassword) else existing.sshPassword,
             vncPassword = if (existing.connectionType == "VNC") newPassword(existing.vncPassword) else existing.vncPassword,
             rdpPassword = if (existing.connectionType == "RDP") newPassword(existing.rdpPassword) else existing.rdpPassword,
             smbPassword = if (existing.connectionType == "SMB") newPassword(existing.smbPassword) else existing.smbPassword,
+            spicePassword = if (existing.connectionType == "SPICE") newPassword(existing.spicePassword) else existing.spicePassword,
             keyId = newKeyId,
             ignoreSavedKeys = bool("ignoreSavedKeys", existing.ignoreSavedKeys),
             useMosh = bool("useMosh", existing.useMosh),
@@ -8415,6 +8422,8 @@ internal class McpTools(
             rdpSshProfileId = str("rdpSshProfileId", existing.rdpSshProfileId),
             smbSshForward = bool("smbSshForward", existing.smbSshForward),
             smbSshProfileId = str("smbSshProfileId", existing.smbSshProfileId),
+            spiceSshForward = bool("spiceSshForward", existing.spiceSshForward),
+            spiceSshProfileId = str("spiceSshProfileId", existing.spiceSshProfileId),
         )
         connectionRepository.save(updated)
         return profileToJson(updated)
@@ -8425,8 +8434,8 @@ internal class McpTools(
         val type = args.optString("connectionType").uppercase().ifBlank {
             throw IllegalArgumentException("connectionType required")
         }
-        if (type !in setOf("SSH", "SMB", "VNC", "RDP", "EMAIL")) {
-            throw IllegalArgumentException("connectionType must be SSH, SMB, VNC, RDP, or EMAIL (use the UI for LOCAL / RCLONE / RETICULUM)")
+        if (type !in setOf("SSH", "SMB", "VNC", "RDP", "SPICE", "EMAIL")) {
+            throw IllegalArgumentException("connectionType must be SSH, SMB, VNC, RDP, SPICE, or EMAIL (use the UI for LOCAL / RCLONE / RETICULUM)")
         }
         // EMAIL's host is the optional tunnel-ingress/bastion (SPA/knock target),
         // not the mail server — so it may be blank; every other type requires it.
@@ -8445,6 +8454,7 @@ internal class McpTools(
             "SMB" -> 445
             "VNC" -> 5900
             "RDP" -> 3389
+            "SPICE" -> 5900
             "EMAIL" -> 0
             else -> 22
         }
@@ -8559,6 +8569,30 @@ internal class McpTools(
                     rdpPassword = args.optString("rdpPassword").ifBlank { null },
                     rdpDomain = args.optString("rdpDomain").ifBlank { null },
                     rdpSshForward = false,
+                    tunnelConfigId = tunnelConfigId,
+                    portKnockSequence = knockSequence,
+                    portKnockDelayMs = knockDelay,
+                )
+            }
+            "SPICE" -> {
+                // SPICE-over-SSH-tunnel: forward through a saved SSH profile.
+                val spiceSshForward = args.optBoolean("spiceSshForward", false)
+                val spiceSshProfileId = args.optString("spiceSshProfileId").ifBlank { null }
+                if (spiceSshForward && spiceSshProfileId != null &&
+                    connectionRepository.getById(spiceSshProfileId) == null
+                ) {
+                    throw IllegalArgumentException("spiceSshProfileId $spiceSshProfileId not found")
+                }
+                ConnectionProfile(
+                    label = label,
+                    host = host,
+                    port = port,
+                    username = "",
+                    connectionType = "SPICE",
+                    spicePort = port,
+                    spicePassword = args.optString("spicePassword").ifBlank { null },
+                    spiceSshForward = spiceSshForward,
+                    spiceSshProfileId = spiceSshProfileId,
                     tunnelConfigId = tunnelConfigId,
                     portKnockSequence = knockSequence,
                     portKnockDelayMs = knockDelay,

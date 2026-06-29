@@ -297,6 +297,7 @@ fun HavenNavHost(
     val connectionsViewModel: ConnectionsViewModel = hiltViewModel()
     val navigateToVncEvent by connectionsViewModel.navigateToVnc.collectAsState()
     val navigateToRdpEvent by connectionsViewModel.navigateToRdp.collectAsState()
+    val navigateToSpiceEvent by connectionsViewModel.navigateToSpice.collectAsState()
     LaunchedEffect(navigateToVncEvent) {
         navigateToVncEvent?.let { nav ->
             desktopViewModel.addVncSession(
@@ -317,6 +318,19 @@ fun HavenNavHost(
                 nav.sshForward, nav.sshSessionId, nav.sshProfileId, nav.profileId,
                 useNla = nav.useNla,
                 colorDepth = nav.colorDepth,
+            )
+            connectionsViewModel.onDesktopNavigated()
+            requestScreen(Screen.Desktop)
+        }
+    }
+    LaunchedEffect(navigateToSpiceEvent) {
+        navigateToSpiceEvent?.let { nav ->
+            desktopViewModel.addSpiceSession(
+                nav.host, nav.port, nav.password,
+                sshForward = nav.sshForward,
+                sshSessionId = nav.sshSessionId,
+                sshProfileId = nav.sshProfileId,
+                profileId = nav.profileId,
             )
             connectionsViewModel.onDesktopNavigated()
             requestScreen(Screen.Desktop)

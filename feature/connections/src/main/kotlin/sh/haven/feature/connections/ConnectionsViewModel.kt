@@ -688,6 +688,19 @@ class ConnectionsViewModel @Inject constructor(
     private val _navigateToRdp = MutableStateFlow<RdpNavigation?>(null)
     val navigateToRdp: StateFlow<RdpNavigation?> = _navigateToRdp.asStateFlow()
 
+    /** Emitted to navigate to the SPICE desktop with connection params (#286). */
+    data class SpiceNavigation(
+        val host: String,
+        val port: Int,
+        val password: String?,
+        val sshForward: Boolean = false,
+        val sshProfileId: String? = null,
+        val sshSessionId: String? = null,
+        val profileId: String? = null,
+    )
+    private val _navigateToSpice = MutableStateFlow<SpiceNavigation?>(null)
+    val navigateToSpice: StateFlow<SpiceNavigation?> = _navigateToSpice.asStateFlow()
+
     /** Emitted to navigate to Files tab for an SMB connection. */
     private val _navigateToSmb = MutableStateFlow<String?>(null)
     val navigateToSmb: StateFlow<String?> = _navigateToSmb.asStateFlow()
@@ -759,6 +772,7 @@ class ConnectionsViewModel @Inject constructor(
         _navigateToTerminal.value = null
         _navigateToVnc.value = null
         _navigateToRdp.value = null
+        _navigateToSpice.value = null
         _navigateToSmb.value = null
         _navigateToRclone.value = null
         _navigateToEmail.value = null
@@ -777,6 +791,7 @@ class ConnectionsViewModel @Inject constructor(
     fun onDesktopNavigated() {
         _navigateToVnc.value = null
         _navigateToRdp.value = null
+        _navigateToSpice.value = null
     }
 
     /** Open a new terminal session on an already-connected profile. */
@@ -1238,6 +1253,7 @@ class ConnectionsViewModel @Inject constructor(
         profile.isRclone -> true
         profile.isVnc -> false
         profile.isRdp -> false
+        profile.isSpice -> false
         profile.isSmb -> false
         else -> !profile.sshPassword.isNullOrBlank() || keys.isNotEmpty()
     }
@@ -1528,6 +1544,10 @@ class ConnectionsViewModel @Inject constructor(
             connectRdp(profile, password)
             return
         }
+        if (profile.isSpice) {
+            connectSpice(profile)
+            return
+        }
         if (profile.isSmb) {
             connectSmb(profile, password)
             return
@@ -1666,6 +1686,49 @@ class ConnectionsViewModel @Inject constructor(
                 }
             } else {
                 _navigateToRdp.value = RdpNavigation(host, port, username, rdpPassword, domain, profile.rdpSshForward, profile.rdpSshProfileId, profileId = profile.id, useNla = profile.rdpUseNla, colorDepth = profile.rdpColorDepth, portKnockSequence = profile.portKnockSequence, portKnockDelayMs = profile.portKnockDelayMs)
+            }
+        }
+    }
+
+    private fun connectSpice(profile: ConnectionProfile) {
+        val host = profile.host
+        val port = profile.spicePort ?: profile.port
+        val password = profile.spicePassword
+        viewModelScope.launch {
+            repository.markConnected(profile.id)
+            val sshProfileId = profile.spiceSshProfileId
+            if (profile.spiceSshForward && sshProfileId != null) {
+                val needsPrompt = jumpHostNeedsPasswordPrompt(sshProfileId)
+                if (needsPrompt != null) {
+                    _pendingTunnelDependent.value = profile
+                    _passwordFallback.value = needsPrompt
+                    return@launch
+                }
+                try {
+                    _connectingProfileId.value = profile.id
+                    val (sshSessionId, _) = connectJumpHost(
+                        sshProfileId, "", tunnelOwnerProfileId = profile.id,
+                    )
+                    _navigateToSpice.value = SpiceNavigation(
+                        host, port, password,
+                        sshForward = true,
+                        sshProfileId = sshProfileId,
+                        sshSessionId = sshSessionId,
+                        profileId = profile.id,
+                    )
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to connect SSH tunnel host for SPICE", e)
+                    handleTunnelJumpFailure(e, profile, sshProfileId)
+                } finally {
+                    _connectingProfileId.value = null
+                }
+            } else {
+                _navigateToSpice.value = SpiceNavigation(
+                    host, port, password,
+                    sshForward = profile.spiceSshForward,
+                    sshProfileId = profile.spiceSshProfileId,
+                    profileId = profile.id,
+                )
             }
         }
     }
