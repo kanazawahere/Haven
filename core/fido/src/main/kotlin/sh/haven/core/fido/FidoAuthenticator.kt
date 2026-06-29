@@ -1,6 +1,9 @@
 package sh.haven.core.fido
 
 import android.app.Activity
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -18,11 +21,15 @@ import android.os.Build
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
@@ -37,6 +44,15 @@ import javax.inject.Singleton
 private const val TAG = "FidoAuthenticator"
 private const val ACTION_USB_PERMISSION = "sh.haven.core.fido.USB_PERMISSION"
 private const val USB_PERMISSION_TIMEOUT_MS = 30_000L
+
+/** Heads-up notification so an auth wait isn't mistaken for a hang (#286 follow-up). */
+private const val AUTH_NOTIF_CHANNEL = "fido_auth_block"
+private const val AUTH_NOTIF_ID = 0x46_44 // "FD"
+/**
+ * Hold a non-null prompt this long before notifying — an already-plugged key
+ * that signs instantly would otherwise flash a notification for a few ms.
+ */
+private const val AUTH_NOTIF_DEBOUNCE_MS = 400L
 
 /**
  * How many times a single [FidoAuthenticator.getAssertion] will re-prompt after
@@ -236,6 +252,26 @@ class FidoAuthenticator @Inject constructor(
      */
     val touchPrompt: StateFlow<FidoTouchPrompt?> = _touchPrompt.asStateFlow()
 
+    // A FIDO touch wait is invisible when the app is backgrounded or on a
+    // screen that doesn't host the prompt dialog (e.g. Desktop/Terminal), so
+    // the connect reads as a hang. Mirror touchPrompt to a heads-up
+    // notification — for USB/NFC the action is physical (touch the key), so the
+    // notification alone is actionable. collectLatest debounces instant signs.
+    private val notifScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    init {
+        notifScope.launch {
+            touchPrompt.collectLatest { prompt ->
+                if (prompt == null) {
+                    cancelAuthNotification()
+                } else {
+                    delay(AUTH_NOTIF_DEBOUNCE_MS) // collectLatest cancels this if the prompt changes/clears first
+                    postAuthNotification(prompt)
+                }
+            }
+        }
+    }
+
     /** Last assertion error message, readable by the ViewModel for user-facing display. */
     @Volatile var lastAssertionError: String? = null
 
@@ -265,6 +301,61 @@ class FidoAuthenticator @Inject constructor(
         if (activeActivity?.get() === activity) {
             activeActivity = null
         }
+    }
+
+    /** Post (or refresh) the heads-up notification describing what the key wait needs. */
+    private fun postAuthNotification(prompt: FidoTouchPrompt) {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+        if (!nm.areNotificationsEnabled()) return // best-effort; the dialog still covers foreground
+
+        if (nm.getNotificationChannel(AUTH_NOTIF_CHANNEL) == null) {
+            nm.createNotificationChannel(
+                NotificationChannel(
+                    AUTH_NOTIF_CHANNEL,
+                    "Security key prompts",
+                    NotificationManager.IMPORTANCE_HIGH, // heads-up so it surfaces over any screen
+                ).apply { description = "Shown while a connection is waiting for your security key" },
+            )
+        }
+
+        val key = prompt.keyLabel?.takeIf { it.isNotBlank() }
+        val text = when (prompt) {
+            is FidoTouchPrompt.WaitingForKey -> "Insert or tap your security key" + (key?.let { " ($it)" } ?: "")
+            is FidoTouchPrompt.TouchKey -> when (prompt.transport) {
+                FidoTouchPrompt.TouchKey.Transport.NFC -> "Hold your security key to the phone" + (key?.let { " ($it)" } ?: "")
+                FidoTouchPrompt.TouchKey.Transport.USB -> "Touch your security key" + (key?.let { " ($it)" } ?: "")
+            }
+            is FidoTouchPrompt.WrongKey -> "Wrong key — present ${key ?: "the correct key"}"
+            is FidoTouchPrompt.EnterPin -> "Open Haven to enter your security-key PIN"
+        }
+
+        // Tap brings Haven forward (REORDER_TO_FRONT preserves the existing task
+        // / dynamic theme rather than relaunching). For USB/NFC the touch itself
+        // is physical, so the notification text alone is enough to act on.
+        val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            ?.apply { addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK) }
+        val pending = launch?.let {
+            PendingIntent.getActivity(
+                context, 0, it,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
+
+        val notif = Notification.Builder(context, AUTH_NOTIF_CHANNEL)
+            .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
+            .setContentTitle("Security key required")
+            .setContentText(text)
+            .setCategory(Notification.CATEGORY_CALL) // time-sensitive: the connect is blocked on it
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true) // don't buzz again on WaitingForKey → TouchKey transitions
+            .apply { pending?.let { setContentIntent(it) } }
+            .build()
+        nm.notify(AUTH_NOTIF_ID, notif)
+    }
+
+    private fun cancelAuthNotification() {
+        (context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager)
+            ?.cancel(AUTH_NOTIF_ID)
     }
 
     /**
