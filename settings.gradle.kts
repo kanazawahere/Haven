@@ -61,7 +61,7 @@ includeBuild("rdp-kotlin") {
     }
 }
 
-// Pure-Rust SPICE client + UniFFI Kotlin bindings (#286, plain dir not submodule).
+// Pure-Rust SPICE client + UniFFI Kotlin bindings (#286, submodule GlassOnTin/spice-kotlin).
 includeBuild("spice-kotlin") {
     dependencySubstitution {
         substitute(module("sh.haven:spice-transport")).using(project(":"))

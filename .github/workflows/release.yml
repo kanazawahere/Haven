@@ -68,6 +68,7 @@ jobs:
             termlib
             mosh-kotlin
             et-kotlin
+            spice-kotlin
             reticulum-kt
             rnsh-kt
             build-proot/proot-termux
