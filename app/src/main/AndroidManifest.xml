@@ -65,6 +65,15 @@
                     android:scheme="haven"
                     android:host="renew-cert" />
             </intent-filter>
+            <!-- mosh/ssh ephemeral connection deep-link: fires haven://connect?host=... -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="haven"
+                    android:host="connect" />
+            </intent-filter>
         </activity>
 
         <!-- Cloudflare Access SSH login WebView (#154). Hosts the IdP

@@ -141,6 +141,7 @@ class MainActivity : AppCompatActivity() {
         handleWorkspaceShortcut(intent)
         handleAppWindowShortcut(intent)
         handleRenewCertDeepLink(intent)
+        handleConnectDeepLink(intent)
     }
 
     /**
@@ -273,6 +274,34 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
+     * Parse `haven://connect` deep links (e.g. haven://connect?transport=mosh&host=...&user=...)
+     * and re-publish onto the existing UI command bus.
+     */
+    private fun handleConnectDeepLink(intent: Intent?) {
+        val data = intent?.data ?: return
+        if (data.scheme != "haven" || data.host != "connect") return
+        Log.d("MainActivity", "connect deep link: $data")
+        val transport = data.getQueryParameter("transport") ?: "mosh"
+        val host = data.getQueryParameter("host") ?: return
+        val user = data.getQueryParameter("user") ?: data.getQueryParameter("username")
+        val port = data.getQueryParameter("port")?.toIntOrNull()
+        val sessionName = data.getQueryParameter("session")
+        val startupCommand = data.getQueryParameter("command") ?: data.getQueryParameter("startupCommand")
+
+        agentUiCommandBus.emit(
+            sh.haven.core.data.agent.AgentUiCommand.ConnectDeepLink(
+                transport = transport,
+                host = host,
+                port = port,
+                username = user,
+                sessionName = sessionName,
+                startupCommand = startupCommand,
+            )
+        )
+        intent.data = null
+    }
+
+    /**
      * If [intent] carries a workspace launch action (long-press shortcut
      * tap, or a `compose_workspace` MCP call routed through here in a
      * future patch), kick off the launcher. Idempotent — extras are
@@ -303,6 +332,7 @@ class MainActivity : AppCompatActivity() {
         handleWorkspaceShortcut(intent)
         handleAppWindowShortcut(intent)
         handleRenewCertDeepLink(intent)
+        handleConnectDeepLink(intent)
         setContent {
             // Prevent screenshots/screen recording when enabled
             val screenSecurity by preferencesRepository.screenSecurity

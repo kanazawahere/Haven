@@ -211,4 +211,17 @@ sealed class AgentUiCommand {
         val profileId: String,
         val path: String,
     ) : AgentUiCommand()
+
+    /**
+     * Ephemeral connection from a deep link (e.g. haven://connect).
+     */
+    data class ConnectDeepLink(
+        val transport: String,
+        val host: String,
+        val port: Int?,
+        val username: String?,
+        val sessionName: String?,
+        val startupCommand: String? = null,
+    ) : AgentUiCommand()
 }
+
