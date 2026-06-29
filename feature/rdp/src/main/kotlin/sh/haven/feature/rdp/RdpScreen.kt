@@ -154,6 +154,13 @@ fun RdpSessionContent(
      */
     onCycleOrientation: () -> Unit = {},
     onRetry: (() -> Unit)? = null,
+    /**
+     * Drop local pinch-zoom/pan to TWO fingers (SPICE #286), mirroring VNC's
+     * app-window gesture: two fingers pinch to zoom and drag to pan/scroll, so
+     * a phone user isn't forced into the awkward three-finger desktop gesture.
+     * Default false keeps the RDP desktop's 2-finger remote scroll.
+     */
+    twoFingerZoom: Boolean = false,
 ) {
     val connectedState by connected.collectAsState()
     val frameState by frame.collectAsState()
@@ -215,6 +222,7 @@ fun RdpSessionContent(
             onSetInputMode = onSetInputMode,
             currentOrientation = currentOrientation,
             onCycleOrientation = onCycleOrientation,
+            twoFingerZoom = twoFingerZoom,
         )
     } else {
         DesktopPlaceholder(
@@ -472,7 +480,13 @@ private fun RdpViewer(
     onSetInputMode: ((String) -> Unit)? = null,
     currentOrientation: Int = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
     onCycleOrientation: () -> Unit = {},
+    twoFingerZoom: Boolean = false,
 ) {
+    // At/above this finger count the gesture drives the local viewport
+    // (pinch-zoom + pan); below it, multi-finger drag emits remote scroll.
+    // SPICE passes twoFingerZoom=true to make pinch reachable with two
+    // fingers on a phone; RDP keeps 3 so its 2-finger remote scroll stays.
+    val zoomPanMinFingers = if (twoFingerZoom) 2 else 3
     // Map the activity-orientation constant to the local enum for
     // icon/description rendering. Source-of-truth for the value lives
     // outside this composable (RdpScreen for the standalone path,
@@ -605,10 +619,38 @@ private fun RdpViewer(
                                 // different pointer set, so the apparent jump
                                 // would feed in as a real pan/zoom delta.
                                 if (gestureStarted && count == prevCount) {
-                                    // 3+ fingers = local viewport pan/zoom;
-                                    // 2 fingers = remote scroll-wheel only.
+                                    // At/above zoomPanMinFingers = local viewport
+                                    // pan/zoom; below it = remote scroll-wheel only.
                                     // See VncScreen for the full rationale.
-                                    if (totalFingers >= 3) {
+                                    if (totalFingers >= zoomPanMinFingers && twoFingerZoom && totalFingers == 2) {
+                                        // Two-finger (SPICE): distinguish a pinch
+                                        // (span changing) from a drag (fingers
+                                        // translating together) so 2-finger scroll
+                                        // still works when not zoomed. Mirrors VNC.
+                                        val dx = centroid.x - prevCentroid.x
+                                        val dy = centroid.y - prevCentroid.y
+                                        val spanDelta = if (prevSpan > 0f) abs(span - prevSpan) else 0f
+                                        val moveDelta = abs(dx) + abs(dy)
+                                        val pinching = spanDelta > 2f && spanDelta >= moveDelta
+                                        if (pinching && prevSpan > 0f && span > 0f) {
+                                            val newZoom = (zoom * (span / prevSpan)).coerceIn(0.5f, 5f)
+                                            val actualScale = if (zoom > 0f) newZoom / zoom else 1f
+                                            val cx = viewSize.width / 2f
+                                            val cy = viewSize.height / 2f
+                                            panX = (centroid.x - cx) * (1 - actualScale) + panX * actualScale
+                                            panY = (centroid.y - cy) * (1 - actualScale) + panY * actualScale
+                                            zoom = newZoom
+                                        } else if (zoom <= 1.01f) {
+                                            cumulativeScrollY += dy
+                                            if (abs(cumulativeScrollY) > 40f) {
+                                                if (cumulativeScrollY < 0) onScrollDown() else onScrollUp()
+                                                cumulativeScrollY = 0f
+                                            }
+                                        } else {
+                                            panX += dx
+                                            panY += dy
+                                        }
+                                    } else if (totalFingers >= 3) {
                                         if (prevSpan > 0f && span > 0f) {
                                             val requestedScale = span / prevSpan
                                             val newZoom = (zoom * requestedScale).coerceIn(0.5f, 5f)

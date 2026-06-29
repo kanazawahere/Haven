@@ -319,6 +319,9 @@ fun DesktopScreen(
                             currentOrientation = desktopOrientation,
                             onCycleOrientation = { desktopViewModel.cycleDesktopOrientation() },
                             onRetry = { desktopViewModel.retryTab(tab.id) },
+                            // Two-finger pinch-zoom/pan on the phone (#286), matching
+                            // VNC's app-window gesture. RDP keeps its 3-finger default.
+                            twoFingerZoom = true,
                         )
 
                         is DesktopTab.Wayland -> WaylandDesktopView(
