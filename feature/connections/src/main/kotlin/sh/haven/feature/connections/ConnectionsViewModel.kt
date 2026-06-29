@@ -3617,7 +3617,14 @@ class ConnectionsViewModel @Inject constructor(
     ) {
         val moshConnect = withContext(Dispatchers.IO) {
             val customMoshCmd = repository.getById(profileId)?.moshServerCommand?.takeIf { it.isNotBlank() }
-            val moshCmd = customMoshCmd ?: "mosh-server new -s -c 256 -l LANG=en_US.UTF-8"
+            val baseMoshCmd = customMoshCmd ?: "mosh-server new -s -c 256 -l LANG=en_US.UTF-8"
+            // Pass the startup command to mosh-server as its remote COMMAND (the
+            // trailing `-- COMMAND` form). mosh-server then execs it in place of the
+            // login shell, so there is no ~/.bashrc, no nested-tmux switch-client, and
+            // no orphan temp session. `--` must come last per the mosh-server usage
+            // string. The command is interpreted by the remote shell (same semantics
+            // as the SSH startupCommand path), so it is written as plain tokens here.
+            val moshCmd = if (!startupCommand.isNullOrBlank()) "$baseMoshCmd -- $startupCommand" else baseMoshCmd
             Log.d(TAG, "Running mosh-server bootstrap: $moshCmd")
             val result = client.execCommand(moshCmd)
 
@@ -3666,9 +3673,11 @@ class ConnectionsViewModel @Inject constructor(
         // Build session manager command with chosen or default session name
         val smCmd = manager.command
         var effectiveSessionName: String? = null
-        if (startupCommand != null) {
-            moshSessionManager.setInitialCommand(sessionId, startupCommand)
-        } else if (smCmd != null) {
+        // startupCommand is delivered through the mosh-server `--` remote command
+        // above, so it must NOT also be typed in after the prompt (that would run
+        // it twice and inject keystrokes into the already-running command). Only the
+        // default session-name path still relies on the post-prompt setInitialCommand.
+        if (startupCommand == null && smCmd != null) {
             val rawName = chosenSessionName
                 ?: moshSessionManager.sessions.value[sessionId]?.label
                 ?: sessionId.take(8)
