@@ -70,7 +70,14 @@ class UsbIpServer @Inject constructor(
         if (serverSocket != null && this.deviceName == deviceName) return serverSocket!!.localPort
         stop()
         val addr = bindAddress?.let { InetAddress.getByName(it) }
-        val socket = ServerSocket(port, BACKLOG, addr)
+        // Build unbound so SO_REUSEADDR is set *before* bind: the immediate-bind
+        // ServerSocket(port, backlog, addr) ctor binds with REUSEADDR off, so a
+        // re-export within one app session (after stop(), while the prior port is
+        // in TIME_WAIT) fails with EADDRINUSE. Enabling it lets the rebind succeed.
+        val socket = ServerSocket().apply {
+            reuseAddress = true
+            bind(java.net.InetSocketAddress(addr, port), BACKLOG)
+        }
         serverSocket = socket
         this.deviceName = deviceName
         thread(name = "haven-usbip-accept", isDaemon = true) {
