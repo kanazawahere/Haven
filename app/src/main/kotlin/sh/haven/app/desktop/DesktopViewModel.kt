@@ -674,6 +674,8 @@ class DesktopViewModel @Inject constructor(
                         openRemoteDesktopForProfile(command.profileId)
                     is sh.haven.core.data.agent.AgentUiCommand.OpenWaylandDesktop ->
                         addWaylandTab()
+                    is sh.haven.core.data.agent.AgentUiCommand.OpenUsbDrive ->
+                        openUsbDrive(command.deviceName)
                     else -> { /* handled by other collectors */ }
                 }
             }
@@ -791,10 +793,10 @@ class DesktopViewModel @Inject constructor(
     }
 
     /** Boot a VM that mounts the attached USB drive; its files appear as a connection. */
-    fun openUsbDrive() {
+    fun openUsbDrive(deviceName: String? = null) {
         viewModelScope.launch {
             try {
-                usbDriveVmManager.open(null)
+                usbDriveVmManager.open(deviceName)
                 _userMessages.emit("Opening the USB drive in a Linux VM — this can take a few minutes; progress is shown below.")
             } catch (e: sh.haven.app.usb.UsbDriveVmManager.UsbVmException) {
                 _userMessages.emit(e.message ?: "Couldn't open USB drive")

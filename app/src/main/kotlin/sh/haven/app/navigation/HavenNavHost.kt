@@ -367,6 +367,7 @@ fun HavenNavHost(
                 is sh.haven.core.data.agent.AgentUiCommand.OpenTerminalSession -> Screen.Terminal
                 is sh.haven.core.data.agent.AgentUiCommand.OpenRemoteDesktop -> Screen.Desktop
                 is sh.haven.core.data.agent.AgentUiCommand.OpenWaylandDesktop -> Screen.Desktop
+                is sh.haven.core.data.agent.AgentUiCommand.OpenUsbDrive -> Screen.Desktop
                 is sh.haven.core.data.agent.AgentUiCommand.RegenerateStepCaCert -> Screen.Keys
                 is sh.haven.core.data.agent.AgentUiCommand.OpenInEditor -> Screen.Sftp
                 is sh.haven.core.data.agent.AgentUiCommand.EncryptFile -> Screen.Sftp
@@ -788,6 +789,7 @@ fun HavenNavHost(
                                 requestScreen(Screen.Terminal)
                             }
                         },
+                        onOpenUsbDrive = { desktopViewModel.openUsbDrive() },
                         viewModel = sftpViewModel,
                     )
                     LaunchedEffect(pendingSmbProfileId) {

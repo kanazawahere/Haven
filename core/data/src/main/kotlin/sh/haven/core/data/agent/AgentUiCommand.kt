@@ -106,6 +106,21 @@ sealed class AgentUiCommand {
     data object OpenWaylandDesktop : AgentUiCommand()
 
     /**
+     * Open a phone-attached USB drive in an on-device VM and surface its files
+     * (#287). Posted by `MainActivity` when the user taps the "USB drive
+     * detected" notification ([HavenApp] raises it on a mass-storage attach).
+     * HavenNavHost switches to the Desktop tab; `DesktopViewModel` collects the
+     * same bus and calls `openUsbDrive(deviceName)` — the same flow as the
+     * Desktop → Manage menu and the Files-tab entry. [deviceName] null = the
+     * sole attached drive.
+     *
+     * Tap-equivalent: same effect as tapping "Open USB drive…" in the UI.
+     */
+    data class OpenUsbDrive(
+        val deviceName: String? = null,
+    ) : AgentUiCommand()
+
+    /**
      * Re-mint a step-ca-signed SSH cert for [keyId]. Posted by
      * `MainActivity` when the user taps the "cert expiring soon"
      * notification (#133 phase 2b). HavenNavHost switches to the Keys

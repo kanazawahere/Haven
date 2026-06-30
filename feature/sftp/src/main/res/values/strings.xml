@@ -214,6 +214,7 @@
     <!-- EmptyState -->
     <string name="sftp_file_browser_title">SFTP File Browser</string>
     <string name="sftp_connect_to_browse">Connect to a server to browse files</string>
+    <string name="sftp_open_usb_drive">Open a USB drive…</string>
 
     <!-- New Folder dialog -->
     <string name="sftp_new_folder_title">New Folder</string>

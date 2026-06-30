@@ -164,6 +164,10 @@ fun SftpScreen(
      * instead of being stranded on the SFTP screen.
      */
     onAttachFinished: () -> Unit = {},
+    /** Open a phone-attached USB drive in a VM (#287); the resulting "USB: …"
+     * connection then appears here as a tab. Wired by the host to the same flow
+     * as Desktop → Manage → "Open USB drive…". */
+    onOpenUsbDrive: () -> Unit = {},
     viewModel: SftpViewModel = hiltViewModel(),
 ) {
     val connectedProfiles by viewModel.connectedProfiles.collectAsState()
@@ -953,7 +957,7 @@ fun SftpScreen(
             }
 
             if (connectedProfiles.isEmpty()) {
-                EmptyState()
+                EmptyState(onOpenUsbDrive = onOpenUsbDrive)
             } else {
                 // Server tabs
                 if (connectedProfiles.size > 1) {
@@ -2991,7 +2995,7 @@ private fun SortDropdown(
 }
 
 @Composable
-private fun EmptyState() {
+private fun EmptyState(onOpenUsbDrive: () -> Unit = {}) {
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -3015,6 +3019,10 @@ private fun EmptyState() {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp),
         )
+        // #287: a USB drive's files surface here as a "USB: …" connection.
+        TextButton(onClick = onOpenUsbDrive, modifier = Modifier.padding(top = 12.dp)) {
+            Text(stringResource(R.string.sftp_open_usb_drive))
+        }
     }
 }
 

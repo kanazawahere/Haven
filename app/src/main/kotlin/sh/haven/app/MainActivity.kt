@@ -142,6 +142,7 @@ class MainActivity : AppCompatActivity() {
         handleAppWindowShortcut(intent)
         handleRenewCertDeepLink(intent)
         handleConnectDeepLink(intent)
+        handleOpenUsbDriveIntent(intent)
     }
 
     /**
@@ -161,6 +162,23 @@ class MainActivity : AppCompatActivity() {
         MainScope().launch {
             appWindowLauncher.launchById(defId)?.let { userMessageBus.error(it) }
         }
+    }
+
+    /**
+     * Handle the "USB drive detected" notification tap (#287): [HavenApp]'s
+     * mass-storage attach receiver posts a notification whose content intent
+     * carries [HavenApp.ACTION_OPEN_USB_DRIVE]. Re-publish onto the UI command
+     * bus so HavenNavHost switches to Desktop and DesktopViewModel opens the
+     * drive — the same flow as the in-app "Open USB drive…" tap. The receiver
+     * only fires while the app process is alive, so this lands on a live UI.
+     */
+    private fun handleOpenUsbDriveIntent(intent: Intent?) {
+        if (intent?.action != HavenApp.ACTION_OPEN_USB_DRIVE) return
+        val device = intent.getStringExtra(HavenApp.EXTRA_USB_DEVICE_NAME)
+        intent.removeExtra(HavenApp.EXTRA_USB_DEVICE_NAME)
+        intent.action = null
+        Log.d("MainActivity", "open-usb-drive intent for ${device ?: "(sole drive)"}")
+        agentUiCommandBus.emit(sh.haven.core.data.agent.AgentUiCommand.OpenUsbDrive(device))
     }
 
     // --- Picture-in-Picture (app windows) ---
@@ -326,6 +344,7 @@ class MainActivity : AppCompatActivity() {
         handleAppWindowShortcut(intent)
         handleRenewCertDeepLink(intent)
         handleConnectDeepLink(intent)
+        handleOpenUsbDriveIntent(intent)
         setContent {
             // Prevent screenshots/screen recording when enabled
             val screenSecurity by preferencesRepository.screenSecurity
