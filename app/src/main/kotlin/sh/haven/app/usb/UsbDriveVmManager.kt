@@ -3,13 +3,16 @@ package sh.haven.app.usb
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import sh.haven.core.data.db.entities.ConnectionProfile
 import sh.haven.core.data.db.entities.SshKey
@@ -119,13 +122,24 @@ class UsbDriveVmManager @Inject constructor(
         if (_sessions.value[busid]?.phase.let { it == Phase.OPENING || it == Phase.READY }) {
             throw UsbVmException("$target is already open in a VM; close it first.")
         }
+        // Reuse an existing bookmark for this physical drive (matched by USB
+        // serial) instead of stamping out a new ConnectionProfile every open.
+        // busid can't be used for this — it's derived from Android's
+        // /dev/bus/usb/BBB/DDD path, which changes on every physical
+        // unplug/replug even for the same stick, so busid-based dedup alone
+        // let duplicates pile up in the Connections list across repeat opens.
+        val existingBookmark = info.serialNumber?.let { serial ->
+            connectionRepository.getAll().firstOrNull { it.usbDriveSerial == serial }
+        }
         _sessions.update { it + (busid to Status(Phase.OPENING, target, info.productName, busid, stage = "Preparing…", readOnly = !writable)) }
+        startKeepAlive(target, busid)
         scope.launch {
             try {
-                val (profile, mounts) = bootAndAttach(target, info, busid, existingProfile = null, readOnly = !writable)
+                val (profile, mounts) = bootAndAttach(target, info, busid, existingProfile = existingBookmark, readOnly = !writable)
                 autoOpenInFiles(profile, mounts, busid)
             } catch (e: Exception) {
                 Log.w(TAG, "USB drive VM boot failed: ${e.message}")
+                stopKeepAlive(busid)
                 updateStatus(busid) { Status(Phase.ERROR, target, info.productName, busid, error = e.message, readOnly = !writable) }
             }
         }
@@ -175,12 +189,46 @@ class UsbDriveVmManager @Inject constructor(
         // explicit per-open choice (the "Open USB drive (writable)" action),
         // not something remembered on the bookmark.
         _sessions.update { it + (busid to Status(Phase.OPENING, deviceName, info.productName, busid, stage = "Reopening the drive…")) }
+        startKeepAlive(deviceName, busid)
         return try {
             bootAndAttach(deviceName, info, busid, existingProfile = profile, readOnly = true).first
         } catch (e: Exception) {
+            stopKeepAlive(busid)
             updateStatus(busid) { Status(Phase.ERROR, deviceName, info.productName, busid, error = e.message) }
             throw UsbVmException("Couldn't reopen the USB drive VM: ${e.message}")
         }
+    }
+
+    /**
+     * Keep the OTG-attached drive from being power-suspended by Android while
+     * it's open for this session — a trivial, side-effect-free `GET_STATUS`
+     * control transfer every [KEEP_ALIVE_INTERVAL_MS], purely to keep bus
+     * traffic flowing. Some OEM builds (this was found on OxygenOS) suspend
+     * an idle host-mode USB device more aggressively than stock Linux
+     * autosuspend, and a suspended stick fails every later USB/IP enumeration
+     * attempt until physically replugged — the long TCG boot + setup window
+     * has no real traffic otherwise, so it's exactly the idle stretch that
+     * triggers this. Best-effort: this can reduce how often it happens, not
+     * guarantee it never does (Android gives apps no API to disable OTG
+     * autosuspend outright without root).
+     */
+    private val keepAliveJobs = java.util.concurrent.ConcurrentHashMap<String, Job>()
+
+    private fun startKeepAlive(deviceName: String, busid: String) {
+        keepAliveJobs.remove(busid)?.cancel()
+        keepAliveJobs[busid] = scope.launch {
+            while (isActive) {
+                delay(KEEP_ALIVE_INTERVAL_MS)
+                if (!usbBroker.isOpen(deviceName)) break
+                runCatching {
+                    usbBroker.controlTransfer(deviceName, GET_STATUS_REQUEST_TYPE, GET_STATUS_REQUEST, 0, 0, null, 2, 1000)
+                }
+            }
+        }
+    }
+
+    private fun stopKeepAlive(busid: String) {
+        keepAliveJobs.remove(busid)?.cancel()
     }
 
     /**
@@ -321,6 +369,7 @@ class UsbDriveVmManager @Inject constructor(
     suspend fun close(busid: String) {
         val s = _sessions.value[busid] ?: return
         if (s.phase == Phase.IDLE) return
+        stopKeepAlive(busid)
         runCatching { qemuManager.closeDrive(busid) }
         runCatching { usbIpServer.unexport(busid) }
         _sessions.update { it - busid }
@@ -404,5 +453,11 @@ class UsbDriveVmManager @Inject constructor(
     companion object {
         private const val TAG = "UsbDriveVmManager"
         const val USB_CLASS_MASS_STORAGE = 8
+        // GET_STATUS(device): bmRequestType=IN|Standard|Device, bRequest=0.
+        private const val GET_STATUS_REQUEST_TYPE = 0x80
+        private const val GET_STATUS_REQUEST = 0x00
+        // OTG autosuspend timeouts are typically a few seconds of idle; keep
+        // comfortably under that without hammering the bus.
+        private const val KEEP_ALIVE_INTERVAL_MS = 5_000L
     }
 }
