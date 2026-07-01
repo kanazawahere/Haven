@@ -1,0 +1,4 @@
+v5.66.0
+- USB drives (#287) faster: the small helper Linux is set up once and kept, so opens after the first are quick. New "Delete USB helper Linux" (Desktop → Manage) reclaims the ~280 MB.
+- The drive now opens in Files by itself once it's ready.
+- Fix: high-speed flash drives were imported as full-speed and sometimes wouldn't mount; Haven now reports the drive's real speed and waits for it to enumerate.

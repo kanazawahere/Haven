@@ -61,20 +61,26 @@ distro picker → **"Open USB drive…"**. (Opening a drive is always a delibera
 tap like this, so it never happens behind your back.) Haven shows *"Opening the
 USB drive in a Linux VM — this can take a few minutes…"*
 
-**3. Wait.** The first time, this takes a few minutes (it downloads a small Linux
-image once and sets things up; later opens are quicker). A **live progress line**
-right there under Manage shows what it's doing — *"Downloading the Linux image…",
-"Booting Linux — the slow step…", "Setting up the VM and mounting your drive…"* —
-so you can see it's working, not stuck. You'll get a notification when it's ready:
-*"USB drive mounted — open 'USB Drive' in Files."*
+**3. Wait.** The **first** time, this takes a few minutes: Haven downloads a
+small Linux image once and builds a little helper system from it. That helper is
+**kept**, so every open after the first skips all of that and just boots it —
+much quicker. A **live progress line** under Manage shows what it's doing —
+*"Building the USB helper Linux…"* (first time only), then *"Booting the USB
+helper…", "Setting up the VM and mounting your drive…"* — so you can see it's
+working, not stuck.
 
-**4. Browse.** Switch to the **Files** (or **Connections**) tab and open the new
-**"USB: …"** connection. Your drive's partitions are under `/mnt` (e.g.
-`/mnt/sda1`). Copy files off, preview them, or open a terminal into the drive.
+**4. Browse.** When it's ready, Haven **opens the drive in Files for you**,
+showing its contents (your drive's partitions live under `/mnt`, e.g.
+`/mnt/sda1`). It also stays available as a **"USB: …"** connection you can reopen
+any time from **Files** or **Connections** — copy files off, preview them, or
+open a terminal into the drive.
 
 **5. Eject when done.** Back in **Desktop → Manage**, the same menu now says
 **"Eject USB drive"** — tap it to shut the little Linux down and free the drive.
-(It also closes by itself if you don't.)
+(It also closes by itself if you don't.) The helper system stays installed for
+next time; if you'd rather have the ~280 MB back, the same menu has **"Delete
+USB helper Linux"** — it just rebuilds itself, once, the next time you open a
+drive.
 
 ## What works, and what doesn't
 
@@ -101,8 +107,9 @@ so you can see it's working, not stuck. You'll get a notification when it's read
 Because your phone isn't "rooted," the little Linux can't use the phone's CPU
 directly — it has to be *emulated*, which is **slow**. That's fine for what this
 feature is for: **getting files off a drive**. It is *not* meant to be a fast,
-everyday Linux desktop. Expect the first open to take a few minutes and file
-copies to be unhurried.
+everyday Linux desktop. Expect the **first** open to take a few minutes (it
+builds the helper once); later opens are quicker, and file copies are unhurried
+either way.
 
 If all you need is a normal Linux *desktop* on your phone (not a USB drive),
 Haven has a much faster option that doesn't involve a virtual machine — see
@@ -110,16 +117,21 @@ Haven has a much faster option that doesn't involve a virtual machine — see
 
 ## For the agent (MCP)
 
-If you drive Haven with the built-in AI-agent bridge, three tools cover this,
-gated on the same **"Open USB drives in a VM"** setting:
+If you drive Haven with the built-in AI-agent bridge, these tools cover this.
+There's no setting to enable first — `open_usb_drive` is consent-gated per
+session (approve it once, since it mounts your disk):
 
 - `open_usb_drive` — start the VM for an attached drive (returns immediately;
   the boot continues in the background).
 - `list_usb_drives` — list attached USB drives and the VM's progress. While it's
-  booting, `vm.stage` carries a human-readable line ("Booting Linux…", etc.) you
-  can relay; poll until `vm.phase: ready`, which includes the loopback
-  **`profileId`** and the mounted paths.
+  booting, `vm.stage` carries a human-readable line ("Building the USB helper
+  Linux…", "Booting the USB helper…", etc.) you can relay; poll until
+  `vm.phase: ready`, which includes the loopback **`profileId`** and the mounted
+  paths. `applianceProvisioned` tells you whether the one-time setup is already
+  done (so the next open is quick).
 - `close_usb_drive` — eject and tear everything down.
+- `delete_usb_appliance` — delete the kept helper Linux (reclaims ~280 MB); the
+  next `open_usb_drive` re-provisions it once.
 
 Once it's ready, browse the drive with the normal file tools (`list_directory`,
 `serve_file`) using the returned `profileId`, exactly like any SFTP connection.

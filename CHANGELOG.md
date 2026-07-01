@@ -5,6 +5,18 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.66.0
+
+The "Open USB drive" feature (#287), made faster and more reliable from a round of testing.
+
+💾 **The USB helper Linux is kept, so later opens are quick** — the small on-device Linux that reads your drive is now **set up once and kept**, instead of rebuilt on every open. The **first** open still takes a few minutes (it downloads and installs the helper); every open after that skips straight to booting it — much quicker. A new **"Delete USB helper Linux"** option (**Desktop → Manage**) reclaims the ~280 MB if you want it back (it rebuilds itself, once, next time).
+
+📂 **The drive opens in Files by itself** — when a drive is ready, Haven now switches to **Files** and lands on its contents (under `/mnt`, e.g. `/mnt/sda1`), instead of leaving you to find it.
+
+🔌 **High-speed drives now mount reliably** — the USB/IP layer was reporting **every** exported device as *full-speed* (an old assumption from FIDO keys). A high-speed flash drive imported as full-speed makes the VM mis-read it, so it sometimes wouldn't appear. Haven now reports the drive's **real speed**, and **waits for the drive to actually enumerate** rather than assuming a fixed time — so a slower phone or a bigger/slower drive still mounts.
+
+Drivable over MCP (adds `delete_usb_appliance`; `list_usb_drives` now reports `applianceProvisioned`). Updated guide: [Reading USB drives](https://github.com/GlassHaven/Haven/blob/main/docs/features/usb-drives.md).
+
 ## v5.65.0
 
 A new way to read USB drives the phone can't open, a fuller email tool surface, and a USB/IP fix.
