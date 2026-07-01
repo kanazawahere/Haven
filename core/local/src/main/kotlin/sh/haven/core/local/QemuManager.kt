@@ -189,7 +189,10 @@ class QemuManager @Inject constructor(
         // Mount matches the session's readOnly (the same rw+sync risk tradeoff
         // as the plain mount loop in runtimeSetupScript applies here too).
         val mapperMount = if (current.readOnly) {
-            "mount -o ro \"/dev/mapper/crypt_$name\" \"/mnt/$name\" 2>/dev/null || mount -o ro,noload \"/dev/mapper/crypt_$name\" \"/mnt/$name\" 2>/dev/null"
+            // Same non-ext4/xfs noload gotcha as runtimeSetupScript's mount loop.
+            "t=\$(blkid -o value -s TYPE \"/dev/mapper/crypt_$name\" 2>/dev/null); " +
+                "mount -o ro \"/dev/mapper/crypt_$name\" \"/mnt/$name\" 2>/dev/null || " +
+                "if [ \"\$t\" = ext4 ] || [ \"\$t\" = xfs ]; then mount -o ro,noload \"/dev/mapper/crypt_$name\" \"/mnt/$name\" 2>/dev/null; fi"
         } else {
             "mount -o rw,sync \"/dev/mapper/crypt_$name\" \"/mnt/$name\" 2>/dev/null"
         }
@@ -706,7 +709,13 @@ internal fun markerVersion(marker: File): Int = marker.takeIf { it.exists() }?.r
  */
 internal fun runtimeSetupScript(busid: String, pubKey: String, readOnly: Boolean): String {
     val mountCmd = if (readOnly) {
-        "mount -o ro \"\$p\" \"\$d\" 2>/dev/null || mount -o ro,noload \"\$p\" \"\$d\" 2>/dev/null"
+        // noload (skip journal replay) is only a valid option for ext4/xfs —
+        // vfat/exfat/ntfs/ntfs3 reject the whole mount with "Unknown
+        // parameter" if it's passed, wasting the one fallback attempt a
+        // non-ext4/xfs stick gets. $t (blkid TYPE) is already set by the
+        // caller's loop before this runs.
+        "mount -o ro \"\$p\" \"\$d\" 2>/dev/null || " +
+            "if [ \"\$t\" = ext4 ] || [ \"\$t\" = xfs ]; then mount -o ro,noload \"\$p\" \"\$d\" 2>/dev/null; fi"
     } else {
         // `sync` = every write flushes immediately, no write-back cache to
         // lose. Slower, but this is an emulated full-speed-limited USB link
@@ -737,11 +746,12 @@ internal fun runtimeSetupScript(busid: String, pubKey: String, readOnly: Boolean
         // take much longer than a fast phone. Poll until a partition node
         // appears, with a generous ceiling (still inside SETUP_TIMEOUT_MS,
         // and we proceed the instant it shows). usbip occasionally imports
-        // at the wrong speed and never enumerates; one detach/re-attach at
-        // ~20s clears that, but we keep waiting either way.
+        // at the wrong speed and never enumerates; a detach/re-attach usually
+        // clears that but not always (seen it take 2+ tries live), so retry
+        // every ~20s instead of once, using the same $ENUM_WAIT_S budget.
         "usbip attach -r 10.0.2.2 -b $busid 2>/dev/null; n=0; " +
         "while [ \$n -lt $ENUM_WAIT_S ]; do ls /dev/sd[a-z][0-9]* >/dev/null 2>&1 && break; " +
-        "[ \$n -eq 20 ] && { usbip detach -p 00 2>/dev/null; usbip detach -p 0 2>/dev/null; sleep 1; " +
+        "[ \$n -gt 0 ] && [ \$((\$n % 20)) -eq 0 ] && { usbip detach -p 00 2>/dev/null; usbip detach -p 0 2>/dev/null; sleep 1; " +
         "usbip attach -r 10.0.2.2 -b $busid 2>/dev/null; }; " +
         "n=\$((n+1)); sleep 1; done; " +
         "mkdir -p /mnt; for p in /dev/sd[a-z][0-9]*; do [ -b \"\$p\" ] || continue; " +

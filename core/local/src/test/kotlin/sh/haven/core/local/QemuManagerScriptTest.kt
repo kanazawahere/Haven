@@ -25,6 +25,15 @@ class QemuManagerScriptTest {
     }
 
     @Test
+    fun `noload fallback is gated on ext4-xfs — vfat-exfat-ntfs reject it outright`() {
+        val script = runtimeSetupScript(busid = "1-2", pubKey = "ssh-ed25519 AAAA test", readOnly = true)
+        assertTrue(
+            "noload must be conditioned on fstype, or vfat/exfat/ntfs/ntfs3 reject the whole mount",
+            script.contains("if [ \"\$t\" = ext4 ] || [ \"\$t\" = xfs ]; then mount -o ro,noload"),
+        )
+    }
+
+    @Test
     fun `writable script mounts rw with sync, no noload fallback`() {
         val script = runtimeSetupScript(busid = "1-2", pubKey = "ssh-ed25519 AAAA test", readOnly = false)
         assertTrue(script.contains("mount -o rw,sync \"\$p\" \"\$d\""))
