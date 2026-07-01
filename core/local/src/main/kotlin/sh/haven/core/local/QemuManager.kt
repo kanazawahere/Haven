@@ -208,6 +208,11 @@ class QemuManager @Inject constructor(
     private fun runtimeSetupScript(busid: String, pubKey: String): String {
         // pubKey is a single "ssh-ed25519 AAAA... comment" line (no single quotes).
         return "ip link set eth0 up; udhcpc -i eth0 -q -n; " +
+            // Quiet the kernel console. The appliance boots with console=ttyS0,
+            // so vhci_hcd/usb enumeration spam floods the serial we scrape — it
+            // can trim the mount report out of the capped buffer before we read
+            // it. Emergency-only from here (we're already past login).
+            "dmesg -n 1 2>/dev/null; " +
             "mkdir -p /root/.ssh; echo '$pubKey' > /root/.ssh/authorized_keys; " +
             "chmod 700 /root/.ssh; chmod 600 /root/.ssh/authorized_keys; " +
             "ssh-keygen -A >/dev/null 2>&1; " +
@@ -228,8 +233,12 @@ class QemuManager @Inject constructor(
             "for i in \$(seq 1 15); do ls /dev/sd[a-z][0-9]* >/dev/null 2>&1 && break; sleep 1; done; }; " +
             "mkdir -p /mnt; for p in /dev/sd[a-z][0-9]*; do [ -b \"\$p\" ] || continue; " +
             "l=\$(basename \"\$p\"); mkdir -p /mnt/\$l; " +
-            "(mount -o ro \"\$p\" /mnt/\$l 2>/dev/null || mount -o ro,noload \"\$p\" /mnt/\$l 2>/dev/null) " +
-            "&& echo HVNMOUNT:/mnt/\$l; done; " +
+            "mount -o ro \"\$p\" /mnt/\$l 2>/dev/null || mount -o ro,noload \"\$p\" /mnt/\$l 2>/dev/null; done; " +
+            // Report the ACTUAL mounts from /proc/mounts right before the marker,
+            // so the HVNMOUNT lines sit adjacent to HAVEN_SETUP_DONE in the serial
+            // buffer (an inline echo during the loop can be pushed out by console
+            // output before parseMounts reads). Authoritative, not best-effort.
+            "while read d m r; do case \"\$m\" in /mnt/*) echo \"HVNMOUNT:\$m\";; esac; done < /proc/mounts; " +
             "echo HAVEN_SETUP_DONE"
     }
 
@@ -477,7 +486,7 @@ class QemuManager @Inject constructor(
     companion object {
         private const val TAG = "QemuManager"
         private const val VM_MEM_MB = 768
-        private const val SERIAL_CAP = 64 * 1024
+        private const val SERIAL_CAP = 256 * 1024
         // Generous: TCG boot (no KVM) is slow and varies a lot with phone load —
         // 4 min was marginal and timed out under load before reaching login.
         private const val BOOT_TIMEOUT_MS = 420_000L
