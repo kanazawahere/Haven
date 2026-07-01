@@ -281,9 +281,17 @@ class UsbBroker @Inject constructor(
         accessGate.awaitClear(deviceName, EXPORT_YIELD_MS)
         val isIn = (requestType and UsbConstants.USB_DIR_IN) != 0
         val buffer = if (isIn) ByteArray(length) else (data ?: ByteArray(0))
-        val transferred = handle.connection.controlTransfer(
-            requestType, request, value, index, buffer, if (isIn) length else buffer.size, timeoutMs,
-        )
+        // A single UsbDeviceConnection has no built-in thread safety — a
+        // concurrent caller on another thread (e.g. UsbDriveVmManager's
+        // keep-alive control transfer racing a USB/IP export lane's bulk
+        // transfer) can corrupt an in-flight USB transaction. Observed live:
+        // a keep-alive GET_STATUS racing bulk reads reset the device mid-VM-
+        // boot and it never re-enumerated for the rest of that session.
+        val transferred = synchronized(handle.connection) {
+            handle.connection.controlTransfer(
+                requestType, request, value, index, buffer, if (isIn) length else buffer.size, timeoutMs,
+            )
+        }
         if (transferred < 0) throw IOException("controlTransfer failed (rc=$transferred)")
         val out = if (isIn) buffer.copyOf(transferred) else ByteArray(0)
         return TransferResult(transferred, out)
@@ -304,20 +312,58 @@ class UsbBroker @Inject constructor(
         val handle = handleFor(deviceName)
         accessGate.awaitClear(deviceName, EXPORT_YIELD_MS) // yield to FIDO auth — see controlTransfer
         val (iface, endpoint) = locateEndpoint(handle.device, endpointAddress)
-        if (handle.claimedInterfaces.add(iface.id)) {
-            if (!handle.connection.claimInterface(iface, true)) {
-                handle.claimedInterfaces.remove(iface.id)
-                throw IOException("Failed to claim interface ${iface.id} for endpoint $endpointAddress")
-            }
-        }
         val isIn = endpoint.direction == UsbConstants.USB_DIR_IN
         val buffer = if (isIn) ByteArray(length) else (data ?: ByteArray(0))
-        val transferred = handle.connection.bulkTransfer(
-            endpoint, buffer, if (isIn) length else buffer.size, timeoutMs,
-        )
+        val total = if (isIn) length else buffer.size
+        synchronized(handle.connection) {
+            if (handle.claimedInterfaces.add(iface.id)) {
+                if (!handle.connection.claimInterface(iface, true)) {
+                    handle.claimedInterfaces.remove(iface.id)
+                    throw IOException("Failed to claim interface ${iface.id} for endpoint $endpointAddress")
+                }
+            }
+        }
+        // Chunk loop deliberately does NOT hold the lock across the whole
+        // transfer — a mass-storage device's BULK OUT (data) and BULK IN
+        // (status) traffic for the SAME command must interleave on separate
+        // UsbIpServer lane threads (worse with UAS command queuing). Holding
+        // one lock for an entire multi-chunk write starved the status-read
+        // lane long enough that the guest's own SCSI command timeout fired
+        // and reset the device mid-write. Lock only each individual native
+        // call — see the class-level race this whole scheme guards against.
+        val transferred = transferInChunks(handle.connection, endpoint, buffer, total, timeoutMs)
         if (transferred < 0) throw IOException("bulkTransfer failed (rc=$transferred)")
         val out = if (isIn) buffer.copyOf(transferred) else ByteArray(0)
         return TransferResult(transferred, out)
+    }
+
+    /**
+     * A single `UsbDeviceConnection.bulkTransfer` call above [MAX_TRANSFER_CHUNK]
+     * can silently truncate on Android's legacy synchronous USB API (no kernel
+     * URB streaming) — observed live as a guest's large multi-segment write
+     * (cryptsetup wiping a LUKS header, 15KB+ in one URB) desyncing the
+     * device's USB transaction state machine, which cheap flash controllers
+     * respond to with a hard reset instead of a clean short-write error.
+     * Loop in bounded chunks instead of trusting one call to move everything.
+     */
+    private fun transferInChunks(
+        connection: UsbDeviceConnection,
+        endpoint: UsbEndpoint,
+        buffer: ByteArray,
+        total: Int,
+        timeoutMs: Int,
+    ): Int {
+        var offset = 0
+        while (offset < total) {
+            val chunkLen = minOf(MAX_TRANSFER_CHUNK, total - offset)
+            val rc = synchronized(connection) {
+                connection.bulkTransfer(endpoint, buffer, offset, chunkLen, timeoutMs)
+            }
+            if (rc < 0) return if (offset == 0) rc else offset
+            offset += rc
+            if (rc < chunkLen) break // short transfer — device signaled end of data
+        }
+        return offset
     }
 
     private fun locateEndpoint(device: UsbDevice, address: Int): Pair<UsbInterface, UsbEndpoint> {
@@ -344,6 +390,14 @@ class UsbBroker @Inject constructor(
          * auth finishes first, but bounded so a dead holder can't wedge the export.
          */
         private const val EXPORT_YIELD_MS = 35_000L
+
+        /**
+         * Safe per-call size for [transferInChunks] — comfortably under the
+         * ~16KB threshold where Android's synchronous UsbDeviceConnection.
+         * bulkTransfer has been observed to silently truncate on some
+         * devices/API levels.
+         */
+        private const val MAX_TRANSFER_CHUNK = 16 * 1024
 
         /** Broadcast action for the runtime-permission grant callback. */
         const val ACTION_USB_PERMISSION = "sh.haven.core.usb.USB_PERMISSION"

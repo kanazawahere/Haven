@@ -151,6 +151,91 @@ class UsbBrokerTest {
     }
 
     @Test
+    fun `controlTransfer and bulkTransfer never run concurrently on the same connection`() = runBlocking {
+        // Regression test for a real race found live: a keep-alive control
+        // transfer (UsbDriveVmManager, Dispatchers.IO) and a USB/IP export
+        // lane's bulk transfer (its own ExecutorService thread) both called
+        // into the same UsbDeviceConnection with no locking — corrupting an
+        // in-flight transfer and resetting the device mid-VM-boot.
+        val epIn = endpoint(0x81, UsbConstants.USB_DIR_IN, UsbConstants.USB_ENDPOINT_XFER_BULK)
+        val dev = device(
+            "/dev/bus/usb/001/007", 0x1, 0x2,
+            listOf(iface(0, UsbConstants.USB_CLASS_MASS_STORAGE, listOf(epIn))),
+        )
+        val inCriticalSection = java.util.concurrent.atomic.AtomicBoolean(false)
+        val raceDetected = java.util.concurrent.atomic.AtomicBoolean(false)
+        fun enterThenLeave(result: Int): Int {
+            if (!inCriticalSection.compareAndSet(false, true)) raceDetected.set(true)
+            Thread.sleep(15)
+            inCriticalSection.set(false)
+            return result
+        }
+        val conn: UsbDeviceConnection = mockk {
+            every { claimInterface(any(), any()) } returns true
+            every { controlTransfer(any(), any(), any(), any(), any(), any(), any()) } answers { enterThenLeave(2) }
+            every { bulkTransfer(any(), any(), any(), any()) } answers { enterThenLeave(8) }
+        }
+        val usb: UsbManager = mockk {
+            every { deviceList } returns hashMapOf(dev.deviceName to dev)
+            every { hasPermission(dev) } returns true
+            every { openDevice(dev) } returns conn
+        }
+        val broker = broker(usb)
+        broker.openDevice(dev.deviceName)
+
+        val threads = (1..8).map { i ->
+            Thread {
+                if (i % 2 == 0) {
+                    repeat(5) { broker.controlTransfer(dev.deviceName, 0x80, 0, 0, 0, null, 2, 1000) }
+                } else {
+                    repeat(5) { broker.bulkTransfer(dev.deviceName, 0x81, null, 8, 1000) }
+                }
+            }
+        }
+        threads.forEach { it.start() }
+        threads.forEach { it.join() }
+
+        assertFalse("controlTransfer and bulkTransfer overlapped on the same connection", raceDetected.get())
+    }
+
+    @Test
+    fun `a large OUT transfer is split into bounded chunks, not one call`() {
+        // Regression test for a real failure found live: a single bulkTransfer
+        // call above ~16KB can silently truncate on Android's synchronous USB
+        // API, desyncing the device's transaction state — cheap flash sticks
+        // respond to that by resetting instead of erroring cleanly. Reproduced
+        // with cryptsetup's LUKS-header wipe (a 15KB+ single write URB).
+        val epOut = endpoint(0x01, UsbConstants.USB_DIR_OUT, UsbConstants.USB_ENDPOINT_XFER_BULK)
+        val dev = device(
+            "/dev/bus/usb/001/008", 0x1, 0x2,
+            listOf(iface(0, UsbConstants.USB_CLASS_MASS_STORAGE, listOf(epOut))),
+        )
+        val callSizes = mutableListOf<Int>()
+        val conn: UsbDeviceConnection = mockk {
+            every { claimInterface(any(), any()) } returns true
+            every { bulkTransfer(any(), any(), any(), any(), any()) } answers {
+                val length = it.invocation.args[3] as Int
+                callSizes.add(length)
+                length
+            }
+        }
+        val usb: UsbManager = mockk {
+            every { deviceList } returns hashMapOf(dev.deviceName to dev)
+            every { hasPermission(dev) } returns true
+            every { openDevice(dev) } returns conn
+        }
+        val broker = broker(usb)
+        runBlocking { broker.openDevice(dev.deviceName) }
+
+        val totalSize = 40 * 1024 // well above the 16KB safe-chunk ceiling
+        val result = broker.bulkTransfer(dev.deviceName, 0x01, ByteArray(totalSize), totalSize, 5000)
+
+        assertEquals(totalSize, result.bytesTransferred)
+        assertTrue("expected multiple chunked calls, got ${callSizes.size}: $callSizes", callSizes.size > 1)
+        assertTrue("no single call should exceed the safe chunk size", callSizes.all { it <= 16 * 1024 })
+    }
+
+    @Test
     fun `transfer result equality is content-based`() {
         val a = TransferResult(3, byteArrayOf(1, 2, 3))
         val b = TransferResult(3, byteArrayOf(1, 2, 3))
