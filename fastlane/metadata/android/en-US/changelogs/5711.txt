@@ -1,0 +1,2 @@
+v5.66.3
+- Hardened the custom rootfs importer against malformed tarballs (#324): a path reused with a different type across tar entries (e.g. a stale directory later replaced by a file) is now cleared and replaced instead of silently corrupting the extracted rootfs.

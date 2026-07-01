@@ -5,6 +5,12 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.66.3
+
+Hardens the custom rootfs importer against malformed tarballs (#324).
+
+🛡️ **Rootfs import handles a path reused with the wrong type** — Haven's tarball extractor (used for both built-in distro downloads and "Import rootfs…") now clears a path first if a later tar entry reuses it as a different type than an earlier one (e.g. a leftover directory placeholder later replaced by a regular file). Previously this could silently no-op or throw instead of letting the later entry win, potentially leaving an extracted file as the wrong type. Found while investigating a report of `dpkg` failing with "Operation not permitted" creating `/var/lib/dpkg/status-old` on a custom-imported rootfs — proot's hardlink emulation returns exactly that error when asked to link a directory instead of a file. Not yet confirmed as the root cause of that specific report (still waiting on the reporter to check whether `/var/lib/dpkg/status` is a directory on their rootfs), but it's a real correctness gap in the importer either way. Covered by 5 new unit tests.
+
 ## v5.66.2
 
 Fixes importing a rootfs from a plain-HTTP LAN mirror (#284).

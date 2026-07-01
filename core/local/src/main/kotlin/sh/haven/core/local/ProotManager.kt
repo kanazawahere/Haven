@@ -107,6 +107,20 @@ internal fun forceDeleteRecursively(root: File): Boolean {
 }
 
 /**
+ * Clear whatever is at [outFile] if it's the wrong type for the tar entry
+ * about to be written there (a directory where a file is wanted, or vice
+ * versa). A malformed or duplicate tar entry can reuse a path with a
+ * different type than what's already there — without this, `mkdirs()` /
+ * `FileOutputStream` silently no-op or throw on the stale type instead of
+ * letting the new entry win.
+ */
+internal fun clearPathIfWrongType(outFile: File, entryIsDir: Boolean) {
+    if (outFile.exists() && outFile.isDirectory != entryIsDir) {
+        if (outFile.isDirectory) outFile.deleteRecursively() else outFile.delete()
+    }
+}
+
+/**
  * Return the subset of [binaries] (rootfs-relative paths like
  * `usr/bin/xfwm4`) that are missing under [rootfs].
  *
@@ -1382,6 +1396,7 @@ class ProotManager @Inject constructor(
                 }
 
                 val outFile = File(destDir, entryName)
+                clearPathIfWrongType(outFile, entryIsDir = typeFlag == '5'.code.toByte())
 
                 when (typeFlag) {
                     '5'.code.toByte() -> {
