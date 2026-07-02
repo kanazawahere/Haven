@@ -114,7 +114,11 @@ runs:
       shell: bash
       run: |
         rustup default 1.89.0
-        rustup target add aarch64-linux-android x86_64-linux-android
+        # Install every Android target up front (single-threaded). Leaving armv7
+        # to the crates' rust-toolchain.toml `targets` auto-install let the
+        # parallel rdp+spice cargo builds race to install rust-std-armv7 and hit
+        # `detected conflict: …/rustlib/armv7-linux-androideabi/lib/…rlib`.
+        rustup target add aarch64-linux-android x86_64-linux-android armv7-linux-androideabi
         if [ ! -x ~/.cargo/bin/cargo-ndk ]; then
           cargo install cargo-ndk --locked --version 3.5.4
         fi
