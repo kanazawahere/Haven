@@ -5,6 +5,12 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.67.1
+
+Fixes `apt`/`dpkg` failing inside proot distros with a backup-file permission error (#328, #324).
+
+📦 **`dpkg` package installs no longer fail with "error creating new backup file … Operation not permitted"** — `dpkg` backs up its database files (`/var/lib/dpkg/status`, `/var/lib/dpkg/diversions`) by hard-linking them to a `-old` copy. PRoot's bundled `--link2symlink` extension was rewriting *every* hard link into its symlink-emulation unconditionally, which diverges from real hard-link semantics and surfaced as `dpkg-divert: error: error creating new backup file '/var/lib/dpkg/diversions-old': Operation not permitted` — even though the same rootfs installs fine under Termux (which uses a native `link()`). PRoot now attempts a real hard link first and only falls back to the emulation when the filesystem genuinely can't do it. On the ext4/f2fs storage the rootfs lives on, `dpkg`'s backups are now real hard links, matching a normal Linux system. The earlier #324 rootfs-import hardening (v5.66.3) turned out not to address this — the diagnosis there was wrong — so it was left in place as harmless hardening and the real cause fixed in PRoot itself. Verified on host against a real `apt install` / `dpkg-divert` run.
+
 ## v5.67.0
 
 Encrypted (LUKS), writable, and multi-drive USB support (#287); MCP reconnects reliably; five reliability fixes found along the way.

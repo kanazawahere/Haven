@@ -1,0 +1,2 @@
+v5.67.1
+- Fixed apt/dpkg failing inside proot distros with "error creating new backup file … Operation not permitted" (#328/#324): PRoot now uses a real hard link for dpkg's -old database backups instead of always rewriting it to a symlink.
