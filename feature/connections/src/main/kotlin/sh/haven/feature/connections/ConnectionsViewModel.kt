@@ -23,6 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import sh.haven.core.data.db.entities.ConnectionProfile
 import sh.haven.core.data.db.entities.PortForwardRule
 import sh.haven.core.data.db.entities.SshKey
@@ -76,6 +77,15 @@ import java.io.File
 import javax.inject.Inject
 
 private const val TAG = "ConnectionsVM"
+
+/**
+ * How long a host-key accept/reject prompt waits for an on-screen tap before
+ * giving up. Without a bound, a prompt raised while Connections isn't the
+ * composed/visible screen (a background reconnect, an MCP-triggered
+ * connect_profile) blocks the connect forever with no error and no further
+ * log output — reproduced live via a USB-drive-VM profile hanging 5+ minutes.
+ */
+private const val HOST_KEY_PROMPT_TIMEOUT_MS = 90_000L
 
 /**
  * Port the MCP server binds (first free in 8730..8739). The reverse-tunnel
@@ -630,7 +640,22 @@ class ConnectionsViewModel @Inject constructor(
 
     /**
      * Run TOFU host-key verification against [entry], prompting the user for
-     * accept/reject on first contact or key change. Throws if rejected.
+     * accept/reject on first contact or key change. Throws if rejected, or if
+     * nobody answers within [HOST_KEY_PROMPT_TIMEOUT_MS] — a prompt raised
+     * while Connections isn't the visible screen (background reconnect,
+     * MCP-triggered connect_profile) would otherwise await a tap that can
+     * never come, hanging the connect forever with no error and no further
+     * log output (reproduced live).
+     *
+     * [autoAccept] skips the prompt (and its timeout) entirely, accepting the
+     * key immediately — only correct for profiles Haven itself originates
+     * *and* owns both ends of (USB-drive-VM loopback profiles): the guest's
+     * host key is generated fresh by Haven's own boot script every VM boot,
+     * over a loopback-only connection, so there is no third party to
+     * trust-on-first-use against, and a fresh key every boot would otherwise
+     * re-prompt on every single drive reopen. Every other profile keeps the
+     * normal interactive prompt — callers must not set this for anything else
+     * without deliberately deciding to trade away that check.
      *
      * Shared by every interactive connect path so that they behave the same
      * way on fresh contact, key change, and (post-fix) auth-failure-after-KEX.
@@ -640,32 +665,53 @@ class ConnectionsViewModel @Inject constructor(
         clientToDisconnectOnReject: SshClient? = null,
         rejectedOnNewHostMessage: String = "Host key rejected by user",
         rejectedOnChangeMessage: String = "Host key change rejected by user",
+        autoAccept: Boolean = false,
     ) {
         when (val result = hostKeyVerifier.verify(entry)) {
             is HostKeyResult.Trusted -> return
             is HostKeyResult.NewHost -> {
+                if (autoAccept) {
+                    Log.d(TAG, "Auto-accepting new host key — Haven-owned USB-drive-VM loopback profile")
+                    hostKeyVerifier.accept(result.entry)
+                    return
+                }
                 val deferred = CompletableDeferred<Boolean>()
                 _hostKeyPrompt.value = HostKeyPrompt.NewHost(result.entry, deferred)
-                if (!deferred.await()) {
+                if (!awaitHostKeyDecision(deferred)) {
                     clientToDisconnectOnReject?.disconnect()
                     throw Exception(rejectedOnNewHostMessage)
                 }
                 hostKeyVerifier.accept(result.entry)
             }
             is HostKeyResult.KeyChanged -> {
+                if (autoAccept) {
+                    Log.d(TAG, "Auto-accepting changed host key — Haven-owned USB-drive-VM loopback profile")
+                    hostKeyVerifier.accept(result.new)
+                    return
+                }
                 val deferred = CompletableDeferred<Boolean>()
                 _hostKeyPrompt.value = HostKeyPrompt.KeyChanged(
                     oldFingerprint = result.old.fingerprint,
                     entry = result.new,
                     deferred = deferred,
                 )
-                if (!deferred.await()) {
+                if (!awaitHostKeyDecision(deferred)) {
                     clientToDisconnectOnReject?.disconnect()
                     throw Exception(rejectedOnChangeMessage)
                 }
                 hostKeyVerifier.accept(result.new)
             }
         }
+    }
+
+    /** Awaits [deferred] with [HOST_KEY_PROMPT_TIMEOUT_MS]; a timeout clears the stale prompt and counts as reject. */
+    private suspend fun awaitHostKeyDecision(deferred: CompletableDeferred<Boolean>): Boolean {
+        val decided = withTimeoutOrNull(HOST_KEY_PROMPT_TIMEOUT_MS) { deferred.await() }
+        if (decided == null) {
+            Log.w(TAG, "Host-key prompt timed out after ${HOST_KEY_PROMPT_TIMEOUT_MS}ms with no on-screen response — treating as rejected")
+            _hostKeyPrompt.value = null
+        }
+        return decided ?: false
     }
 
     /** Emitted once after a successful connect to trigger navigation to terminal (profileId). */
@@ -2601,13 +2647,13 @@ class ConnectionsViewModel @Inject constructor(
                                 confirmOtp = profile.totpConfirmBeforeSend,
                                 preConnect = buildKnockHook(profile, verboseLogger),
                             )
-                            runTofuVerification(hostKeyEntry, clientToDisconnectOnReject = client)
+                            runTofuVerification(hostKeyEntry, clientToDisconnectOnReject = client, autoAccept = profile.usbDriveSerial != null)
                         } catch (e: HostKeyAuthFailure) {
                             // KEX succeeded but auth failed — still run the TOFU
                             // prompt on first contact (Haven#75 follow-up) then
                             // rethrow the underlying JSch auth error so the catch
                             // block below can trigger the password-fallback UX.
-                            runTofuVerification(e.hostKey, clientToDisconnectOnReject = null)
+                            runTofuVerification(e.hostKey, clientToDisconnectOnReject = null, autoAccept = profile.usbDriveSerial != null)
                             throw e.cause ?: e
                         }
 
