@@ -5,6 +5,12 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.5
+
+Fixes rootfs file permissions being lost on extraction (#328).
+
+🔧 **Custom rootfs imports and distro installs now keep their file permissions** — Haven's tarball extractor was applying the Android app's restrictive umask (0077) instead of the permissions stored in the tar, so extracted directories came out `0700` and files `0600` regardless of the archive. On a custom-imported rootfs this could leave `/var/lib/dpkg` under-permissioned and make `apt`/`dpkg` fail with `error creating new backup file … Operation not permitted`. The extractor now restores each entry's exact mode from the tar. Re-import an affected rootfs to pick up correct permissions; an existing install can be repaired with `chmod 755 /var /var/lib /var/lib/dpkg`.
+
 ## v5.68.4
 
 Two fixes: SSH hardware-key auth ordering, and a Native X11 desktop teardown crash.

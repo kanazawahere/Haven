@@ -1,0 +1,2 @@
+v5.68.5
+- Fixes rootfs file permissions being lost on extraction: Haven's tarball extractor applied the app's umask instead of the tar's stored modes, so a custom-imported rootfs could end up under-permissioned and break apt/dpkg with "Operation not permitted" (#328). Re-import to fix, or run: chmod 755 /var /var/lib /var/lib/dpkg
