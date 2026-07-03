@@ -1327,6 +1327,9 @@ class ProotManager @Inject constructor(
         destDir.mkdirs()
         var fileCount = 0
         var symlinkCount = 0
+        // Directory modes are applied AFTER all files are written (deferred),
+        // so a read-only dir in the tar can't block writing its contents. (#328)
+        val deferredDirModes = ArrayList<Pair<File, Int>>()
 
         val rawInput = tarball.inputStream().buffered()
         val decompressed: java.io.InputStream = when (source.format) {
@@ -1401,6 +1404,9 @@ class ProotManager @Inject constructor(
                 when (typeFlag) {
                     '5'.code.toByte() -> {
                         outFile.mkdirs()
+                        modeStr.trim().toIntOrNull(8)?.let {
+                            deferredDirModes.add(outFile to (it and 0xFFF))
+                        }
                     }
                     '2'.code.toByte() -> {
                         // Symlink
@@ -1442,12 +1448,17 @@ class ProotManager @Inject constructor(
                                 remaining -= n
                             }
                         }
-                        try {
-                            val mode = modeStr.trim().toIntOrNull(8) ?: 0
-                            if (mode and 0x49 != 0) {
-                                outFile.setExecutable(true, false)
-                            }
-                        } catch (_: Exception) {}
+                        // Restore the tar entry's mode exactly. The Android app
+                        // process umask is 0077, so FileOutputStream would leave
+                        // every file 0600 regardless of the tar — under-
+                        // permissioning the rootfs (e.g. dpkg failing to back up
+                        // files in /var/lib/dpkg). chmod works because the app
+                        // owns the file. (#328)
+                        modeStr.trim().toIntOrNull(8)?.let { m ->
+                            try {
+                                android.system.Os.chmod(outFile.absolutePath, m and 0xFFF)
+                            } catch (_: Exception) {}
+                        }
                         skipToBlock(gzIn, size)
                         fileCount++
                     }
@@ -1470,8 +1481,19 @@ class ProotManager @Inject constructor(
                 // Also handle directory entries without explicit type flag
                 if (typeFlag != '5'.code.toByte() && entryName.endsWith("/")) {
                     outFile.mkdirs()
+                    modeStr.trim().toIntOrNull(8)?.let {
+                        deferredDirModes.add(outFile to (it and 0xFFF))
+                    }
                 }
             }
+        }
+
+        // Apply directory modes now that all files are written. Deepest-first is
+        // safe (chmod needs only ownership, not parent write). Without this dirs
+        // stay at the app umask (0700) instead of the tar's mode (e.g. 0755),
+        // breaking tools that rely on 0755 traversal/perms. (#328)
+        for ((dir, mode) in deferredDirModes.asReversed()) {
+            try { android.system.Os.chmod(dir.absolutePath, mode) } catch (_: Exception) {}
         }
 
         Log.d(TAG, "Extracted $fileCount files, $symlinkCount symlinks to ${destDir.absolutePath}")
