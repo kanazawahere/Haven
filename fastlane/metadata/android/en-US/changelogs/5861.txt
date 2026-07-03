@@ -1,0 +1,2 @@
+v5.68.6
+- neofetch/fastfetch now show your device model as the terminal "Host" line inside a Local Linux (proot) shell, instead of a blank Host (#304). Haven seeds the model (Build.MANUFACTURER/MODEL) at /tmp/sysinfo/model for neofetch and binds it over /sys/firmware/devicetree/base/model for fastfetch, across every proot launch path. Device-verified.

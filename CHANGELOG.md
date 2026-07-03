@@ -5,6 +5,12 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.6
+
+Shows your device model as the terminal "Host" line in neofetch/fastfetch (#304).
+
+📟 **`neofetch`/`fastfetch` now show your device model instead of a blank Host** — inside a Local Linux (proot) shell these tools couldn't determine the hardware "Host", so the line came out empty: under proot there's no DMI, the device-tree model node is SELinux-unreadable, and `getprop` isn't reachable. Haven now seeds the device model (from `Build.MANUFACTURER`/`Build.MODEL`) where both tools look — `/tmp/sysinfo/model` for neofetch, and a bind over `/sys/firmware/devicetree/base/model` for fastfetch — across every proot launch path (terminal, one-shot, and desktop). Device-verified: Host now reads e.g. `OnePlus CPH2655`. (The separate request to bind Android's `/system`/`/vendor` into the guest is not included — it carries real SELinux/cross-device risk and needs a concrete use-case first.)
+
 ## v5.68.5
 
 Fixes rootfs file permissions being lost on extraction (#328).
