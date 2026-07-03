@@ -5,6 +5,12 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.7
+
+Optional: run Android's own native binaries inside a Local Linux shell (#304).
+
+📦 **New "Expose Android system to guest" toggle (off by default)** — when enabled (Desktop → Manage → Options, or MCP `bind_android_system`), Haven binds Android's read-only `/system`, `/vendor`, `/apex`, `/product`, `/system_ext` and `/odm` into the proot guest, so the local Linux environment can run Android's own native tools — e.g. `/system/bin/getprop`, `toybox`. Left off by default because it exposes device and vendor internals; the partitions are mounted read-only, so the guest can't modify them. Device-verified: with the toggle on, `getprop ro.product.model` and `toybox uname` run inside the guest. (`/linkerconfig` isn't bound — it's SELinux-blocked for the app and unnecessary; Android's linker falls back to a default and still resolves its libraries.)
+
 ## v5.68.6
 
 Shows your device model as the terminal "Host" line in neofetch/fastfetch (#304).

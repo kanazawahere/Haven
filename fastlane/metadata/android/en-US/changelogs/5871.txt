@@ -1,0 +1,2 @@
+v5.68.7
+- New opt-in "Expose Android system to guest" toggle (off by default): binds Android's read-only /system, /vendor, /apex, /product, /system_ext, /odm into the Local Linux (proot) guest so it can run Android's own native binaries like getprop and toybox (#304). Enable in Desktop → Manage → Options or via MCP bind_android_system. Exposes device internals; partitions are read-only. Device-verified.
