@@ -233,7 +233,7 @@ internal class McpTools(
         ) { _ -> listConnections() },
 
         "list_sessions" to ToolHandler(
-            description = "List currently registered sessions across all transports (ssh, mosh, et, reticulum, rdp, smb, local, mail) with sessionId, profileId, label, status (connecting, connected, reconnecting, disconnected, error), and transport. SSH sessions additionally include sessionManager, channel state, jump-session linkage, and active port forwards.",
+            description = "List currently registered sessions across all transports (ssh, mosh, et, reticulum, rdp, smb, local, mail) with sessionId, profileId, label, status (connecting, connected, reconnecting, disconnected, error), transport, and isAgentRepl — a screen heuristic (Claude Code TUI chrome in the bottom lines) marking which terminal session is an agent REPL, so a conversation peer can be picked without guessing; null when the session has no attached terminal tab. SSH sessions additionally include sessionManager, chosenSessionName (the stable tmux/zellij identity that survives reconnects), channel state, jump-session linkage, and active port forwards.",
             inputSchema = emptyObjectSchema(),
         ) { _ -> listSessions() },
 
@@ -1445,6 +1445,7 @@ internal class McpTools(
                     })
                     put("bracketedPaste", JSONObject().apply { put("type", "boolean"); put("description", "Wrap text in bracketed-paste markers (ESC[200~ … ESC[201~). Default false. Use for multi-line input into a raw-mode REPL so it isn't folded into submit.") })
                     put("returnSnapshot", JSONObject().apply { put("type", "boolean"); put("description", "Return the terminal snapshot after sending, so you see the result without a follow-up read. Default false.") })
+                    put("snapshotDelayMs", JSONObject().apply { put("type", "integer"); put("description", "Wait this long after sending before capturing the returnSnapshot, so the target has rendered the input. Default 0, max 5000. Only meaningful with returnSnapshot=true.") })
                 })
             },
             // Once the user approves the agent typing into a session, per-call
@@ -1462,13 +1463,14 @@ internal class McpTools(
         ) { args -> sendTerminalInput(args) },
 
         "send_to_agent" to ToolHandler(
-            description = "Deliver one message to another agent's REPL (or any raw-mode prompt) as a single submitted turn: bracketed-paste the text, settle, then Enter — and return the resulting screen (last ~50 lines by default). A convenience wrapper over send_terminal_input tuned for agent↔agent / REPL conversation, so you don't hand-assemble the body-then-Enter sequence. Use list_sessions (chosenSessionName) to pick the target. Returns { sessionId, delivered, bytesSent, snapshot }.",
+            description = "Deliver one message to another agent's REPL (or any raw-mode prompt) as a single submitted turn: bracketed-paste the text, settle, then Enter — and return the resulting screen (last ~50 lines by default, captured after a short render delay). A convenience wrapper over send_terminal_input tuned for agent↔agent / REPL conversation, so you don't hand-assemble the body-then-Enter sequence. Use list_sessions (chosenSessionName + isAgentRepl) to pick the target; pair with await_turn + read_last_turn for the full send → wait → read loop. Returns { sessionId, delivered, bytesSent, snapshot }.",
             inputSchema = JSONObject().apply {
                 put("type", "object")
                 put("properties", JSONObject().apply {
                     put("sessionId", JSONObject().apply { put("type", "string"); put("description", "Active session ID (from list_sessions). Optional — defaults to the sole open terminal session.") })
                     put("message", JSONObject().apply { put("type", "string"); put("description", "The message to deliver as one submitted prompt.") })
                     put("maxLines", JSONObject().apply { put("type", "integer"); put("description", "Cap the returned snapshot to the last N lines (default 50). Keeps the ack small so a delivered message doesn't read back as a timeout behind a large scrollback over a tunnel.") })
+                    put("snapshotDelayMs", JSONObject().apply { put("type", "integer"); put("description", "Wait this long after Enter before capturing the ack snapshot so it reflects the submitted turn. Default 500, max 5000.") })
                 })
                 put("required", JSONArray().put("message"))
             },
@@ -1478,6 +1480,33 @@ internal class McpTools(
                 "Send to agent REPL: \"${if (m.length > 80) m.take(80) + "…" else m}\"?"
             },
         ) { args -> sendToAgent(args) },
+
+        "await_turn" to ToolHandler(
+            description = "Block until a terminal session is idle-at-prompt — the natural \"wait for the other agent / command to finish\" primitive for turn-based conversation (#226). Detection: OSC 133 shell-integration segments when present (idle = cursor on the newest prompt row); otherwise screen heuristics tuned for Claude Code's TUI (no busy spinner / \"esc to interrupt\", a prompt-looking line near the bottom, and the screen stable across polls). Idle must hold for settleMs before returning. Returns { sessionId, idle, method: \"osc133\"|\"heuristic\", waitedMs, timedOut }. idle=false + timedOut=true means the timeout elapsed first — the session may still be mid-turn. Full-screen TUIs that are neither shells nor agent REPLs (vim, htop) can read as idle once their screen stops changing; this is a turn heuristic, not a process-state probe.",
+            inputSchema = JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("sessionId", JSONObject().apply { put("type", "string"); put("description", "Active session ID (from list_sessions). Optional — defaults to the sole open terminal session. Must have an attached terminal tab.") })
+                    put("timeoutMs", JSONObject().apply { put("type", "integer"); put("description", "Give up after this long. Default 60000, clamped to 1000–300000. Keep under your MCP client's request timeout.") })
+                    put("settleMs", JSONObject().apply { put("type", "integer"); put("description", "How long idle must hold continuously before returning. Default 1500, clamped to 0–30000.") })
+                })
+                put("required", JSONArray())
+            },
+            consentLevel = ConsentLevel.NEVER,
+        ) { args -> awaitTurn(args) },
+
+        "read_last_turn" to ToolHandler(
+            description = "Return the target session's latest completed turn as text — the receive half of agent↔agent conversation (#226). When the session is idle at an OSC 133-integrated shell prompt, returns the last command's output (semantic COMMAND_OUTPUT between the newest COMMAND_INPUT and COMMAND_FINISHED, scrollback included; source=\"osc133\"). Otherwise (Claude Code and other REPLs that don't emit shell-style 133) falls back to scraping the last ●/⏺-bulleted block above the input box from the visible screen (source=\"scrape\" — inherently heuristic; long replies that scrolled off-screen are truncated to what's visible). Returns { sessionId, text|null, source|null, truncated }. Call await_turn first so you read a finished turn, not a partial one.",
+            inputSchema = JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("sessionId", JSONObject().apply { put("type", "string"); put("description", "Active session ID (from list_sessions). Optional — defaults to the sole open terminal session. Must have an attached terminal tab.") })
+                    put("maxChars", JSONObject().apply { put("type", "integer"); put("description", "Cap the returned text, keeping the TAIL (the end of a reply is usually the conclusion). Default 20000, clamped to 256–100000. Sets truncated=true when applied.") })
+                })
+                put("required", JSONArray())
+            },
+            consentLevel = ConsentLevel.NEVER,
+        ) { args -> readLastTurn(args) },
 
         "feed_terminal_output" to ToolHandler(
             description = "Inject raw bytes into a terminal session's OUTPUT stream — as if they had arrived from the remote — running the exact pipeline the live data callback uses (OSC scan → mouse-mode scan → emulator). Distinct from send_terminal_input, which sends to the PTY input as if typed. Use this to deterministically exercise output-side parsing without a cooperating remote: e.g. feed an OSC 52 sequence to test the clipboard round-trip, a DECSET 1000/1002/1003 to flip mouseMode, an OSC 8 hyperlink, or a partial escape split across two calls (the OSC scanner keeps state between calls). Provide exactly one of `text` (UTF-8) or `bytesBase64` (for control bytes / ESC). Hard cap 65536 bytes per call. Not supported for headless agent shells (no UI tab) — returns an error. Returns { sessionId, bytesFed }.",
@@ -3927,6 +3956,20 @@ internal class McpTools(
                 put("label", s.label)
                 put("status", s.status.name)
                 put("transport", s.transport.name)
+                // Heuristic (#226): does this session's screen look like an
+                // agent REPL (Claude Code TUI chrome in the bottom lines)?
+                // Lets a caller pick the conversation peer without the wrong
+                // "the 8730 tunnel session == the REPL" guess. Null when the
+                // session has no attached terminal tab to inspect.
+                val termEntry = terminalSessionRegistry.get(s.sessionId)
+                put(
+                    "isAgentRepl",
+                    termEntry?.let {
+                        runCatching {
+                            looksLikeAgentRepl(it.emulator.buildAgentSnapshot().lines.map { l -> l.text })
+                        }.getOrNull()
+                    } ?: JSONObject.NULL,
+                )
                 if (s.transport == sh.haven.core.ssh.Transport.SSH) {
                     val sshState = sshStates[s.sessionId]
                     if (sshState != null) {
@@ -6599,6 +6642,17 @@ internal class McpTools(
             put("delivered", true)
             put("bytesSent", totalBytes)
             if (returnSnapshot) {
+                // Give the target a beat to render the just-submitted input so
+                // the ack snapshot reflects the result, not the pre-send screen
+                // (#226 item 4). send_to_agent passes 500ms; default stays 0.
+                val delay = args.optLong("snapshotDelayMs", 0L).coerceIn(0L, 5_000L)
+                if (delay > 0) {
+                    try {
+                        Thread.sleep(delay)
+                    } catch (_: InterruptedException) {
+                        Thread.currentThread().interrupt()
+                    }
+                }
                 runCatching { readTerminalSnapshot(JSONObject().put("sessionId", sessionId)) }
                     .getOrNull()?.let { put("snapshot", it) }
             }
@@ -6641,12 +6695,107 @@ internal class McpTools(
                 put("bracketedPaste", true)
                 put("keys", JSONArray().put("enter"))
                 put("returnSnapshot", true)
+                // Let the REPL render the submitted turn before the ack
+                // snapshot is captured (#226 item 4).
+                put("snapshotDelayMs", if (args.has("snapshotDelayMs")) args.optLong("snapshotDelayMs") else 500L)
                 // Bound the ack snapshot to a screenful so a delivered message
                 // doesn't read back as a timeout behind a megabyte of scrollback
                 // over the tunnel (deliver-then-return). An explicit maxLines wins.
                 put("maxLines", if (args.has("maxLines")) args.optInt("maxLines") else SEND_TO_AGENT_SNAPSHOT_LINES)
             },
         )
+    }
+
+    /**
+     * Block until the session is idle-at-prompt (#226). OSC 133 when the
+     * shell emits it, screen heuristics (AgentTurnHeuristics.kt) otherwise.
+     * Runs on the MCP request thread — Thread.sleep is the house pattern
+     * here (see sendTerminalInput's settle).
+     */
+    private fun awaitTurn(args: JSONObject): JSONObject {
+        val sessionId = resolveTerminalSessionId(args.optString("sessionId"))
+        val entry = requireRegistryEntry(sessionId)
+        val timeoutMs = args.optLong("timeoutMs", 60_000L).coerceIn(1_000L, 300_000L)
+        val settleMs = args.optLong("settleMs", 1_500L).coerceIn(0L, 30_000L)
+        val pollMs = 500L
+        val start = android.os.SystemClock.elapsedRealtime()
+        var idleSince = -1L
+        var lastHash = 0
+        var haveHash = false
+        var method = "heuristic"
+        while (true) {
+            val snap = entry.emulator.buildAgentSnapshot(includeSemanticSegments = true)
+            val texts = snap.lines.map { it.text }
+            val now = android.os.SystemClock.elapsedRealtime()
+            val hash = (texts.joinToString("\n") + "|${snap.cursorRow},${snap.cursorCol}").hashCode()
+            val stable = haveHash && hash == lastHash
+            lastHash = hash
+            haveHash = true
+            val osc = osc133Idle(snap)
+            val idle: Boolean
+            if (osc != null) {
+                method = "osc133"
+                idle = osc
+            } else {
+                method = "heuristic"
+                idle = !looksBusy(texts) && promptPresent(texts) && stable
+            }
+            if (idle) {
+                if (idleSince < 0) idleSince = now
+                if (now - idleSince >= settleMs) {
+                    return JSONObject().apply {
+                        put("sessionId", sessionId)
+                        put("idle", true)
+                        put("method", method)
+                        put("waitedMs", now - start)
+                        put("timedOut", false)
+                    }
+                }
+            } else {
+                idleSince = -1L
+            }
+            if (now - start >= timeoutMs) {
+                return JSONObject().apply {
+                    put("sessionId", sessionId)
+                    put("idle", false)
+                    put("method", method)
+                    put("waitedMs", now - start)
+                    put("timedOut", true)
+                }
+            }
+            try {
+                Thread.sleep(pollMs)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                throw McpError(-32603, "await_turn interrupted")
+            }
+        }
+    }
+
+    /**
+     * The session's latest completed turn as text (#226). OSC 133 command
+     * output only when the shell is actually idle at its newest prompt —
+     * Claude Code renders in the normal buffer, so an outer shell's stale
+     * segments stay visible while the REPL runs; trusting them would return
+     * the output of the command BEFORE the REPL launched.
+     */
+    private fun readLastTurn(args: JSONObject): JSONObject {
+        val sessionId = resolveTerminalSessionId(args.optString("sessionId"))
+        val entry = requireRegistryEntry(sessionId)
+        val maxChars = args.optInt("maxChars", 20_000).coerceIn(256, 100_000)
+        val snap = entry.emulator.buildAgentSnapshot(includeSemanticSegments = true)
+        val fromOsc = if (osc133Idle(snap) == true) entry.emulator.getLastCommandOutput() else null
+        val (text, source) = when {
+            fromOsc != null -> fromOsc to "osc133"
+            else -> scrapeLastAgentBlock(snap.lines.map { it.text }) to "scrape"
+        }
+        val truncated = text != null && text.length > maxChars
+        return JSONObject().apply {
+            put("sessionId", sessionId)
+            put("text", if (text == null) JSONObject.NULL else if (truncated) text.takeLast(maxChars) else text)
+            put("source", if (text == null) JSONObject.NULL else source)
+            put("truncated", truncated)
+        }
     }
 
     /** Map a named key to the control bytes a PTY expects. Null = unknown. */
