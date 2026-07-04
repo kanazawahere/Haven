@@ -5,6 +5,18 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.13
+
+Agent↔agent turn primitives over MCP, plus terminal-agent plumbing and port-forward fixes found while verifying them on-device (#226).
+
+🤖 **New MCP tools: `await_turn` / `read_last_turn` / `isAgentRepl`** — turn-based conversation with whatever runs in a terminal session: block until the session is idle at a prompt (OSC 133 segments when the shell emits them, Claude-Code-aware screen heuristics otherwise — including NUL-padded fresh screens, stale shell-integration rows left under a running REPL, and ASCII spinner frames), then read the last completed turn (semantic command output, or the last bulleted block scraped above the REPL's input box with dividers and tmux status lines stripped). `list_sessions` marks which session is an agent REPL. Device-verified against plain busybox shells, an OSC 133-integrated prompt, and a live Claude Code session (#226).
+
+🔧 **Agent-opened shells: the agent's view stays live** — `feed_terminal_output` injected into the UI tab's emulator instead of the one the agent tools read (silent no-op), and any Terminal-tab rebuild silently disconnected the agent emulator from the PTY (frozen snapshots while raw scrollback kept flowing). The agent tee now lives beside the scrollback ring and survives tab adoption and reattach.
+
+🔌 **Local port forwards: honest activation and TIME_WAIT-proof rebind** — re-binding a `-L` forward right after a bulk transfer through it could fail against TIME_WAIT sockets (jsch binds without SO_REUSEADDR) yet still be reported active, leaving a listed-but-dead tunnel. Binds now retry "already in use" for ~2.3s, and `add_port_forward` reports `activated:false` with the reason when the bind genuinely failed (the rule stays saved for the next connect).
+
+📦 **Imported rootfs: proot build artifacts flattened** (#328) — a rootfs built under a proot (Termux proot-distro, or a Haven guest) carries `.l2s.` symlink chains wherever dpkg hard-linked its database backups, with absolute paths of the *build* system baked in (e.g. `/data/data/com.termux/…`). Imported verbatim those links dangle — the root of the "`dpkg-divert: error creating new backup file … Operation not permitted`" reports. Import now materializes each such link from its sibling payload, so debootstrap/proot-built tarballs come in clean.
+
 ## v5.68.12
 
 Keyboard fixes for SwiftKey and the compose overlay, plus a usable prompt on Void (#298, #253).

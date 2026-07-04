@@ -1,0 +1,5 @@
+v5.68.13
+- New MCP tools await_turn / read_last_turn / isAgentRepl for turn-based agent↔agent terminal conversation (#226).
+- Agent-opened shells: the agent's terminal snapshot stays live across Terminal-tab adoption, and feed_terminal_output reaches the right emulator.
+- Local port forwards: binds retry through the TIME_WAIT window after bulk transfers, and add_port_forward reports failed binds honestly.
+- Imported rootfs: proot-built tarballs (Termux proot-distro, debootstrap under proot) import cleanly — .l2s. hard-link artifacts are materialized instead of left dangling (#328).
