@@ -1369,9 +1369,7 @@ class SshSessionManager @Inject constructor(
             try {
                 when (rule.type) {
                     PortForwardType.LOCAL -> {
-                        val actualPort = session.client.setPortForwardingL(
-                            rule.bindAddress, rule.bindPort, rule.targetHost, rule.targetPort,
-                        )
+                        val actualPort = bindLocalWithRetry(session.client, rule)
                         activated.add(rule.copy(actualBoundPort = actualPort))
                         Log.d(TAG, "Port forward activated: L ${rule.bindAddress}:$actualPort -> ${rule.targetHost}:${rule.targetPort}")
                     }
@@ -1405,6 +1403,35 @@ class SshSessionManager @Inject constructor(
             recordTunnelSshPid(session.client)
         }
         return !criticalFailed
+    }
+
+    /**
+     * Bind a LOCAL (`-L`) forward, retrying "already in use" for a few
+     * seconds. jsch binds without SO_REUSEADDR, so the port is unbindable
+     * while accepted sockets from a just-closed transfer sit in TIME_WAIT,
+     * or while a dying predecessor's PortWatcher is still shutting down —
+     * both hit on reconnect and on remove→add of the same port (found
+     * live: a 119MB APK download through the forward, then a rebind).
+     */
+    private fun bindLocalWithRetry(client: SshClient, rule: PortForwardInfo): Int {
+        var lastFailure: Exception? = null
+        repeat(4) {
+            try {
+                return client.setPortForwardingL(
+                    rule.bindAddress, rule.bindPort, rule.targetHost, rule.targetPort,
+                )
+            } catch (e: Exception) {
+                if (e.message?.contains("already", ignoreCase = true) != true) throw e
+                lastFailure = e
+                Log.w(TAG, "L ${rule.bindPort} bind busy (${e.message}) — retrying")
+                try {
+                    Thread.sleep(750)
+                } catch (_: InterruptedException) {
+                    throw e
+                }
+            }
+        }
+        throw lastFailure!!
     }
 
     /**

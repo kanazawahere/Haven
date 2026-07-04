@@ -1324,7 +1324,7 @@ internal class McpTools(
         ) { args -> disconnectProfile(args) },
 
         "add_port_forward" to ToolHandler(
-            description = "Save a port-forward rule on an SSH profile. If the profile is currently connected the rule is also activated immediately. Type LOCAL=`-L` (local→remote), REMOTE=`-R` (remote→local), DYNAMIC=`-D` (SOCKS5 proxy server). Returns the saved rule's id and (when activated) the actually-bound port.",
+            description = "Save a port-forward rule on an SSH profile. If the profile is currently connected the rule is also activated immediately. Type LOCAL=`-L` (local→remote), REMOTE=`-R` (remote→local), DYNAMIC=`-D` (SOCKS5 proxy server). Returns the saved rule's id and (when activated) the actually-bound port; activated:false with an error means the bind failed on the live session (e.g. port held in TIME_WAIT by a just-closed connection) — the rule is still saved and applies on the next connect.",
             inputSchema = JSONObject().apply {
                 put("type", "object")
                 put("properties", JSONObject().apply {
@@ -5904,6 +5904,7 @@ internal class McpTools(
         val session = sshSessionManager.getSessionsForProfile(profileId)
             .firstOrNull { it.status == SshSessionManager.SessionState.Status.CONNECTED }
         var actualBoundPort: Int? = null
+        var activatedLive = false
         if (session != null) {
             val info = SshSessionManager.PortForwardInfo(
                 ruleId = rule.id,
@@ -5918,18 +5919,24 @@ internal class McpTools(
                 targetPort = rule.targetPort,
             )
             sshSessionManager.applyPortForwards(session.sessionId, listOf(info))
-            // Read the actually-bound port back from the live session so
-            // a bindPort=0 (REMOTE OS-pick) request can be reported back
-            // to the agent.
-            actualBoundPort = sshSessionManager.getSession(session.sessionId)
+            // Trust only the live session's activeForwards, not the apply
+            // call having run: a failed bind is swallowed for non-critical
+            // rules, and reporting activated:true for a rule that never
+            // bound sent agents into dead-tunnel debugging (found live —
+            // TIME_WAIT from a just-closed download blocked the rebind).
+            val live = sshSessionManager.getSession(session.sessionId)
                 ?.activeForwards
                 ?.firstOrNull { it.ruleId == rule.id }
-                ?.actualBoundPort
+            activatedLive = live != null
+            actualBoundPort = live?.actualBoundPort
         }
         JSONObject().apply {
             put("ruleId", rule.id)
-            put("activated", session != null)
+            put("activated", session != null && activatedLive)
             actualBoundPort?.let { put("actualBoundPort", it) }
+            if (session != null && !activatedLive) {
+                put("error", "Rule saved but the live bind failed (port busy? — a just-closed connection holds it in TIME_WAIT for ~60s). Retry add_port_forward, or use a different bindPort.")
+            }
         }
     }
 
