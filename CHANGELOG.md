@@ -5,6 +5,14 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.14
+
+Follow-ups to the v5.68.13 rootfs-import work (#328) and the self-update path (#331), both found while verifying on-device.
+
+📦 **Imported proot-built rootfs: long symlink targets no longer truncated** (#328) — v5.68.13 flattened the `.l2s.` link2symlink artifacts a Termux/proot-built rootfs carries, but the import's tar reader only handled GNU long *names* (type `L`), not long *link targets* (type `K`). Every Termux `.l2s.` target is an absolute path well over 100 characters, so it was read from the truncated 100-byte header field, lost its `.l2s.` basename, and slipped past the flattening. Type `K` is now parsed like `L`; a GNU-format tar with a 105-char link target was verified to import to a clean tree on-device. (Long link targets in the rarer PAX tar format are still unhandled — use GNU `tar`, which is the default for `tar(1)` and busybox.)
+
+📥 **Truncated APK downloads are rejected, not staged** (#331) — a dropped connection mid-download produced a partial APK that still started with the zip magic bytes, so it passed the sanity check and was handed to the installer, which failed on-device with "problem parsing the package" — while the install had already reported success. Downloads (URL and backend) are now checked against the advertised length; a short read is deleted and surfaced as a failure with the byte counts, so it's retryable rather than a mystery.
+
 ## v5.68.13
 
 Agent↔agent turn primitives over MCP, plus terminal-agent plumbing and port-forward fixes found while verifying them on-device (#226).

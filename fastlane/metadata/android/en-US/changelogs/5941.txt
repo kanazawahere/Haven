@@ -1,0 +1,3 @@
+v5.68.14
+- Imported proot-built rootfs: long symlink targets (Termux .l2s. absolute paths) are no longer truncated on import, so dpkg/apt work in a debootstrap-in-proot tarball (#328).
+- Self-update / sideload: a truncated APK download is rejected against its advertised length instead of installing a partial that fails with "problem parsing the package" (#331).
