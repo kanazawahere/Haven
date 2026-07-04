@@ -1425,6 +1425,20 @@
      "t": {}
     },
     {
+     "name": "app_desktop_bind_android_system_title",
+     "en": "Expose Android system to guest",
+     "comment": "Desktop manager: package mirror (#263)",
+     "args": [],
+     "t": {}
+    },
+    {
+     "name": "app_desktop_bind_android_system_description",
+     "en": "Mounts Android\\'s read-only /system, /vendor, /apex and related partitions into the guest so it can run Android\\'s own native binaries (e.g. getprop, toybox). Off by default: this exposes device and vendor internals to the local Linux environment.",
+     "comment": "Desktop manager: package mirror (#263)",
+     "args": [],
+     "t": {}
+    },
+    {
      "name": "app_desktop_custom_binds_title",
      "en": "Custom mounts (%1$d)",
      "comment": "Desktop manager: custom bind mounts (#301)",
