@@ -23,18 +23,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -42,6 +44,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -256,19 +259,64 @@ internal fun PresentationHost(viewModel: PresentationHostViewModel = hiltViewMod
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp, vertical = 8.dp),
         ) {
-            current.caption?.let { cap ->
-                Text(text = cap, style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(12.dp))
+            // Passive visual kinds (image, web page, PDF) can promote to an
+            // immersive full-window Dialog. The toggle lives in the HEADER next
+            // to ✕ — not overlaid on the content, which obscured the page — so
+            // fullscreen state is hoisted here for the header to drive.
+            val canFullscreen = current.kind == PresentedMediaKind.IMAGE ||
+                current.kind == PresentedMediaKind.WEB
+            var fullscreen by rememberSaveable(current.id) { mutableStateOf(false) }
+
+            // Header: caption + fullscreen + an explicit ✕. The sheet's drag-handle
+            // pill alone reads as "minimize" to users; close must look like close.
+            // (App windows keep their own in-viewer control row, and sheet-dismiss
+            // means minimize for them, so they skip this header's ✕.)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = current.caption.orEmpty(),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                if (canFullscreen) {
+                    IconButton(onClick = { fullscreen = true }) {
+                        Icon(
+                            Icons.Filled.Fullscreen,
+                            contentDescription = stringResource(R.string.app_present_fullscreen),
+                        )
+                    }
+                }
+                if (current.kind != PresentedMediaKind.APP_WINDOW) {
+                    IconButton(onClick = { viewModel.dismiss(current) }) {
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = stringResource(R.string.app_present_dismiss),
+                        )
+                    }
+                }
             }
+            Spacer(Modifier.height(4.dp))
 
             when (current.kind) {
-                PresentedMediaKind.IMAGE -> ImageContent(current)
+                PresentedMediaKind.IMAGE -> FullscreenableContent(
+                    fullscreen = fullscreen,
+                    onExitFullscreen = { fullscreen = false },
+                ) { modifier -> ImageView(current, modifier) }
                 PresentedMediaKind.AUDIO -> AudioContent(current)
-                PresentedMediaKind.WEB -> WebContent(current)
+                PresentedMediaKind.WEB -> WebContent(
+                    current,
+                    fullscreen = fullscreen,
+                    onExitFullscreen = { fullscreen = false },
+                )
                 PresentedMediaKind.APP_WINDOW -> {
                     val controller = viewModel.controllerFor(current)
                     if (controller != null) {
                         val context = LocalContext.current
+                        // Resolved at composition: compose-lint forbids
+                        // context.getString for resource values inside callbacks.
+                        val scaleSavedMessage = stringResource(R.string.app_window_scale_saved)
                         // Host owns the fullscreen state for app windows so it can
                         // promote the window into a full-window Dialog (the 420dp
                         // sheet box can't grow). Seeds from the per-app flag; the
@@ -298,11 +346,8 @@ internal fun PresentationHost(viewModel: PresentationHostViewModel = hiltViewMod
                             },
                             onSaveDefault = { s ->
                                 current.sessionId?.let { viewModel.changeAppWindowScale(it, s) }
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.app_window_scale_saved),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
+                                Toast.makeText(context, scaleSavedMessage, Toast.LENGTH_SHORT)
+                                    .show()
                             },
                             autoFit = current.resolution == "auto",
                             onFitToScreen = { w, h ->
@@ -343,17 +388,11 @@ internal fun PresentationHost(viewModel: PresentationHostViewModel = hiltViewMod
                         }
                     }
                     // Minimize parks it as an edge icon (kept until dismissed) so
-                    // the user can glance back at an image/page while they work;
-                    // Dismiss removes it (and deletes its cache file).
+                    // the user can glance back at an image/page while they work.
+                    // Dismiss lives as the header's ✕ (users read the drag pill
+                    // as minimize, so close needs an unambiguous ✕ up top).
                     OutlinedButton(onClick = { viewModel.minimize(current.id) }) {
                         Text(stringResource(R.string.app_present_minimize))
-                    }
-                    // Compact X — the "Dismiss" label wrapped in the 3-button row.
-                    FilledIconButton(onClick = { viewModel.dismiss(current) }) {
-                        Icon(
-                            Icons.Filled.Close,
-                            contentDescription = stringResource(R.string.app_present_dismiss),
-                        )
                     }
                 }
             }
@@ -363,7 +402,7 @@ internal fun PresentationHost(viewModel: PresentationHostViewModel = hiltViewMod
 }
 
 @Composable
-private fun ImageContent(media: PresentedMedia) {
+private fun ImageView(media: PresentedMedia, modifier: Modifier = Modifier) {
     val path = media.filePath ?: return
     // Decode off the main thread; null until ready / on failure.
     val bitmap by produceState<ImageBitmap?>(initialValue = null, path) {
@@ -385,13 +424,11 @@ private fun ImageContent(media: PresentedMedia) {
             bitmap = bmp,
             contentDescription = media.caption ?: stringResource(R.string.app_present_image_shared_cd),
             // FillWidth scales the bitmap up/down to the card width (height
-            // follows aspect ratio, clamped by heightIn) so a small image
+            // follows aspect ratio) so a small image
             // is shown prominently rather than as a tiny centred dot, while
             // a large screenshot is fit to width. Tall images crop centred.
-            contentScale = ContentScale.FillWidth,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 480.dp)
+            contentScale = ContentScale.Fit,
+            modifier = modifier
                 .clipToBounds()
                 .pointerInput(media.id) {
                     detectTransformGestures { _, pan, zoom, _ ->
@@ -499,22 +536,123 @@ private fun AudioContent(media: PresentedMedia) {
  * security config), or a downloaded PDF ([PresentedMedia.filePath]) paged via
  * [PdfContent]. The rung between a static image and a live app window.
  */
-@SuppressLint("ClickableViewAccessibility") // onTouch only toggles parent intercept; WebView keeps its own click/scroll handling
 @Composable
-private fun WebContent(media: PresentedMedia) {
+private fun WebContent(
+    media: PresentedMedia,
+    fullscreen: Boolean,
+    onExitFullscreen: () -> Unit,
+) {
     val pdfPath = media.filePath
     if (media.mimeType == "application/pdf" && pdfPath != null) {
-        PdfContent(pdfPath)
+        FullscreenableContent(fullscreen, onExitFullscreen) { modifier ->
+            PdfContent(pdfPath, modifier)
+        }
         return
     }
     val url = media.url ?: return
     // key() so a new URL (a different presented item reusing this node) forces
-    // a fresh WebView + load rather than keeping the old page.
+    // a fresh WebView + load rather than keeping the old page. The WebView
+    // rides movableContentOf inside FullscreenableContent so the sheet↔Dialog
+    // re-parent moves the SAME view — heavy pages (code-server) don't reload.
     key(url) {
-        AndroidView(
-            factory = { ctx ->
+        FullscreenableContent(fullscreen, onExitFullscreen) { modifier ->
+            WebPageView(url, modifier)
+        }
+    }
+}
+
+/**
+ * Render passive presented content (image / web / PDF) in the sheet's 480dp
+ * box, or — when [fullscreen] — promote it to an immersive full-window Dialog,
+ * the same affordance app windows get. Controlled: the enter-fullscreen button
+ * lives in the sheet HEADER (so it doesn't obscure the content); this owns only
+ * the EXIT affordance (the immersive Dialog has no header) plus back-press.
+ * [content] renders through movableContentOf, so the SAME node is re-parented
+ * sheet↔Dialog — no reload / state loss on toggle.
+ */
+@Composable
+private fun FullscreenableContent(
+    fullscreen: Boolean,
+    onExitFullscreen: () -> Unit,
+    content: @Composable (Modifier) -> Unit,
+) {
+    val movable = remember { movableContentOf { m: Modifier -> content(m) } }
+    if (fullscreen) {
+        Dialog(
+            onDismissRequest = onExitFullscreen,
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false,
+                dismissOnBackPress = true,
+            ),
+        ) {
+            val dialogView = LocalView.current
+            LaunchedEffect(dialogView) {
+                val w = (dialogView.parent as? DialogWindowProvider)?.window
+                    ?: return@LaunchedEffect
+                WindowCompat.getInsetsController(w, dialogView).apply {
+                    hide(WindowInsetsCompat.Type.systemBars())
+                    systemBarsBehavior =
+                        WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                }
+            }
+            Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+                movable(Modifier.fillMaxSize())
+                FullscreenToggle(true, onExitFullscreen, Modifier.align(Alignment.TopEnd))
+            }
+        }
+        // Opaque dialog covers this; keep the sheet height stable.
+        Box(modifier = Modifier.fillMaxWidth().height(480.dp))
+    } else {
+        // In-sheet: content only. The enter-fullscreen button is in the header.
+        Box(modifier = Modifier.fillMaxWidth().height(480.dp)) {
+            movable(Modifier.fillMaxSize())
+        }
+    }
+}
+
+/**
+ * Exit-fullscreen affordance overlaid on the immersive Dialog's top-right (the
+ * Dialog has no header to host it; enter-fullscreen lives in the sheet header).
+ * The content behind can be any colour, so the white glyph sits on a
+ * translucent dark scrim — otherwise it vanished on a light page.
+ */
+@Composable
+private fun FullscreenToggle(
+    fullscreen: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    IconButton(
+        onClick = onToggle,
+        modifier = modifier
+            .padding(8.dp)
+            .background(Color.Black.copy(alpha = 0.45f), CircleShape),
+    ) {
+        Icon(
+            Icons.Filled.FullscreenExit,
+            contentDescription = stringResource(R.string.app_present_exit_fullscreen),
+            tint = Color.White,
+        )
+    }
+}
+
+/** The WebView itself — hoisted so movableContentOf can re-parent it. */
+@SuppressLint("ClickableViewAccessibility", "SetJavaScriptEnabled")
+@Composable
+private fun WebPageView(url: String, modifier: Modifier = Modifier) {
+    AndroidView(
+        modifier = modifier,
+        factory = { ctx ->
                 WebView(ctx).apply {
                     webViewClient = WebViewClient()
+                    // JS + DOM storage are off by default in WebView — without
+                    // them any scripted page (code-server, dashboards, even a
+                    // chart in presented HTML) renders blank white. No JS
+                    // bridge is added, so page script stays sandboxed to web
+                    // content exactly as in a browser.
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
                     settings.builtInZoomControls = true
                     settings.displayZoomControls = false
                     settings.useWideViewPort = true
@@ -536,12 +674,8 @@ private fun WebContent(media: PresentedMedia) {
                     }
                     loadUrl(url)
                 }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(480.dp),
-        )
-    }
+        },
+    )
 }
 
 /**
@@ -552,7 +686,7 @@ private fun WebContent(media: PresentedMedia) {
  * spinner. Capped at [MAX_PDF_PAGES].
  */
 @Composable
-private fun PdfContent(path: String) {
+private fun PdfContent(path: String, modifier: Modifier = Modifier) {
     val pages by produceState<List<ImageBitmap>?>(initialValue = null, path) {
         value = withContext(Dispatchers.Default) {
             runCatching {
@@ -590,9 +724,7 @@ private fun PdfContent(path: String) {
         }
     } else {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 600.dp)
+            modifier = modifier
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {

@@ -248,4 +248,6 @@
     <string name="app_desktop_cancel">Annuler</string>
     <string name="app_desktop_save">Enregistrer</string>
     <string name="app_desktop_open_terminal_cd">Ouvrir un terminal dans %1$s</string>
+    <string name="app_present_fullscreen">Plein écran</string>
+    <string name="app_present_exit_fullscreen">Quitter le plein écran</string>
 </resources>

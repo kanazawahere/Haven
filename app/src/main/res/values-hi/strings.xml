@@ -248,4 +248,6 @@
     <string name="app_desktop_cancel">रद्द करें</string>
     <string name="app_desktop_save">सहेजें</string>
     <string name="app_desktop_open_terminal_cd">%1$s में टर्मिनल खोलें</string>
+    <string name="app_present_fullscreen">फ़ुल स्क्रीन</string>
+    <string name="app_present_exit_fullscreen">फ़ुल स्क्रीन से बाहर निकलें</string>
 </resources>

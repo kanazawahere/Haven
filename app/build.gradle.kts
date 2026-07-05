@@ -168,6 +168,10 @@ dependencies {
     implementation(project(":feature:imagetools"))
     implementation(project(":feature:vnc"))
     implementation(project(":feature:rdp"))
+    // The app manifest declares CloudflareAccessLoginActivity, so app must
+    // depend on its module directly — it only arrived transitively before,
+    // which AGP 9 lint flags as MissingClass on the compile classpath.
+    implementation(project(":feature:tunnel"))
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

@@ -254,4 +254,6 @@
     <string name="app_desktop_cancel">Отмена</string>
     <string name="app_desktop_save">Сохранить</string>
     <string name="app_desktop_open_terminal_cd">Открыть терминал в %1$s</string>
+    <string name="app_present_fullscreen">Во весь экран</string>
+    <string name="app_present_exit_fullscreen">Выйти из полноэкранного режима</string>
 </resources>

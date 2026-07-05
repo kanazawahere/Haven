@@ -248,4 +248,6 @@
     <string name="app_desktop_cancel">Cancelar</string>
     <string name="app_desktop_save">Salvar</string>
     <string name="app_desktop_open_terminal_cd">Abrir terminal em %1$s</string>
+    <string name="app_present_fullscreen">Tela cheia</string>
+    <string name="app_present_exit_fullscreen">Sair da tela cheia</string>
 </resources>

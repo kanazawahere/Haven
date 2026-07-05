@@ -549,6 +549,7 @@ private fun PipPdfFirstPage(path: String) {
 
 /** PiP for a present_web HTML/SVG page: a live WebView loading the loopback
  *  URL. Renders live; view-only in PiP (no touch until the window expands). (#225) */
+@android.annotation.SuppressLint("SetJavaScriptEnabled") // deliberate; no JS bridge exposed
 @Composable
 private fun PipWebView(url: String) {
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
@@ -556,6 +557,10 @@ private fun PipWebView(url: String) {
             factory = { ctx ->
                 android.webkit.WebView(ctx).apply {
                     webViewClient = android.webkit.WebViewClient()
+                    // Match the sheet's WebContent: JS/DOM storage default off
+                    // and blank any scripted page.
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
                     settings.useWideViewPort = true
                     settings.loadWithOverviewMode = true
                     loadUrl(url)

@@ -258,4 +258,6 @@
     <string name="app_desktop_cancel">취소</string>
     <string name="app_desktop_save">저장</string>
     <string name="app_desktop_open_terminal_cd">%1$s에서 터미널 열기</string>
+    <string name="app_present_fullscreen">전체 화면</string>
+    <string name="app_present_exit_fullscreen">전체 화면 종료</string>
 </resources>

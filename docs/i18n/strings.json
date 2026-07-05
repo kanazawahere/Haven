@@ -4503,6 +4503,44 @@
       "ru": "включено",
       "zh": "已启用"
      }
+    },
+    {
+     "name": "app_present_fullscreen",
+     "en": "Fullscreen",
+     "comment": "Agent Activity log — result summaries shown under each MCP call (#239). Tool names stay in English.",
+     "args": [],
+     "t": {
+      "ar": "ملء الشاشة",
+      "bn": "পূর্ণ স্ক্রিন",
+      "de": "Vollbild",
+      "es": "Pantalla completa",
+      "fr": "Plein écran",
+      "hi": "फ़ुल स्क्रीन",
+      "ja": "全画面表示",
+      "ko": "전체 화면",
+      "pt": "Tela cheia",
+      "ru": "Во весь экран",
+      "zh": "全屏"
+     }
+    },
+    {
+     "name": "app_present_exit_fullscreen",
+     "en": "Exit fullscreen",
+     "comment": "Agent Activity log — result summaries shown under each MCP call (#239). Tool names stay in English.",
+     "args": [],
+     "t": {
+      "ar": "الخروج من ملء الشاشة",
+      "bn": "পূর্ণ স্ক্রিন থেকে বের হন",
+      "de": "Vollbild beenden",
+      "es": "Salir de pantalla completa",
+      "fr": "Quitter le plein écran",
+      "hi": "फ़ुल स्क्रीन से बाहर निकलें",
+      "ja": "全画面表示を終了",
+      "ko": "전체 화면 종료",
+      "pt": "Sair da tela cheia",
+      "ru": "Выйти из полноэкранного режима",
+      "zh": "退出全屏"
+     }
     }
    ]
   },

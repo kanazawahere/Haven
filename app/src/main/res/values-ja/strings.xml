@@ -248,4 +248,6 @@
     <string name="app_desktop_cancel">キャンセル</string>
     <string name="app_desktop_save">保存</string>
     <string name="app_desktop_open_terminal_cd">%1$s でターミナルを開く</string>
+    <string name="app_present_fullscreen">全画面表示</string>
+    <string name="app_present_exit_fullscreen">全画面表示を終了</string>
 </resources>
