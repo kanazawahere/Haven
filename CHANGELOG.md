@@ -5,6 +5,16 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.16
+
+🖥️ **RDP to Linux xrdp servers now renders — previously a blank screen** — two long-standing gaps found by smoke-testing against a modern EGFX-capable xrdp: Haven never registered the DisplayControl virtual channel (xrdp aborts *all* channel processing when it's refused, so no frame ever arrived), and xrdp's Planar-codec tiles — which it uses for the greeter and much session content — were silently ignored. Both fixed: DisplayControl is registered and answered with the session's monitor layout, and Planar tiles decode through the RDP 6.0 bitmap decoder. Verified host-side (framebuffer dump) and on-device: the xrdp login greeter renders pixel-perfect. Windows RDP is unaffected.
+
+⌨️ **Keyboard works immediately when switching Desktop → Terminal** — the terminal only claimed the keyboard on first composition, but adjacent screens stay composed while swiping, so returning to the terminal showed the keyboard while the keys still went to the desktop tab until you switched away and back again. The terminal now re-claims input every time its screen becomes active.
+
+✂️ **Selection handles follow reading order** — after a backward drag (right-to-left or bottom-to-top), the *start* handle now sits on the top-left-most character as a left-to-right reader expects, instead of wherever the finger first went down. (The copied text was always correct; only the handles were swapped.)
+
+🔧 **Toolchain and dependency refresh** — Android Gradle Plugin 9.2.1 + compileSdk 37 (unlocking hilt 2.59.2 and lifecycle 2.11), ironrdp 0.9-era stack (session 0.10, connector 0.9, input 0.6, new egfx crate), Robolectric 4.16.1, tailscale 1.100. No user-visible behaviour change expected from these beyond the fixes above.
+
 ## v5.68.15
 
 🎯 **Pinch-zoom no longer breaks touch→text mapping in the terminal** — the gesture handler kept the pre-zoom character metrics captured in its closure (its `pointerInput` never restarts on a font change), so after any pinch-zoom every tap, long-press selection, handle drag and forwarded mouse click mapped through the old cell size while the screen drew at the new one: selecting a line grabbed the wrong text, worsening away from the top-left. Metrics are now read through `State` inside the handler, so touch mapping always matches what's rendered. Reported live while trying to copy a command after zooming out. (A crash reported around the same interaction is still under investigation — a stack trace is needed; if you hit it, logcat output on the issue tracker helps.)

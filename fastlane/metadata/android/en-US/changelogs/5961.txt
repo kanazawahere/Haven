@@ -1,0 +1,5 @@
+v5.68.16
+- RDP to Linux xrdp servers now renders (DisplayControl channel + Planar codec); previously blank.
+- Keyboard works immediately when switching between Desktop and Terminal screens.
+- Copy-selection handles: start handle is always the top-left character after a backward drag.
+- Toolchain: AGP 9.2 / compileSdk 37; hilt, lifecycle, ironrdp updated.
