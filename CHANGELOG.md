@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.17
+
+🖼️ **Agent-presented web pages, images and PDFs get a fullscreen view and clearer window controls** — pages the AI opens on screen now run with JavaScript and DOM storage enabled (previously many rendered as a blank white view), and the window chrome matches Haven's other windowed apps: an explicit ✕ closes the window (the old top-bar affordance read as "minimise"), and web/image content has a fullscreen toggle beside it that opens an immersive view with an exit control, rather than overlaying the content.
+
 ## v5.68.16
 
 🖥️ **RDP to Linux xrdp servers now renders — previously a blank screen** — two long-standing gaps found by smoke-testing against a modern EGFX-capable xrdp: Haven never registered the DisplayControl virtual channel (xrdp aborts *all* channel processing when it's refused, so no frame ever arrived), and xrdp's Planar-codec tiles — which it uses for the greeter and much session content — were silently ignored. Both fixed: DisplayControl is registered and answered with the session's monitor layout, and Planar tiles decode through the RDP 6.0 bitmap decoder. Verified host-side (framebuffer dump) and on-device: the xrdp login greeter renders pixel-perfect. Windows RDP is unaffected.

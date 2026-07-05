@@ -1,0 +1,1 @@
+🖼️ Agent-presented web pages, images and PDFs now get a fullscreen view and clearer window controls. Pages the AI opens run with JavaScript enabled (many used to show a blank white view), an explicit ✕ closes the window, and web/image content has a fullscreen toggle that opens an immersive view with its own exit control.
