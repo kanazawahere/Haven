@@ -90,16 +90,26 @@ object McpForegroundParticipantModule {
         }
 
     /**
-     * Revive hook so the headless MCP reverse tunnel gets an immediate kick on
-     * return-to-foreground / network-available — the standard SSH recovery paths
-     * skip it, leaving it on its own (Doze-deferrable) watchdog otherwise.
-     * Lazy to keep symmetry with the providers above and avoid pulling the
-     * tunnel manager into graph construction.
+     * Revive hook for the two MCP recovery paths the standard SSH sweeps skip,
+     * fired on return-to-foreground / network-available:
+     *  - the **accept loop** ([McpServer.reviveNow]) — a daemon-thread server that
+     *    dies when the OS trims the process and does not self-heal, so a still-up
+     *    near/WG carrier ends up in front of a dead endpoint (the manual-toggle
+     *    outage this closes, #mcp-backbone Stage 1);
+     *  - the **headless reverse tunnel** ([McpTunnelManager.kickNow]) — otherwise
+     *    left on its own Doze-deferrable watchdog.
+     * Both Lazy to avoid pulling either into graph construction.
      */
     @Provides
     @IntoSet
-    fun mcpRevive(tunnel: Lazy<McpTunnelManager>): ForegroundReviveHook =
+    fun mcpRevive(
+        server: Lazy<McpServer>,
+        tunnel: Lazy<McpTunnelManager>,
+    ): ForegroundReviveHook =
         object : ForegroundReviveHook {
-            override fun reviveNow() = tunnel.get().kickNow()
+            override fun reviveNow() {
+                server.get().reviveNow()
+                tunnel.get().kickNow()
+            }
         }
 }

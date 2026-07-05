@@ -476,6 +476,41 @@ class McpServer @Inject constructor(
         }
     }
 
+    /**
+     * Actively restart the accept loop when the endpoint is enabled but not
+     * [isHealthy] — a process-suspend zombie (`isRunning` still true but the
+     * socket/thread died, see [start]) or a loop killed when the OS trimmed the
+     * process. Contributed to [sh.haven.core.ssh.ForegroundReviveHook] so the
+     * FGS kicks it on return-to-foreground and network-available — the same
+     * instant recovery the interactive SSH sessions already get — instead of the
+     * endpoint staying dead behind a still-up carrier until the user toggles the
+     * pref. (#mcp-backbone Stage 1)
+     *
+     * Non-blocking per the hook contract: the enabled check and any restart run
+     * on [scope]. [start] is a no-op when already healthy, so a redundant kick on
+     * a live server costs a single `isHealthy()` check. A deliberately-disabled
+     * endpoint (`mcpAgentEndpointEnabled == false`) is never resurrected — stop()
+     * clears the flag and this respects it.
+     *
+     * Scope note: this heals the loopback accept loop (the near-carrier path that
+     * dies on process trim). The WG/LAN binders are re-established by [start] on
+     * the same restart, but a WG binder that dies while the loopback loop stays
+     * healthy is out of scope here — WG has its own accept-loop retry.
+     */
+    fun reviveNow() {
+        scope.launch {
+            val enabled = runCatching {
+                preferencesRepository.mcpAgentEndpointEnabled.first()
+            }.getOrDefault(false)
+            if (!enabled) return@launch
+            val healthyBefore = isHealthy()
+            start()
+            if (!healthyBefore) {
+                Log.i(TAG, "reviveNow: endpoint enabled but unhealthy — accept loop restarted")
+            }
+        }
+    }
+
     override fun close() = stop()
 
     /**
