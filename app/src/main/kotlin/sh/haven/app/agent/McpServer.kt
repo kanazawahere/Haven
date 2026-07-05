@@ -62,6 +62,16 @@ private const val TAG = "McpServer"
  *  clears the orphaned prompt in a finally block so the sheet never sticks. */
 private const val CONSENT_WAIT_MS: Long = 55_000L
 
+/**
+ * Hard cap on a request body (#mcp-backbone Stage 0). The body buffer is sized
+ * from the client-supplied `Content-Length`; without a bound, a hostile
+ * `Content-Length: 2000000000` forces a multi-GB allocation → OutOfMemoryError
+ * before a byte of body arrives. MCP request bodies are small JSON (bulk bytes
+ * go out-of-band via serve_file), so 8 MiB is generous headroom. A larger or
+ * negative length is refused with 413 before any allocation.
+ */
+private const val MAX_BODY_BYTES: Int = 8 * 1024 * 1024
+
 /** The one MCP resources/read resource: a live snapshot of Haven's own rendered UI.
  *  The file-shaped sibling of the `capture_haven_ui` tool — an agent reads it to
  *  see the current screen without a tool call (VISION.md §1a). (Don't write the
@@ -869,6 +879,13 @@ class McpServer @Inject constructor(
 
         when {
             method == "POST" && (path == "/mcp" || path == "/") -> {
+                // Refuse an oversized/negative Content-Length before allocating
+                // the body buffer — a hostile length would otherwise OOM the
+                // process (#mcp-backbone Stage 0).
+                if (contentLength !in 0..MAX_BODY_BYTES) {
+                    writeError(output, 413, "Payload Too Large")
+                    return
+                }
                 val body = if (contentLength > 0) {
                     val buf = CharArray(contentLength)
                     var read = 0
