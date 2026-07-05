@@ -868,8 +868,14 @@ fun TerminalScreen(
 
                     val focusRequester = remember { FocusRequester() }
 
-                    LaunchedEffect(Unit) {
-                        focusRequester.requestFocus()
+                    // Keyed on isActive, not Unit: the HorizontalPager keeps
+                    // adjacent pages composed, so returning to this screen
+                    // doesn't recompose it — without re-requesting here the
+                    // IME's InputConnection stays wired to the previous
+                    // screen's view (desktop tab) and keys go nowhere until
+                    // the user switches away and back a second time.
+                    LaunchedEffect(isActive) {
+                        if (isActive) focusRequester.requestFocus()
                     }
 
                     var selectionController by remember {
