@@ -427,6 +427,148 @@ class McpToolsConsentTest {
         assertTrue("consent-gated tools with the placeholder summary: $offenders", offenders.isEmpty())
     }
 
+    // --- Auto-generated tool documentation (docs/mcp-tools.md) ---
+    // The registry is the source of truth for what an agent can do to the
+    // user's phone, so the user-facing reference is GENERATED from it and
+    // this test keeps the committed file in sync: when a tool is added or
+    // its consent level changes, the test rewrites docs/mcp-tools.md and
+    // fails, so CI blocks any registry change whose documentation diff
+    // wasn't reviewed and committed.
+
+    @Test
+    fun `docs mcp-tools_md is generated from the live registry`() {
+        val prefs = mockk<UserPreferencesRepository>(relaxed = true)
+        // Capabilities OFF so capabilityDenial() yields the Settings-pointing
+        // message for gated tools — reused as the doc's "extra switch" line.
+        every { prefs.agentAllowFileRead } returns flowOf(false)
+        every { prefs.agentAllowTerminalInputQueue } returns flowOf(false)
+        val tools = newTools(prefs)
+        val md = renderToolDocs(tools)
+
+        var dir = java.io.File("").absoluteFile
+        while (!java.io.File(dir, ".git").exists()) {
+            dir = dir.parentFile ?: throw AssertionError("repo root not found from ${java.io.File("").absolutePath}")
+        }
+        val doc = java.io.File(dir, "docs/mcp-tools.md")
+        val existing = if (doc.exists()) doc.readText() else ""
+        if (existing != md) {
+            doc.writeText(md)
+            throw AssertionError(
+                "docs/mcp-tools.md was stale — regenerated from the live tool registry. " +
+                    "Review the diff and commit it.",
+            )
+        }
+    }
+
+    private fun renderToolDocs(tools: McpTools): String {
+        data class Doc(val name: String, val description: String, val schema: JSONObject,
+                       val level: ConsentLevel, val gate: String?)
+        val docs = tools.definitions().map { def ->
+            val name = def.getString("name")
+            Doc(
+                name = name,
+                description = def.getString("description"),
+                schema = def.getJSONObject("inputSchema"),
+                level = tools.consentFor(name)!!.level,
+                gate = runBlocking { tools.capabilityDenial(name) },
+            )
+        }
+        val groups = listOf(
+            Triple(ConsentLevel.EVERY_CALL, "Asks every call",
+                "Side-effectful or sensitive actions. Haven shows a consent sheet describing the " +
+                    "specific action (paths, recipients, commands) and waits for your tap on every single call."),
+            Triple(ConsentLevel.ONCE_PER_SESSION, "Asks once per session",
+                "Reversible actions and screen-reading. Haven prompts the first time an agent session " +
+                    "uses the tool; further calls in the same session proceed without re-prompting."),
+            Triple(ConsentLevel.NEVER, "No per-call prompt",
+                "Read-only queries and tap-equivalent UI actions with no destructive effect. These still " +
+                    "sit behind the endpoint being enabled and the client being paired."),
+        )
+        fun typeName(p: JSONObject): String = when (val t = p.optString("type")) {
+            "array" -> when (p.optJSONObject("items")?.optString("type")) {
+                "string" -> "string[]"
+                "object" -> "object[]"
+                else -> "array"
+            }
+            "" -> "any"
+            else -> t
+        }
+        return buildString {
+            appendLine("# Haven's MCP tools — what an agent can do, and when you are asked")
+            appendLine()
+            appendLine("<!-- GENERATED FILE — do not edit. Rendered from the live tool registry by")
+            appendLine("     McpToolsConsentTest.`docs mcp-tools_md is generated from the live registry`.")
+            appendLine("     Regenerate: ./gradlew :app:testX64DebugUnitTest --tests '*.McpToolsConsentTest' -->")
+            appendLine()
+            appendLine("Haven exposes an [MCP](https://modelcontextprotocol.io) endpoint so an AI agent")
+            appendLine("(Claude Code, or anything speaking MCP over HTTP) can drive the phone side of your")
+            appendLine("sessions. This page is the complete tool surface, generated from the same registry")
+            appendLine("the server dispatches — there are no undocumented tools.")
+            appendLine()
+            appendLine("## The security model, in order")
+            appendLine()
+            appendLine("1. **Off by default.** Nothing listens until you enable Settings → Agent endpoint.")
+            appendLine("2. **Loopback only by default.** The endpoint binds 127.0.0.1 (device ports 8730–8739,")
+            appendLine("   SSH-tunneled clients 8740–8749). LAN/WireGuard exposure is a separate, explicit opt-in.")
+            appendLine("3. **Pairing.** A new client's first request raises an Allow/Deny prompt on the phone.")
+            appendLine("   Allowing mints a per-client 256-bit bearer token, shown once; Haven stores only its")
+            appendLine("   SHA-256. Unpairing (Settings → Agent endpoint → Paired clients) revokes it.")
+            appendLine("4. **Capability switches.** File reading and terminal-input queuing have their own")
+            appendLine("   Settings toggles on top of everything else; tools behind them are marked below.")
+            appendLine("5. **Per-call consent.** Every tool carries one of the three consent levels this page")
+            appendLine("   is grouped by. Consent sheets are rendered by Haven itself, and agent-injected taps")
+            appendLine("   are refused while one is showing — an agent cannot approve its own prompt.")
+            appendLine("6. **Standing policies.** An agent may request a time-boxed, rate-limited pre-approval")
+            appendLine("   for named tools (create_standing_policy) — it is itself consent-gated on every call,")
+            appendLine("   shows exactly what would be allowed, and has a kill-switch on the Agent activity screen.")
+            appendLine("7. **Audit.** Every call crossing the agent transport is recorded on-device with")
+            appendLine("   arguments redacted (Settings → Agent activity — the same screen that lists and")
+            appendLine("   revokes standing policies). Haven is the dashboard, not a black box.")
+            appendLine()
+            appendLine("## Tool count by consent level")
+            appendLine()
+            for ((level, title, _) in groups) {
+                appendLine("- **$title**: ${docs.count { it.level == level }} tools")
+            }
+            for ((level, title, blurb) in groups) {
+                appendLine()
+                appendLine("## $title")
+                appendLine()
+                appendLine(blurb)
+                for (d in docs.filter { it.level == level }.sortedBy { it.name }) {
+                    appendLine()
+                    appendLine("### `${d.name}`")
+                    appendLine()
+                    d.gate?.let { appendLine("*Extra capability switch — off by default: $it.*") ; appendLine() }
+                    appendLine(d.description)
+                    val props = d.schema.getJSONObject("properties")
+                    val required = d.schema.optJSONArray("required")
+                        ?.let { r -> (0 until r.length()).map { r.getString(it) } }.orEmpty().toSet()
+                    // org.json's JVM key order is a HashMap's — sort so the
+                    // rendered file is byte-stable across JVMs (required
+                    // arguments first, then alphabetical).
+                    val names = props.keys().asSequence().toList()
+                        .sortedWith(compareBy({ it !in required }, { it }))
+                    if (names.isNotEmpty()) {
+                        appendLine()
+                        for (p in names) {
+                            val prop = props.getJSONObject(p)
+                            val bits = buildList {
+                                add(typeName(prop))
+                                if (p in required) add("required")
+                                prop.optJSONArray("enum")?.let { e ->
+                                    add("one of: " + (0 until e.length()).joinToString(" | ") { e.getString(it) })
+                                }
+                            }
+                            val desc = prop.optString("description")
+                            appendLine("- `$p` (${bits.joinToString(", ")})${if (desc.isNotEmpty()) " — $desc" else ""}")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // --- Declarative capability gate (#mcp-backbone Stage 5) ---
 
     @Test
