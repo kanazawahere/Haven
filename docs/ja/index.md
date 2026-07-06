@@ -67,7 +67,7 @@ title: Haven
 - **[ローカル Linux](../features/local-linux.md)** — PRoot 経由の Alpine / Debian / Arch / Void を並行して実行。root 不要。
 - **[USB フォワーディング](../features/usb.md)** — USB デバイスをエージェント、Linux ゲスト、または USB/IP 経由でリモートホストに仲介します。
 - **[Reticulum](../features/reticulum.md)** — rnsh シェル、ファイル転送、メッシュ越しの `-L`/`-D` フォワーディング。インターネットがまったくなくても機能し続ける唯一のトランスポート。
-- **[エージェントトランスポート（MCP）](../features/agent-mcp.md)** — 約 130 個の同意制ツール。エージェントは Haven 自身の UI を操作することさえできます。
+- **[エージェントトランスポート（MCP）](../mcp-tools.md)** — 約 130 個の同意制ツール。エージェントは Haven 自身の UI を操作することさえできます。
 - **[セキュリティ](../features/security.md)** — 生体認証ロック、テレメトリなし、暗号化されたバックアップ／復元（AES-256-GCM）。
 
 [全機能一覧](../FEATURES.md)を見る。

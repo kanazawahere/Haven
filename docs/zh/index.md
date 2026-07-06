@@ -62,7 +62,7 @@ title: Haven
 - **[本地 Linux](../features/local-linux.md)** — 通过 PRoot 运行 Alpine / Debian / Arch / Void，可并排运行，无需 root。
 - **[USB 转发](../features/usb.md)** — 通过 USB/IP 将一个 USB 设备代理给智能体、Linux 客户机或远程主机。
 - **[Reticulum](../features/reticulum.md)** — 在网状网络上的 rnsh shell、文件传输以及 `-L`/`-D` 转发。这是唯一一种在完全没有互联网时仍能继续工作的传输方式。
-- **[智能体传输（MCP）](../features/agent-mcp.md)** — 约 130 个需经同意授权的工具；智能体甚至可以操作 Haven 自己的界面。
+- **[智能体传输（MCP）](../mcp-tools.md)** — 约 130 个需经同意授权的工具；智能体甚至可以操作 Haven 自己的界面。
 - **[安全](../features/security.md)** — 生物识别锁、无遥测、加密的备份/恢复（AES-256-GCM）。
 
 浏览[完整功能索引](../FEATURES.md)。

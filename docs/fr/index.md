@@ -67,7 +67,7 @@ installations manuelles directes suivent la clé des versions GitHub.
 - **[Linux local](../features/local-linux.md)** — Alpine / Debian / Arch / Void via PRoot, côte à côte, sans accès root requis.
 - **[Redirection USB](../features/usb.md)** — partagez un périphérique USB avec l'agent, l'invité Linux ou un hôte distant via USB/IP.
 - **[Reticulum](../features/reticulum.md)** — shell rnsh, transfert de fichiers, et redirection `-L`/`-D` sur le maillage. Le seul transport qui continue de fonctionner sans aucune connexion internet.
-- **[Transport agent (MCP)](../features/agent-mcp.md)** — environ 130 outils soumis à consentement ; l'agent peut même piloter l'interface de Haven elle-même.
+- **[Transport agent (MCP)](../mcp-tools.md)** — environ 130 outils soumis à consentement ; l'agent peut même piloter l'interface de Haven elle-même.
 - **[Sécurité](../features/security.md)** — verrouillage biométrique, pas de télémétrie, sauvegarde/restauration chiffrée (AES-256-GCM).
 
 Parcourez l'[index complet des fonctionnalités](../FEATURES.md).

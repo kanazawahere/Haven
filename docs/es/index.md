@@ -67,7 +67,7 @@ instalaciones directas siguen la clave de GitHub Releases.
 - **[Linux local](../features/local-linux.md)** — Alpine / Debian / Arch / Void mediante PRoot, en paralelo, sin necesidad de root.
 - **[Reenvío USB](../features/usb.md)** — comparte un dispositivo USB con el agente, el invitado Linux o un host remoto mediante USB/IP.
 - **[Reticulum](../features/reticulum.md)** — shell rnsh, transferencia de archivos y reenvío `-L`/`-D` sobre mesh. El único transporte que sigue funcionando sin nada de internet.
-- **[Transporte de agente (MCP)](../features/agent-mcp.md)** — ~130 herramientas con consentimiento; el agente incluso puede manejar la propia interfaz de Haven.
+- **[Transporte de agente (MCP)](../mcp-tools.md)** — ~130 herramientas con consentimiento; el agente incluso puede manejar la propia interfaz de Haven.
 - **[Seguridad](../features/security.md)** — bloqueo biométrico, sin telemetría, copia de seguridad/restauración cifrada (AES-256-GCM).
 
 Explora el [índice completo de funciones](../FEATURES.md).

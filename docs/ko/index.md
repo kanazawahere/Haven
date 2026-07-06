@@ -67,7 +67,7 @@ title: Haven
 - **[로컬 Linux](../features/local-linux.md)** — PRoot를 통한 Alpine / Debian / Arch / Void, 나란히 실행, root 불필요.
 - **[USB 포워딩](../features/usb.md)** — USB/IP를 통해 USB 장치를 에이전트, Linux 게스트, 또는 원격 호스트에 중개.
 - **[Reticulum](../features/reticulum.md)** — 메시 위에서 rnsh 셸, 파일 전송, 그리고 `-L`/`-D` 포워딩. 인터넷이 전혀 없어도 계속 작동하는 유일한 전송 수단.
-- **[에이전트 전송(MCP)](../features/agent-mcp.md)** — 동의 게이트가 적용된 약 130개의 도구; 에이전트가 Haven 자체 UI를 조작할 수도 있습니다.
+- **[에이전트 전송(MCP)](../mcp-tools.md)** — 동의 게이트가 적용된 약 130개의 도구; 에이전트가 Haven 자체 UI를 조작할 수도 있습니다.
 - **[보안](../features/security.md)** — 생체 인증 잠금, 텔레메트리 없음, 암호화된 백업/복원(AES-256-GCM).
 
 [전체 기능 색인](../FEATURES.md)을 둘러보세요.

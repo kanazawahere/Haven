@@ -78,7 +78,7 @@ sideloads track the GitHub Releases key.
 - **[Local Linux](features/local-linux.md)** — Alpine / Debian / Arch / Void via PRoot, side-by-side, no root required.
 - **[USB forwarding](features/usb.md)** — broker a USB device to the agent, the Linux guest, or a remote host over USB/IP.
 - **[Reticulum](features/reticulum.md)** — rnsh shell, file transfer, and `-L`/`-D` forwarding over mesh. The one transport that keeps working with no internet at all.
-- **[Agent transport (MCP)](features/agent-mcp.md)** — ~130 consent-gated tools; the agent can even drive Haven's own UI.
+- **[Agent transport (MCP)](mcp-tools.md)** — ~130 consent-gated tools; the agent can even drive Haven's own UI.
 - **[Security](features/security.md)** — biometric lock, no telemetry, encrypted backup/restore (AES-256-GCM).
 
 Browse the [full feature index](FEATURES.md).

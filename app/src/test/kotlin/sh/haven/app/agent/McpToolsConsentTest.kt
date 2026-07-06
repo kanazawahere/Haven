@@ -494,6 +494,14 @@ class McpToolsConsentTest {
             else -> t
         }
         return buildString {
+            // Jekyll frontmatter: this generated file IS the MCP feature page
+            // on the docs site (the hand-written features/agent-mcp.md was
+            // retired in its favour), so it needs a layout to render there.
+            appendLine("---")
+            appendLine("layout: default")
+            appendLine("title: Agent transport (MCP)")
+            appendLine("---")
+            appendLine()
             appendLine("# Haven's MCP tools — what an agent can do, and when you are asked")
             appendLine()
             appendLine("<!-- GENERATED FILE — do not edit. Rendered from the live tool registry by")

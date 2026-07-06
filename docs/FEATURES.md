@@ -19,7 +19,7 @@ page below; the [landing page](index.md) has a short summary.
 - **[USB device forwarding](features/usb.md)** — broker an attached USB device through Android and re-expose it to the agent, into the Linux guest, or over USB/IP to a **remote host** (e.g. forward a phone-hosted YubiKey, touch on the phone); includes a device-class support matrix for what works where.
 - **[Reading USB drives](features/usb-drives.md)** — plug in a USB flash drive or SSD and read its files, even Linux-formatted (ext4/GPT) drives the phone can't open itself; Haven mounts them in a small on-device Linux VM and surfaces the files in the normal file browser. No jargon required.
 - **[Reticulum mesh](features/reticulum.md)** — rnsh shell, file transfer, and `-L`/`-D` port forwarding over Reticulum, pure Kotlin. The one transport that keeps working with no internet at all.
-- **[Agent transport (MCP)](features/agent-mcp.md)** — an optional MCP server exposing ~130 consent-gated, audited tools, including ones that drive Haven's own UI for a self-hosting build → install → verify loop.
+- **[Agent transport (MCP)](mcp-tools.md)** — an optional MCP server exposing ~130 consent-gated, audited tools, including ones that drive Haven's own UI for a self-hosting build → install → verify loop.
 - **[Security & privacy](features/security.md)** — biometric lock, no telemetry, encrypted backup/restore (AES-256-GCM).
 - **[Languages & translation](features/i18n.md)** — 12 languages, follows the device locale, in-app language picker; contribute corrections or whole new languages from the web translation page, no setup required.
 

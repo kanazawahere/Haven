@@ -67,7 +67,7 @@ Sideloads folgen dem GitHub-Releases-Schlüssel.
 - **[Lokales Linux](../features/local-linux.md)** — Alpine / Debian / Arch / Void über PRoot, nebeneinander, kein Root erforderlich.
 - **[USB-Weiterleitung](../features/usb.md)** — vermittle ein USB-Gerät an den Agenten, das Linux-Gastsystem oder einen entfernten Host über USB/IP.
 - **[Reticulum](../features/reticulum.md)** — rnsh-Shell, Dateiübertragung und `-L`/`-D`-Weiterleitung über Mesh. Der eine Transportweg, der ganz ohne Internet weiter funktioniert.
-- **[Agent-Transport (MCP)](../features/agent-mcp.md)** — ~130 zustimmungspflichtige Werkzeuge; der Agent kann sogar Havens eigene Oberfläche bedienen.
+- **[Agent-Transport (MCP)](../mcp-tools.md)** — ~130 zustimmungspflichtige Werkzeuge; der Agent kann sogar Havens eigene Oberfläche bedienen.
 - **[Sicherheit](../features/security.md)** — biometrische Sperre, keine Telemetrie, verschlüsselte Sicherung/Wiederherstellung (AES-256-GCM).
 
 Durchstöbere den [vollständigen Funktionsindex](../FEATURES.md).

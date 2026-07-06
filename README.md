@@ -64,7 +64,7 @@
 - **[Local Linux](docs/features/local-linux.md)** — a Linux userland via PRoot (no root, any Android 8+ device): Alpine, Debian, Arch, or Void, side-by-side.
 - **[USB forwarding](docs/features/usb.md)** — broker an attached USB device through Android and re-expose it to the agent, into the Linux guest, or over USB/IP to a **remote host** (e.g. a phone-hosted YubiKey, touch on the phone).
 - **[Reticulum](docs/features/reticulum.md)** — rnsh shell, file transfer, and `-L`/`-D` port forwarding over Reticulum mesh, pure Kotlin. The one transport that keeps working with no internet at all.
-- **[Agent transport (MCP)](docs/features/agent-mcp.md)** — an optional MCP server exposing ~130 consent-gated, audited tools; the agent can even **see and operate Haven itself** for a self-hosting build → install → verify loop.
+- **[Agent transport (MCP)](docs/mcp-tools.md)** — an optional MCP server exposing ~130 consent-gated, audited tools; the agent can even **see and operate Haven itself** for a self-hosting build → install → verify loop.
 - **[Security](docs/features/security.md)** — biometric lock, no telemetry, encrypted backup/restore (AES-256-GCM).
 
 See [docs/FEATURES.md](docs/FEATURES.md) for the full feature index.

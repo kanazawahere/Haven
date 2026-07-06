@@ -1,3 +1,8 @@
+---
+layout: default
+title: Agent transport (MCP)
+---
+
 # Haven's MCP tools — what an agent can do, and when you are asked
 
 <!-- GENERATED FILE — do not edit. Rendered from the live tool registry by
