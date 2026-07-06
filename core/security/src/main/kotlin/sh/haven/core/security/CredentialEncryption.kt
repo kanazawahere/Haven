@@ -26,6 +26,14 @@ object CredentialEncryption {
     private val ASSOCIATED_DATA = "haven-credential".toByteArray()
     private const val ENCRYPTED_PREFIX = "ENC:"
 
+    // Tink AEAD (AES256_GCM, TINK output prefix) ciphertext starts with a
+    // 1-byte version 0x01 + 4-byte key id, followed by the 12-byte GCM nonce,
+    // ciphertext, and 16-byte tag — so a genuine value is at least 33 bytes and
+    // begins with 0x01. Used to reject a plaintext that merely happens to start
+    // with "ENC:" (security-review #18).
+    private const val TINK_PREFIX_VERSION: Byte = 0x01
+    private const val TINK_MIN_CIPHERTEXT_LEN = 5 + 12 + 16
+
     @Volatile
     private var aead: Aead? = null
 
@@ -57,6 +65,19 @@ object CredentialEncryption {
         return String(getAead(context).decrypt(ciphertext, ASSOCIATED_DATA), Charsets.UTF_8)
     }
 
-    /** True if the value is already encrypted. */
-    fun isEncrypted(stored: String): Boolean = stored.startsWith(ENCRYPTED_PREFIX)
+    /**
+     * True if the value is Haven-encrypted ciphertext. Requires the "ENC:"
+     * prefix AND a well-formed Tink AEAD body, so a plaintext credential that
+     * merely starts with "ENC:" is (correctly) treated as plaintext and gets
+     * encrypted on the next save rather than being left in the clear (#18).
+     */
+    fun isEncrypted(stored: String): Boolean {
+        if (!stored.startsWith(ENCRYPTED_PREFIX)) return false
+        return try {
+            val body = Base64.decode(stored.removePrefix(ENCRYPTED_PREFIX), Base64.NO_WRAP)
+            body.size >= TINK_MIN_CIPHERTEXT_LEN && body[0] == TINK_PREFIX_VERSION
+        } catch (_: Exception) {
+            false
+        }
+    }
 }
