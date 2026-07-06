@@ -83,10 +83,11 @@ class HavenUiToolsTest {
     fun `capture_haven_ui maps a secure window to a secure flag, not a black frame`() = runTest {
         val bridge = mockk<HavenUiBridge>()
         coEvery { bridge.captureScreen() } returns HavenUiBridge.CaptureResult.Secure
-        val out = newTools(bridge).call("capture_haven_ui", JSONObject())
-
-        assertTrue("secure window should be flagged", out.optBoolean("secure"))
-        assertFalse("no image when secure", out.has("__imageBase64"))
+        // A secure window returns a structured result (secure flag), NOT an
+        // image — proven on the typed path, not by an absent reserved key.
+        val typed = newTools(bridge).callTyped("capture_haven_ui", JSONObject())
+        assertTrue("secure window must not be an image", typed is ToolResult.Structured)
+        assertTrue("secure window should be flagged", typed.structured.optBoolean("secure"))
     }
 
     @Test

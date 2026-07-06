@@ -617,7 +617,7 @@ internal class DesktopToolProvider(
         }
     }
 
-    private suspend fun captureDesktop(args: JSONObject): JSONObject {
+    private suspend fun captureDesktop(args: JSONObject): ToolResult {
         val deId = args.optString("deId").takeIf { it.isNotEmpty() }
             ?: throw McpError(-32602, "deId is required")
         val de = desktopByIdOrThrow(deId)
@@ -652,22 +652,22 @@ internal class DesktopToolProvider(
         val (b64, w, h) = withContext(Dispatchers.Default) {
             encodeCapture(png, crop, maxWidth, format)
         }
-        return JSONObject().apply {
-            put("deId", de.spec.id)
-            put("width", w)
-            put("height", h)
-            put("format", format)
-            put("source", "guest")
-            windowId?.let { put("windowId", it) }
-            windowTitle?.let { put("windowTitle", it) }
-            // Reserved keys: McpServer lifts these into an MCP image content
-            // block and strips them from structuredContent / the text echo.
-            put("__imageBase64", b64)
-            put("__mimeType", if (format == "jpeg") "image/jpeg" else "image/png")
-        }
+        return ToolResult.Image(
+            base64 = b64,
+            mimeType = if (format == "jpeg") "image/jpeg" else "image/png",
+            structured = JSONObject().apply {
+                put("deId", de.spec.id)
+                put("width", w)
+                put("height", h)
+                put("format", format)
+                put("source", "guest")
+                windowId?.let { put("windowId", it) }
+                windowTitle?.let { put("windowTitle", it) }
+            },
+        )
     }
 
-    private suspend fun captureDesktopTab(args: JSONObject): JSONObject {
+    private suspend fun captureDesktopTab(args: JSONObject): ToolResult {
         val explicitPid = args.optString("profileId").takeIf { it.isNotBlank() }
         val handles = desktopSessionRegistry.frameHandles()
         val pid = explicitPid ?: when (handles.size) {
@@ -716,26 +716,26 @@ internal class DesktopToolProvider(
             Triple(Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP), fullW, fullH)
         }
 
-        return JSONObject().apply {
-            put("profileId", pid)
-            put("protocol", handle.protocol)
-            put("width", w)
-            put("height", h)
-            put("hasCursor", cursor != null)
-            if (cursor != null) {
-                put("cursorWidth", cursor.bitmap.width)
-                put("cursorHeight", cursor.bitmap.height)
-                put("hotspotX", cursor.hotspotX)
-                put("hotspotY", cursor.hotspotY)
-                put("pointerX", px)
-                put("pointerY", py)
-            }
-            put("format", format)
-            // Reserved keys: McpServer lifts these into an MCP image content
-            // block and strips them from structuredContent / the text echo.
-            put("__imageBase64", b64)
-            put("__mimeType", if (format == "jpeg") "image/jpeg" else "image/png")
-        }
+        return ToolResult.Image(
+            base64 = b64,
+            mimeType = if (format == "jpeg") "image/jpeg" else "image/png",
+            structured = JSONObject().apply {
+                put("profileId", pid)
+                put("protocol", handle.protocol)
+                put("width", w)
+                put("height", h)
+                put("hasCursor", cursor != null)
+                if (cursor != null) {
+                    put("cursorWidth", cursor.bitmap.width)
+                    put("cursorHeight", cursor.bitmap.height)
+                    put("hotspotX", cursor.hotspotX)
+                    put("hotspotY", cursor.hotspotY)
+                    put("pointerX", px)
+                    put("pointerY", py)
+                }
+                put("format", format)
+            },
+        )
     }
 
     private fun resolveDesktopInput(args: JSONObject): Pair<String, DesktopInputHandle> {

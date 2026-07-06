@@ -2493,7 +2493,14 @@ internal class McpTools(
     private var activeInstallProgress: JSONObject? = null
 
     /** Call a tool by name. Throws [McpError] for bad input. */
-    suspend fun call(name: String, arguments: JSONObject, clientHint: String? = null): JSONObject {
+    /**
+     * Call a tool and return its result as a typed [ToolResult]
+     * (#mcp-backbone Stage 5, Layer E) — the transport-facing entry point.
+     * Local handlers return their [ToolResult] directly (image / structured);
+     * a proxied guest-MCP tool becomes a [ToolResult.Passthrough]. No reserved
+     * `__`-prefixed keys anywhere on the path.
+     */
+    suspend fun callTyped(name: String, arguments: JSONObject, clientHint: String? = null): ToolResult {
         currentClientHint = clientHint
         // Per-connection MCP gate + activity light: if the tool targets a connection
         // (a profileId arg, or a sessionId that maps to one), refuse when the user has
@@ -2506,9 +2513,8 @@ internal class McpTools(
         }
         tools[name]?.let { return it.handle(arguments) }
 
-        // Proxied guest-MCP tool: forward to the guest server and pass its
-        // content array back through the __mcpContent reserved key (an
-        // internal channel [callTyped] converts to ToolResult.Passthrough).
+        // Proxied guest-MCP tool: forward to the guest server and pass its own
+        // content array through verbatim as a Passthrough.
         val ref = guestToolCache[name] ?: guestTools()[name]
             ?: throw McpError(-32602, "Unknown tool: $name")
         val client = guestClients[ref.serviceId]
@@ -2522,42 +2528,23 @@ internal class McpTools(
         }
         val guestContent = result.optJSONArray("content")
         return if (guestContent != null) {
-            JSONObject().apply {
-                put("__mcpContent", guestContent)
+            val structured = JSONObject().apply {
                 if (result.optBoolean("isError", false)) put("isError", true)
             }
+            ToolResult.Passthrough(guestContent, structured)
         } else {
-            result
+            ToolResult.Structured(result)
         }
     }
 
     /**
-     * Call a tool and return its result as a typed [ToolResult]
-     * (#mcp-backbone Stage 5, Layer E) — the transport-facing entry point.
-     * The `__`-prefixed reserved keys some handlers still emit are decoded
-     * here, so they are a McpTools-internal handler↔[callTyped] detail
-     * rather than a contract the transport has to know. (Deleting the keys
-     * at the handler sites needs the per-domain provider split — later in
-     * Stage 5; this narrows the contract without that churn.)
+     * Call a tool and return only its structured [JSONObject] payload. The
+     * consent-free entry point for the Mail-Rules engine (and tests) — image
+     * and guest-passthrough content is dropped, which those callers never use.
+     * The transport uses [callTyped].
      */
-    suspend fun callTyped(name: String, arguments: JSONObject, clientHint: String? = null): ToolResult =
-        call(name, arguments, clientHint).toToolResult()
-
-    /** Decode a handler's JSONObject (with any reserved `__` keys) to a [ToolResult]. */
-    private fun JSONObject.toToolResult(): ToolResult {
-        optJSONArray("__mcpContent")?.let { passthrough ->
-            remove("__mcpContent")
-            return ToolResult.Passthrough(passthrough, this)
-        }
-        val imageB64 = optString("__imageBase64", null)
-        if (imageB64 != null) {
-            val mime = optString("__mimeType", null) ?: "image/png"
-            remove("__imageBase64")
-            remove("__mimeType")
-            return ToolResult.Image(imageB64, mime, this)
-        }
-        return ToolResult.Structured(this)
-    }
+    suspend fun call(name: String, arguments: JSONObject, clientHint: String? = null): JSONObject =
+        callTyped(name, arguments, clientHint).structured
 
     /** The connection a tool call targets: an explicit profileId arg, else the profile behind a sessionId. */
     private fun resolveTargetProfile(args: JSONObject): String? {
@@ -7192,7 +7179,7 @@ internal class McpTools(
      * the returned image was downscaled). Maps the bridge's secure /
      * no-foreground outcomes to an honest signal rather than a black frame.
      */
-    private suspend fun captureHavenUi(args: JSONObject): JSONObject {
+    private suspend fun captureHavenUi(args: JSONObject): ToolResult {
         val maxWidth = args.optInt("maxWidth", 1080).coerceIn(160, 4096)
         val format = if (args.optString("format", "jpeg").lowercase() == "png") "png" else "jpeg"
         return when (val result = havenUiBridge.captureScreen()) {
@@ -7201,27 +7188,28 @@ internal class McpTools(
                     encodeBitmapScaled(result.bitmap, maxWidth, format)
                 }
                 result.bitmap.recycle()
-                JSONObject().apply {
-                    // Full window pixels — the coordinate space for tap_haven_ui.
-                    put("width", result.width)
-                    put("height", result.height)
-                    // Dimensions of the (possibly downscaled) returned image.
-                    put("imageWidth", iw)
-                    put("imageHeight", ih)
-                    put("format", format)
-                    // Reserved keys: McpServer lifts these into an MCP image content block.
-                    put("__imageBase64", b64)
-                    put("__mimeType", if (format == "jpeg") "image/jpeg" else "image/png")
-                }
+                ToolResult.Image(
+                    base64 = b64,
+                    mimeType = if (format == "jpeg") "image/jpeg" else "image/png",
+                    structured = JSONObject().apply {
+                        // Full window pixels — the coordinate space for tap_haven_ui.
+                        put("width", result.width)
+                        put("height", result.height)
+                        // Dimensions of the (possibly downscaled) returned image.
+                        put("imageWidth", iw)
+                        put("imageHeight", ih)
+                        put("format", format)
+                    },
+                )
             }
-            HavenUiBridge.CaptureResult.Secure -> JSONObject().apply {
+            HavenUiBridge.CaptureResult.Secure -> ToolResult.Structured(JSONObject().apply {
                 put("secure", true)
                 put(
                     "message",
                     "Screen security (FLAG_SECURE) is on — Haven's own UI cannot be captured. " +
                         "Turn off Settings → screen security to allow it.",
                 )
-            }
+            })
             is HavenUiBridge.CaptureResult.NoForeground -> throw McpError(-32603, result.reason)
             is HavenUiBridge.CaptureResult.Failed -> throw McpError(-32603, result.reason)
         }
@@ -7436,10 +7424,10 @@ internal class McpTools(
      * whether the frame is non-blank — a regression check for the windowed-GL
      * present pipeline (memory: project_3d_desktop_gl_prusaslicer_test, where a
      * blank canvas came back pure white). Reliable only for a full-frame GL app;
-     * the returned image is the ground truth. Reuses [encodeCapture]'s image
-     * path so `McpServer` lifts `__imageBase64` into an MCP image block.
+     * the returned image is the ground truth. Reuses [encodeCapture] and
+     * returns a [ToolResult.Image] the transport renders as an MCP image block.
      */
-    private suspend fun glSmokeTest(args: JSONObject): JSONObject {
+    private suspend fun glSmokeTest(args: JSONObject): ToolResult {
         val deId = args.optString("deId").takeIf { it.isNotBlank() }
             ?: throw McpError(-32602, "deId is required")
         val command = args.optString("command").takeIf { it.isNotBlank() }
@@ -7491,39 +7479,41 @@ internal class McpTools(
         val verdict = sh.haven.core.local.GlCanvasProbe.analyze(px, bmp.width, bmp.height)
         val venus = preferencesRepository.gpuUseVenus.first()
 
-        return JSONObject().apply {
-            put("deId", de.spec.id)
-            put("command", command)
-            put("appId", appId)
-            put("gpuPath", if (venus) "venus+zink" else "virpipe")
-            put("windowId", windowId ?: JSONObject.NULL)
-            put("passed", verdict.nonBlank)
-            put("distinctColors", verdict.distinctColors)
-            put("topColorFraction", verdict.topColorFraction)
-            put("sampled", verdict.sampled)
-            put(
-                "note",
-                "non-blank heuristic over the whole frame; reliable for a full-frame GL app, " +
-                    "not a correctness check — inspect the image",
-            )
-            put("width", w)
-            put("height", h)
-            put("format", "jpeg")
-            put("__imageBase64", b64)
-            put("__mimeType", "image/jpeg")
-        }
+        return ToolResult.Image(
+            base64 = b64,
+            mimeType = "image/jpeg",
+            structured = JSONObject().apply {
+                put("deId", de.spec.id)
+                put("command", command)
+                put("appId", appId)
+                put("gpuPath", if (venus) "venus+zink" else "virpipe")
+                put("windowId", windowId ?: JSONObject.NULL)
+                put("passed", verdict.nonBlank)
+                put("distinctColors", verdict.distinctColors)
+                put("topColorFraction", verdict.topColorFraction)
+                put("sampled", verdict.sampled)
+                put(
+                    "note",
+                    "non-blank heuristic over the whole frame; reliable for a full-frame GL app, " +
+                        "not a correctness check — inspect the image",
+                )
+                put("width", w)
+                put("height", h)
+                put("format", "jpeg")
+            },
+        )
     }
 
     /**
      * Render a guest file to an inline image the agent can see, fully
      * headless (no X / no GL). The render runs inside the proot writing a PNG
      * to `/tmp` (bound to the app cacheDir), which we read back off the app's
-     * filesystem and re-encode via [encodeCapture] — the same image-content
-     * path as [captureDesktop], so `McpServer` lifts `__imageBase64` into an
-     * MCP image block. This is the reliable "show me the design" loop that
+     * filesystem and re-encode via [encodeCapture] — returning a
+     * [ToolResult.Image] the transport renders as an MCP image block, the same
+     * as [captureDesktop]. This is the reliable "show me the design" loop that
      * doesn't depend on a running VNC desktop.
      */
-    private suspend fun viewFile(args: JSONObject): JSONObject {
+    private suspend fun viewFile(args: JSONObject): ToolResult {
         val path = args.optString("path").takeIf { it.isNotBlank() }
             ?: throw McpError(-32602, "path is required (absolute guest path)")
         if (!path.startsWith("/")) throw McpError(-32602, "path must be an absolute guest path")
@@ -7606,16 +7596,17 @@ internal class McpTools(
             val (b64, w, h) = withContext(Dispatchers.Default) {
                 encodeCapture(bytes, null, maxWidth, format)
             }
-            return JSONObject().apply {
-                put("path", path)
-                put("rendered", "$ext → $format")
-                put("width", w)
-                put("height", h)
-                put("format", format)
-                // Reserved keys: McpServer lifts these into an MCP image content block.
-                put("__imageBase64", b64)
-                put("__mimeType", if (format == "jpeg") "image/jpeg" else "image/png")
-            }
+            return ToolResult.Image(
+                base64 = b64,
+                mimeType = if (format == "jpeg") "image/jpeg" else "image/png",
+                structured = JSONObject().apply {
+                    put("path", path)
+                    put("rendered", "$ext → $format")
+                    put("width", w)
+                    put("height", h)
+                    put("format", format)
+                },
+            )
         } finally {
             outFile.delete()
             logFile.delete()
@@ -7992,9 +7983,23 @@ internal class ToolHandler(
      * understands what they're approving.
      */
     val summarise: (JSONObject) -> String = { "tool call" },
-    private val invoke: suspend (JSONObject) -> JSONObject,
+    /**
+     * The handler body. Returns a plain [JSONObject] for the common
+     * structured tool (wrapped as [ToolResult.Structured] by [handle]), or a
+     * [ToolResult] directly for the few tools that produce an image or a
+     * guest-passthrough — so those need no reserved `__`-prefixed keys
+     * (#mcp-backbone Stage 5, Layer E). The `Any` union avoids a
+     * suspend-lambda overload clash (both function types erase to the same
+     * JVM signature) and keeps every registration's `{ args -> … }` shape
+     * unchanged.
+     */
+    private val invoke: suspend (JSONObject) -> Any,
 ) {
-    suspend fun handle(args: JSONObject): JSONObject = invoke(args)
+    suspend fun handle(args: JSONObject): ToolResult = when (val r = invoke(args)) {
+        is ToolResult -> r
+        is JSONObject -> ToolResult.Structured(r)
+        else -> error("Tool handler returned ${r::class.simpleName}, expected JSONObject or ToolResult")
+    }
 }
 
 /**
