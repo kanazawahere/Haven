@@ -65,6 +65,7 @@ class UserPreferencesRepository @Inject constructor(
     private val mailDeleteToBinKey = booleanPreferencesKey("mail_delete_to_bin")
     private val alwaysShowAllTabsKey = booleanPreferencesKey("always_show_all_tabs")
     private val usbGuestExposureEnabledKey = booleanPreferencesKey("usb_guest_exposure_enabled")
+    private val remoteClipboardToLocalKey = booleanPreferencesKey("remote_clipboard_to_local")
     private val verboseLoggingEnabledKey = booleanPreferencesKey("verbose_logging_enabled")
     private val mouseInputEnabledKey = booleanPreferencesKey("mouse_input_enabled")
     private val terminalRightClickKey = booleanPreferencesKey("terminal_right_click")
@@ -298,6 +299,21 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setUsbGuestExposureEnabled(enabled: Boolean) {
         dataStore.edit { prefs ->
             prefs[usbGuestExposureEnabledKey] = enabled
+        }
+    }
+
+    /**
+     * Whether a remote desktop's clipboard is pushed to the device clipboard.
+     * Off by default: an unattended remote can otherwise inject content into
+     * the phone's clipboard (security-review #15).
+     */
+    val remoteClipboardToLocalEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[remoteClipboardToLocalKey] ?: false
+    }
+
+    suspend fun setRemoteClipboardToLocalEnabled(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[remoteClipboardToLocalKey] = enabled
         }
     }
 

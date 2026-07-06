@@ -49,8 +49,21 @@ class VncViewModel @Inject constructor(
     private val etSessionManager: EtSessionManager,
     private val portKnocker: PortKnocker,
     private val tlsCertVerifier: sh.haven.core.data.agent.TlsCertVerifier,
+    private val preferencesRepository: sh.haven.core.data.preferences.UserPreferencesRepository,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
+
+    // Cached opt-in for pushing the remote clipboard to the device clipboard —
+    // off unless the user enables it, so a remote can't inject into the phone
+    // clipboard by default (security-review #15).
+    @Volatile
+    private var remoteClipboardToLocal = false
+
+    init {
+        viewModelScope.launch {
+            preferencesRepository.remoteClipboardToLocalEnabled.collect { remoteClipboardToLocal = it }
+        }
+    }
 
     private val _frame = MutableStateFlow<Bitmap?>(null)
     val frame: StateFlow<Bitmap?> = _frame.asStateFlow()
@@ -247,7 +260,7 @@ class VncViewModel @Inject constructor(
                 _connected.value = false
             }
             onRemoteClipboard = { text ->
-                if (text.isNotEmpty()) {
+                if (remoteClipboardToLocal && text.isNotEmpty()) {
                     try {
                         val clipboard = appContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         clipboard.setPrimaryClip(ClipData.newPlainText("VNC", text))

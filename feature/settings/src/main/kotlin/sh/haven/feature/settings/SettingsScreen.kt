@@ -187,6 +187,7 @@ fun SettingsScreen(
     val unseenAgentActivity by viewModel.unseenAgentActivity.collectAsState()
     val requireAgentConsentForWrites by viewModel.requireAgentConsentForWrites.collectAsState()
     val mouseInputEnabled by viewModel.mouseInputEnabled.collectAsState()
+    val remoteClipboardToLocal by viewModel.remoteClipboardToLocalEnabled.collectAsState()
     val desktopInputMode by viewModel.desktopInputMode.collectAsState()
     val gpuUseVenus by viewModel.gpuUseVenus.collectAsState()
     val bandwidthAutoSuggest by viewModel.bandwidthAutoSuggest.collectAsState()
@@ -426,6 +427,13 @@ fun SettingsScreen(
             subtitle = stringResource(R.string.settings_prevent_screenshots_subtitle),
             checked = screenSecurity,
             onCheckedChange = viewModel::setScreenSecurity,
+        )
+        SettingsToggleItem(
+            icon = Icons.Filled.ContentPaste,
+            title = stringResource(R.string.settings_remote_clipboard_title),
+            subtitle = stringResource(R.string.settings_remote_clipboard_subtitle),
+            checked = remoteClipboardToLocal,
+            onCheckedChange = viewModel::setRemoteClipboardToLocalEnabled,
         )
         }
         CollapsibleSettingsSection(stringResource(R.string.settings_section_appearance), settingsExpanded[1], { settingsExpanded[1] = !settingsExpanded[1] }) {
