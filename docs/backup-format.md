@@ -24,20 +24,22 @@ A backup file is a single byte stream:
 ```
 +-----------------+-----------------+-----------------+-------------------+
 | MAGIC (15)      | salt (16)       | iv (12)         | AES-GCM ciphertext|
-| HAVEN_BACKUP_V1 | random          | random          | (with 16-byte tag |
+| HAVEN_BACKUP_V2 | random          | random          | (with 16-byte tag |
 |                 |                 |                 |  appended by GCM) |
 +-----------------+-----------------+-----------------+-------------------+
 ```
 
 | Field | Bytes | Notes |
 |---|---|---|
-| MAGIC | 15 | Literal ASCII `HAVEN_BACKUP_V1`. Stays at `_V1` even though the inner JSON schema is at v2 — the envelope hasn't changed. |
+| MAGIC | 15 | Literal ASCII, and the **KDF version**: `HAVEN_BACKUP_V2` = 600,000 PBKDF2 iterations (current), `HAVEN_BACKUP_V1` = 100,000 (legacy, still imported). Both are 15 bytes, so the rest of the layout is identical. |
 | salt | 16 | Random per-export, used as the PBKDF2 salt. |
 | iv | 12 | Random per-export, GCM IV / nonce. |
 | ciphertext | rest | AES-256-GCM over the JSON payload, with the 16-byte authentication tag appended (standard Java GCM convention — `Cipher.doFinal()` writes the tag to the tail of the output). |
 
-**Key derivation.** PBKDF2 with HMAC-SHA-256, 100,000 iterations,
-256-bit output. The password is UTF-8 encoded.
+**Key derivation.** PBKDF2 with HMAC-SHA-256, 256-bit output; the password is
+UTF-8 encoded. Iteration count is selected by the magic header: **600,000** for
+`HAVEN_BACKUP_V2` (OWASP 2023 guidance — the file contains decrypted passwords
+and SSH keys), **100,000** for legacy `HAVEN_BACKUP_V1` files.
 
 **Cipher.** AES-256/GCM, 128-bit authentication tag, no associated
 data. The MAGIC, salt, and IV bytes are *not* covered by the GCM
@@ -83,18 +85,21 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-MAGIC = b"HAVEN_BACKUP_V1"
+# Magic header doubles as the KDF version → iteration count.
+ITERATIONS_BY_MAGIC = {b"HAVEN_BACKUP_V2": 600_000, b"HAVEN_BACKUP_V1": 100_000}
+MAGIC_LEN = 15
 SALT_LEN = 16
 IV_LEN = 12
-ITERATIONS = 100_000
 
 
 def decrypt_haven_backup(data: bytes, password: str) -> bytes:
-    if not data.startswith(MAGIC):
+    magic = data[:MAGIC_LEN]
+    iterations = ITERATIONS_BY_MAGIC.get(magic)
+    if iterations is None:
         raise ValueError("Not a Haven backup file (bad magic header)")
-    if len(data) < len(MAGIC) + SALT_LEN + IV_LEN + 16:  # 16 = GCM tag
+    if len(data) < MAGIC_LEN + SALT_LEN + IV_LEN + 16:  # 16 = GCM tag
         raise ValueError(f"File too short ({len(data)} bytes) — likely truncated in transit")
-    off = len(MAGIC)
+    off = MAGIC_LEN
     salt = data[off:off + SALT_LEN]
     off += SALT_LEN
     iv = data[off:off + IV_LEN]
@@ -104,7 +109,7 @@ def decrypt_haven_backup(data: bytes, password: str) -> bytes:
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,
-        iterations=ITERATIONS,
+        iterations=iterations,
     )
     key = kdf.derive(password.encode("utf-8"))
     return AESGCM(key).decrypt(iv, ciphertext, associated_data=None)

@@ -35,6 +35,12 @@ import sh.haven.core.data.db.entities.SshKey
 import sh.haven.core.data.db.entities.TunnelConfig
 import sh.haven.core.data.repository.TunnelConfigRepository
 import java.io.File
+import java.security.SecureRandom
+import javax.crypto.Cipher
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.PBEKeySpec
+import javax.crypto.spec.SecretKeySpec
 
 @RunWith(RobolectricTestRunner::class)
 class BackupServiceTest {
@@ -104,6 +110,49 @@ class BackupServiceTest {
     @Test(expected = IllegalArgumentException::class)
     fun `import garbage data throws`() = runTest {
         service.import("not a backup file".toByteArray(), "password")
+    }
+
+    @Test
+    fun `legacy V1 backup (100k iterations) still imports`() = runTest {
+        coEvery { connectionRepository.getAll() } returns emptyList()
+        coEvery { sshKeyDao.getAll() } returns emptyList()
+        coEvery { sshKeyRepository.getAllDecrypted() } returns emptyList()
+        coEvery { knownHostDao.getAll() } returns emptyList()
+        coEvery { portForwardRuleDao.getAll() } returns emptyList()
+
+        // Produce a current (V2/600k) backup, recover its plaintext, then
+        // re-wrap it as an old V1/100k file and confirm import still reads it.
+        val v2 = service.export("pw")
+        val plaintext = decryptRaw(v2, "pw", "HAVEN_BACKUP_V2", 600_000)
+        val legacy = encryptLegacy(plaintext, "pw")
+
+        val result = service.import(legacy, "pw")
+        assertTrue(result.errors.isEmpty())
+    }
+
+    private fun deriveKeyForTest(password: String, salt: ByteArray, iterations: Int): SecretKeySpec {
+        val f = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+        val spec = PBEKeySpec(password.toCharArray(), salt, iterations, 256)
+        return SecretKeySpec(f.generateSecret(spec).encoded, "AES")
+    }
+
+    private fun decryptRaw(data: ByteArray, password: String, magic: String, iterations: Int): ByteArray {
+        var off = magic.length
+        val salt = data.copyOfRange(off, off + 16); off += 16
+        val iv = data.copyOfRange(off, off + 12); off += 12
+        val ct = data.copyOfRange(off, data.size)
+        val c = Cipher.getInstance("AES/GCM/NoPadding")
+        c.init(Cipher.DECRYPT_MODE, deriveKeyForTest(password, salt, iterations), GCMParameterSpec(128, iv))
+        return c.doFinal(ct)
+    }
+
+    private fun encryptLegacy(plaintext: ByteArray, password: String): ByteArray {
+        val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
+        val iv = ByteArray(12).also { SecureRandom().nextBytes(it) }
+        val c = Cipher.getInstance("AES/GCM/NoPadding")
+        c.init(Cipher.ENCRYPT_MODE, deriveKeyForTest(password, salt, 100_000), GCMParameterSpec(128, iv))
+        val ct = c.doFinal(plaintext)
+        return "HAVEN_BACKUP_V1".toByteArray(Charsets.US_ASCII) + salt + iv + ct
     }
 
     // -- Connection profile roundtrip --

@@ -488,33 +488,39 @@ class BackupService @Inject constructor(
 
     private fun encrypt(plaintext: ByteArray, password: String): ByteArray {
         val salt = ByteArray(SALT_LENGTH).also { SecureRandom().nextBytes(it) }
-        val key = deriveKey(password, salt)
+        val key = deriveKey(password, salt, PBKDF2_ITERATIONS)
         val iv = ByteArray(IV_LENGTH).also { SecureRandom().nextBytes(it) }
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(TAG_LENGTH_BITS, iv))
         val ciphertext = cipher.doFinal(plaintext)
-        // Format: MAGIC + salt + iv + ciphertext
-        return MAGIC.toByteArray(Charsets.US_ASCII) + salt + iv + ciphertext
+        // Format: MAGIC + salt + iv + ciphertext. The magic doubles as the KDF
+        // version: MAGIC_V2 files use 600k PBKDF2 iterations, legacy MAGIC files
+        // use 100k. Both magics are the same length, so offsets are unchanged.
+        return MAGIC_V2.toByteArray(Charsets.US_ASCII) + salt + iv + ciphertext
     }
 
     private fun decrypt(data: ByteArray, password: String): ByteArray {
-        val magic = String(data, 0, MAGIC.length, Charsets.US_ASCII)
-        if (magic != MAGIC) throw IllegalArgumentException("Not a Haven backup file")
-        var offset = MAGIC.length
+        val magic = String(data, 0, MAGIC_V2.length, Charsets.US_ASCII)
+        val iterations = when (magic) {
+            MAGIC_V2 -> PBKDF2_ITERATIONS
+            MAGIC_LEGACY -> PBKDF2_ITERATIONS_LEGACY
+            else -> throw IllegalArgumentException("Not a Haven backup file")
+        }
+        var offset = magic.length
         val salt = data.copyOfRange(offset, offset + SALT_LENGTH)
         offset += SALT_LENGTH
         val iv = data.copyOfRange(offset, offset + IV_LENGTH)
         offset += IV_LENGTH
         val ciphertext = data.copyOfRange(offset, data.size)
-        val key = deriveKey(password, salt)
+        val key = deriveKey(password, salt, iterations)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_LENGTH_BITS, iv))
         return cipher.doFinal(ciphertext)
     }
 
-    private fun deriveKey(password: String, salt: ByteArray): SecretKeySpec {
+    private fun deriveKey(password: String, salt: ByteArray, iterations: Int): SecretKeySpec {
         val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-        val spec = PBEKeySpec(password.toCharArray(), salt, PBKDF2_ITERATIONS, 256)
+        val spec = PBEKeySpec(password.toCharArray(), salt, iterations, 256)
         val secret = factory.generateSecret(spec)
         return SecretKeySpec(secret.encoded, "AES")
     }
@@ -527,11 +533,17 @@ class BackupService @Inject constructor(
         // affects the inner JSON payload schema. v1 files still restore
         // cleanly (the new keys default to ConnectionProfile defaults).
         private const val BACKUP_VERSION = 2
-        private const val MAGIC = "HAVEN_BACKUP_V1"
+        // KDF envelope version, encoded in the magic header. MAGIC_LEGACY files
+        // used 100k PBKDF2 iterations; MAGIC_V2 files use 600k (OWASP 2023) —
+        // the backup holds decrypted passwords and SSH keys. Old files still
+        // import (decrypt reads the magic to pick the iteration count).
+        private const val MAGIC_LEGACY = "HAVEN_BACKUP_V1"
+        private const val MAGIC_V2 = "HAVEN_BACKUP_V2"
         private const val SALT_LENGTH = 16
         private const val IV_LENGTH = 12
         private const val TAG_LENGTH_BITS = 128
-        private const val PBKDF2_ITERATIONS = 100_000
+        private const val PBKDF2_ITERATIONS = 600_000
+        private const val PBKDF2_ITERATIONS_LEGACY = 100_000
     }
 }
 
