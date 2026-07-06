@@ -413,4 +413,6 @@
     <string name="settings_audio_bridge_subtitle">تشغيل الصوت من تطبيقات Linux عبر مكبّر صوت الجهاز من خلال جسر PulseAudio داخل الضيف. إخراج فقط. يبث باستمرار أثناء تفعيله — أوقفه عند عدم الاستخدام.</string>
     <string name="settings_reverse_tunnel_status_active">Near (SSH): عبر %1$s — متصل</string>
     <string name="settings_reverse_tunnel_status_inactive">Near (SSH): غير متصل — افتح %1$s للتفعيل</string>
+    <string name="settings_remote_clipboard_title">مزامنة حافظة الجهاز البعيد</string>
+    <string name="settings_remote_clipboard_subtitle">السماح لسطح مكتب بعيد (VNC) بالنسخ إلى حافظة الجهاز. مُعطّل افتراضيًا.</string>
 </resources>

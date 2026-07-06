@@ -113,4 +113,5 @@
     <string name="terminal_vnc_depth_24bit">24 位色彩（最佳质量）</string>
     <string name="terminal_vnc_depth_16bit">16 位色彩（更快）</string>
     <string name="terminal_vnc_depth_256">256 色（最低带宽）</string>
+    <string name="terminal_new_tab_host_key_unknown">未知的主机密钥 %s — 请先打开此连接以验证并信任它</string>
 </resources>

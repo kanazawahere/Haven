@@ -413,4 +413,6 @@
     <string name="settings_audio_bridge_subtitle">게스트 내 PulseAudio 브리지를 통해 Linux 앱의 소리를 기기 스피커로 재생합니다. 출력 전용. 켜져 있는 동안 계속 스트리밍되므로 사용하지 않을 때는 끄세요.</string>
     <string name="settings_reverse_tunnel_status_active">Near (SSH): %1$s 경유 — 연결됨</string>
     <string name="settings_reverse_tunnel_status_inactive">Near (SSH): 연결 안 됨 — 사용하려면 %1$s을(를) 여세요</string>
+    <string name="settings_remote_clipboard_title">원격 클립보드 동기화</string>
+    <string name="settings_remote_clipboard_subtitle">원격 데스크톱(VNC)이 기기 클립보드에 복사하도록 허용합니다. 기본값은 꺼짐입니다.</string>
 </resources>

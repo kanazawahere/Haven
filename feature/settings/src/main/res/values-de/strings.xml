@@ -413,4 +413,6 @@
     <string name="settings_audio_bridge_subtitle">Gibt Ton aus Linux-Apps über den Gerätelautsprecher aus, per PulseAudio-Brücke im Gast. Nur Ausgabe. Streamt dauerhaft, solange aktiviert — bei Nichtgebrauch ausschalten.</string>
     <string name="settings_reverse_tunnel_status_active">Near (SSH): läuft über %1$s — verbunden</string>
     <string name="settings_reverse_tunnel_status_inactive">Near (SSH): nicht verbunden — öffne %1$s zum Aktivieren</string>
+    <string name="settings_remote_clipboard_title">Entfernte Zwischenablage synchronisieren</string>
+    <string name="settings_remote_clipboard_subtitle">Erlaubt einem entfernten Desktop (VNC), in die Zwischenablage des Geräts zu kopieren. Standardmäßig aus.</string>
 </resources>

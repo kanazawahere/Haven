@@ -413,4 +413,6 @@
     <string name="settings_audio_bridge_subtitle">गेस्ट के अंदर PulseAudio ब्रिज के ज़रिये Linux ऐप्स की आवाज़ डिवाइस स्पीकर से चलाएँ। केवल आउटपुट। चालू रहने पर लगातार स्ट्रीम होता है — उपयोग में न हो तो बंद करें।</string>
     <string name="settings_reverse_tunnel_status_active">Near (SSH): %1$s के ज़रिये चल रहा है — कनेक्टेड</string>
     <string name="settings_reverse_tunnel_status_inactive">Near (SSH): कनेक्टेड नहीं — सक्षम करने के लिए %1$s खोलें</string>
+    <string name="settings_remote_clipboard_title">रिमोट क्लिपबोर्ड सिंक करें</string>
+    <string name="settings_remote_clipboard_subtitle">किसी रिमोट डेस्कटॉप (VNC) को डिवाइस क्लिपबोर्ड में कॉपी करने दें। डिफ़ॉल्ट रूप से बंद।</string>
 </resources>

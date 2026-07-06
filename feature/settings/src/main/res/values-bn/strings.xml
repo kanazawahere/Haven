@@ -413,4 +413,6 @@
     <string name="settings_audio_bridge_subtitle">গেস্টের ভিতরের PulseAudio ব্রিজের মাধ্যমে Linux অ্যাপের শব্দ ডিভাইসের স্পিকারে বাজান। শুধু আউটপুট। চালু থাকলে অবিরাম স্ট্রিম হয় — ব্যবহার না করলে বন্ধ করুন।</string>
     <string name="settings_reverse_tunnel_status_active">Near (SSH): %1$s-এর মাধ্যমে চলছে — সংযুক্ত</string>
     <string name="settings_reverse_tunnel_status_inactive">Near (SSH): সংযুক্ত নয় — চালু করতে %1$s খুলুন</string>
+    <string name="settings_remote_clipboard_title">রিমোট ক্লিপবোর্ড সিঙ্ক করুন</string>
+    <string name="settings_remote_clipboard_subtitle">একটি রিমোট ডেস্কটপ (VNC) কে ডিভাইসের ক্লিপবোর্ডে কপি করতে দিন। ডিফল্টভাবে বন্ধ।</string>
 </resources>

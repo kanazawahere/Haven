@@ -113,4 +113,5 @@
     <string name="terminal_vnc_depth_24bit">Color de 24 bits (mejor calidad)</string>
     <string name="terminal_vnc_depth_16bit">Color de 16 bits (más rápido)</string>
     <string name="terminal_vnc_depth_256">256 colores (menor ancho de banda)</string>
+    <string name="terminal_new_tab_host_key_unknown">Clave de host desconocida para %s: abre esta conexión primero para verificarla y confiar en ella</string>
 </resources>

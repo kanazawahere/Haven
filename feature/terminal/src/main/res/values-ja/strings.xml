@@ -113,4 +113,5 @@
     <string name="terminal_vnc_depth_24bit">24 ビットカラー（最高品質）</string>
     <string name="terminal_vnc_depth_16bit">16 ビットカラー（高速）</string>
     <string name="terminal_vnc_depth_256">256 色（最小帯域幅）</string>
+    <string name="terminal_new_tab_host_key_unknown">%s のホストキーが不明です — まずこの接続を開いて確認し、信頼してください</string>
 </resources>

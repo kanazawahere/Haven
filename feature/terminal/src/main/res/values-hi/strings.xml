@@ -113,4 +113,5 @@
     <string name="terminal_vnc_depth_24bit">24-बिट रंग (सर्वोत्तम गुणवत्ता)</string>
     <string name="terminal_vnc_depth_16bit">16-बिट रंग (तेज़)</string>
     <string name="terminal_vnc_depth_256">256 रंग (न्यूनतम bandwidth)</string>
+    <string name="terminal_new_tab_host_key_unknown">%s के लिए अज्ञात होस्ट कुंजी — इसे सत्यापित करने और भरोसा करने के लिए पहले यह कनेक्शन खोलें</string>
 </resources>

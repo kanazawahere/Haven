@@ -22072,6 +22072,44 @@
      }
     },
     {
+     "name": "settings_remote_clipboard_title",
+     "en": "Sync remote clipboard",
+     "comment": "Security section",
+     "args": [],
+     "t": {
+      "ar": "مزامنة حافظة الجهاز البعيد",
+      "bn": "রিমোট ক্লিপবোর্ড সিঙ্ক করুন",
+      "de": "Entfernte Zwischenablage synchronisieren",
+      "es": "Sincronizar portapapeles remoto",
+      "fr": "Synchroniser le presse-papiers distant",
+      "hi": "रिमोट क्लिपबोर्ड सिंक करें",
+      "ja": "リモートのクリップボードを同期",
+      "ko": "원격 클립보드 동기화",
+      "pt": "Sincronizar área de transferência remota",
+      "ru": "Синхронизировать удалённый буфер обмена",
+      "zh": "同步远程剪贴板"
+     }
+    },
+    {
+     "name": "settings_remote_clipboard_subtitle",
+     "en": "Let a remote desktop (VNC) copy into the device clipboard. Off by default.",
+     "comment": "Security section",
+     "args": [],
+     "t": {
+      "ar": "السماح لسطح مكتب بعيد (VNC) بالنسخ إلى حافظة الجهاز. مُعطّل افتراضيًا.",
+      "bn": "একটি রিমোট ডেস্কটপ (VNC) কে ডিভাইসের ক্লিপবোর্ডে কপি করতে দিন। ডিফল্টভাবে বন্ধ।",
+      "de": "Erlaubt einem entfernten Desktop (VNC), in die Zwischenablage des Geräts zu kopieren. Standardmäßig aus.",
+      "es": "Permite que un escritorio remoto (VNC) copie al portapapeles del dispositivo. Desactivado por defecto.",
+      "fr": "Autorise un bureau distant (VNC) à copier dans le presse-papiers de l\\'appareil. Désactivé par défaut.",
+      "hi": "किसी रिमोट डेस्कटॉप (VNC) को डिवाइस क्लिपबोर्ड में कॉपी करने दें। डिफ़ॉल्ट रूप से बंद।",
+      "ja": "リモートデスクトップ (VNC) がデバイスのクリップボードにコピーできるようにします。既定ではオフです。",
+      "ko": "원격 데스크톱(VNC)이 기기 클립보드에 복사하도록 허용합니다. 기본값은 꺼짐입니다.",
+      "pt": "Permite que uma área de trabalho remota (VNC) copie para a área de transferência do dispositivo. Desativado por padrão.",
+      "ru": "Разрешить удалённому рабочему столу (VNC) копировать в буфер обмена устройства. По умолчанию выключено.",
+      "zh": "允许远程桌面 (VNC) 复制内容到设备剪贴板。默认关闭。"
+     }
+    },
+    {
      "name": "settings_show_desktops_title",
      "en": "Show Desktops card",
      "comment": "Security section",
@@ -34011,7 +34049,19 @@
      "args": [
       "%s"
      ],
-     "t": {}
+     "t": {
+      "ar": "مفتاح مضيف غير معروف لـ %s — افتح هذا الاتصال أولاً للتحقق منه والوثوق به",
+      "bn": "%s-এর জন্য অজানা হোস্ট কী — এটি যাচাই করে বিশ্বাস করতে প্রথমে এই সংযোগটি খুলুন",
+      "de": "Unbekannter Hostschlüssel für %s – öffne diese Verbindung zuerst, um sie zu prüfen und ihr zu vertrauen",
+      "es": "Clave de host desconocida para %s: abre esta conexión primero para verificarla y confiar en ella",
+      "fr": "Clé d\\'hôte inconnue pour %s — ouvrez d\\'abord cette connexion pour la vérifier et l\\'approuver",
+      "hi": "%s के लिए अज्ञात होस्ट कुंजी — इसे सत्यापित करने और भरोसा करने के लिए पहले यह कनेक्शन खोलें",
+      "ja": "%s のホストキーが不明です — まずこの接続を開いて確認し、信頼してください",
+      "ko": "%s의 알 수 없는 호스트 키 — 먼저 이 연결을 열어 확인하고 신뢰하세요",
+      "pt": "Chave de host desconhecida para %s — abra esta conexão primeiro para verificá-la e confiar nela",
+      "ru": "Неизвестный ключ хоста для %s — сначала откройте это подключение, чтобы проверить и довериться ему",
+      "zh": "未知的主机密钥 %s — 请先打开此连接以验证并信任它"
+     }
     },
     {
      "name": "terminal_new_tab_connection_failed",

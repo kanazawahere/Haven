@@ -413,4 +413,6 @@
     <string name="settings_audio_bridge_subtitle">Воспроизводит звук из приложений Linux через динамик устройства с помощью моста PulseAudio в гостевой системе. Только вывод. Поток идёт непрерывно, пока включено — выключайте, когда не используется.</string>
     <string name="settings_reverse_tunnel_status_active">Near (SSH): через %1$s — подключено</string>
     <string name="settings_reverse_tunnel_status_inactive">Near (SSH): не подключено — откройте %1$s, чтобы включить</string>
+    <string name="settings_remote_clipboard_title">Синхронизировать удалённый буфер обмена</string>
+    <string name="settings_remote_clipboard_subtitle">Разрешить удалённому рабочему столу (VNC) копировать в буфер обмена устройства. По умолчанию выключено.</string>
 </resources>

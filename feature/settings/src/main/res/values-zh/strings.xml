@@ -412,4 +412,6 @@
     <string name="settings_audio_bridge_subtitle">通过客机内的 PulseAudio 桥接，将 Linux 应用的声音经设备扬声器播放。仅支持输出。开启期间会持续传输——不用时请关闭。</string>
     <string name="settings_reverse_tunnel_status_active">Near（SSH）：经由 %1$s — 已连接</string>
     <string name="settings_reverse_tunnel_status_inactive">Near（SSH）：未连接 — 打开 %1$s 以启用</string>
+    <string name="settings_remote_clipboard_title">同步远程剪贴板</string>
+    <string name="settings_remote_clipboard_subtitle">允许远程桌面 (VNC) 复制内容到设备剪贴板。默认关闭。</string>
 </resources>

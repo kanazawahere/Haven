@@ -413,4 +413,6 @@
     <string name="settings_audio_bridge_subtitle">Reproduz o som de apps Linux no alto-falante do dispositivo por uma ponte PulseAudio dentro do convidado. Apenas saída. Transmite continuamente enquanto ativado — desative quando não estiver em uso.</string>
     <string name="settings_reverse_tunnel_status_active">Near (SSH): usando %1$s — conectado</string>
     <string name="settings_reverse_tunnel_status_inactive">Near (SSH): não conectado — abra %1$s para ativar</string>
+    <string name="settings_remote_clipboard_title">Sincronizar área de transferência remota</string>
+    <string name="settings_remote_clipboard_subtitle">Permite que uma área de trabalho remota (VNC) copie para a área de transferência do dispositivo. Desativado por padrão.</string>
 </resources>

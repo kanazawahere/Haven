@@ -114,4 +114,5 @@
     <string name="terminal_vnc_depth_24bit">24비트 색상 (최고 품질)</string>
     <string name="terminal_vnc_depth_16bit">16비트 색상 (더 빠름)</string>
     <string name="terminal_vnc_depth_256">256색 (최소 대역폭)</string>
+    <string name="terminal_new_tab_host_key_unknown">%s의 알 수 없는 호스트 키 — 먼저 이 연결을 열어 확인하고 신뢰하세요</string>
 </resources>
