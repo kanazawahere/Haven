@@ -8119,32 +8119,6 @@ internal class McpTools(
         }.getOrDefault(0L)
     }
 
-    private fun desktopToJson(
-        de: sh.haven.core.local.ProotManager.DesktopEnvironment,
-        activeFamily: sh.haven.core.local.proot.PackageFamily,
-        installed: Boolean,
-        running: Boolean,
-    ): JSONObject = JSONObject().apply {
-        put("id", de.spec.id)
-        put("label", de.label)
-        put("sizeEstimateMb", de.spec.sizeEstimateMb)
-        put("installed", installed)
-        put("running", running)
-        put("isNative", de.isNative)
-        put("isWayland", de.isWayland)
-        put("verifyBinary", de.spec.verifyBinary)
-        put("compatibility", de.spec.compatibilityOn(activeFamily).name)
-        de.spec.compatibilityNoteOn(activeFamily)?.let { put("compatibilityNote", it) }
-        val pkgs = de.spec.packagesPerFamily[activeFamily]
-        if (pkgs != null) {
-            put("packages", JSONArray().apply { pkgs.forEach { put(it) } })
-        } else {
-            put("packages", JSONObject.NULL)
-        }
-        put("packageFamilies", JSONArray().apply {
-            de.spec.packagesPerFamily.keys.forEach { put(it.name) }
-        })
-    }
 
     private fun osSetupStateToJson(
         state: sh.haven.core.local.ProotManager.SetupState,
@@ -8616,10 +8590,6 @@ internal class McpTools(
         }
     }
 
-    private fun desktopByIdOrThrow(deId: String): sh.haven.core.local.ProotManager.DesktopEnvironment =
-        sh.haven.core.local.ProotManager.DesktopEnvironment.entries
-            .firstOrNull { it.spec.id == deId }
-            ?: throw McpError(-32602, "Unknown deId: $deId")
 
     private suspend fun listDesktopWindows(args: JSONObject): JSONObject {
         val deId = args.optString("deId").takeIf { it.isNotEmpty() }
@@ -8960,10 +8930,6 @@ internal class McpTools(
         }
     }
 
-    private fun requireIntArg(args: JSONObject, name: String): Int {
-        if (!args.has(name)) throw McpError(-32602, "$name is required")
-        return args.optInt(name)
-    }
 
     // --- Tier-3 standing policies (create/list/revoke; enforcement is in McpServer) ---
 
@@ -9071,33 +9037,6 @@ internal class McpTools(
      * height). Crop rect is clamped to the bitmap bounds so a window that
      * extends past the screen edge still yields a valid image.
      */
-    private fun encodeCapture(
-        pngBytes: ByteArray,
-        crop: IntArray?,
-        maxWidth: Int,
-        format: String,
-    ): Triple<String, Int, Int> {
-        var bmp = BitmapFactory.decodeByteArray(pngBytes, 0, pngBytes.size)
-            ?: throw McpError(-32603, "Could not decode captured image")
-        if (crop != null) {
-            val x = crop[0].coerceIn(0, bmp.width - 1)
-            val y = crop[1].coerceIn(0, bmp.height - 1)
-            val cw = crop[2].coerceIn(1, bmp.width - x)
-            val ch = crop[3].coerceIn(1, bmp.height - y)
-            bmp = Bitmap.createBitmap(bmp, x, y, cw, ch)
-        }
-        if (maxWidth in 1 until bmp.width) {
-            val nh = (bmp.height.toFloat() * maxWidth / bmp.width).toInt().coerceAtLeast(1)
-            bmp = Bitmap.createScaledBitmap(bmp, maxWidth, nh, true)
-        }
-        val out = java.io.ByteArrayOutputStream()
-        if (format == "jpeg") {
-            bmp.compress(Bitmap.CompressFormat.JPEG, 70, out)
-        } else {
-            bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
-        }
-        return Triple(Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP), bmp.width, bmp.height)
-    }
 
     /**
      * Launch a GUI app into a running X11 desktop (software-GL fallback set
@@ -9797,3 +9736,73 @@ private const val MAX_LOGCAT_BYTES = 256 * 1024
  */
 private fun String.containsShellMetacharacter(): Boolean =
     any { it == ';' || it == '|' || it == '&' || it == '$' || it == '`' || it == '\n' || it == '\r' }
+
+
+/** Promoted from McpTools for reuse by tool providers (#mcp-backbone Stage 5). */
+internal fun desktopToJson(
+    de: sh.haven.core.local.ProotManager.DesktopEnvironment,
+    activeFamily: sh.haven.core.local.proot.PackageFamily,
+    installed: Boolean,
+    running: Boolean,
+): JSONObject = JSONObject().apply {
+    put("id", de.spec.id)
+    put("label", de.label)
+    put("sizeEstimateMb", de.spec.sizeEstimateMb)
+    put("installed", installed)
+    put("running", running)
+    put("isNative", de.isNative)
+    put("isWayland", de.isWayland)
+    put("verifyBinary", de.spec.verifyBinary)
+    put("compatibility", de.spec.compatibilityOn(activeFamily).name)
+    de.spec.compatibilityNoteOn(activeFamily)?.let { put("compatibilityNote", it) }
+    val pkgs = de.spec.packagesPerFamily[activeFamily]
+    if (pkgs != null) {
+        put("packages", JSONArray().apply { pkgs.forEach { put(it) } })
+    } else {
+        put("packages", JSONObject.NULL)
+    }
+    put("packageFamilies", JSONArray().apply {
+        de.spec.packagesPerFamily.keys.forEach { put(it.name) }
+    })
+}
+
+/** Promoted from McpTools for reuse by tool providers (#mcp-backbone Stage 5). */
+internal fun requireIntArg(args: JSONObject, name: String): Int {
+    if (!args.has(name)) throw McpError(-32602, "$name is required")
+    return args.optInt(name)
+}
+
+/** Promoted from McpTools for reuse by tool providers (#mcp-backbone Stage 5). */
+internal fun encodeCapture(
+    pngBytes: ByteArray,
+    crop: IntArray?,
+    maxWidth: Int,
+    format: String,
+): Triple<String, Int, Int> {
+    var bmp = BitmapFactory.decodeByteArray(pngBytes, 0, pngBytes.size)
+        ?: throw McpError(-32603, "Could not decode captured image")
+    if (crop != null) {
+        val x = crop[0].coerceIn(0, bmp.width - 1)
+        val y = crop[1].coerceIn(0, bmp.height - 1)
+        val cw = crop[2].coerceIn(1, bmp.width - x)
+        val ch = crop[3].coerceIn(1, bmp.height - y)
+        bmp = Bitmap.createBitmap(bmp, x, y, cw, ch)
+    }
+    if (maxWidth in 1 until bmp.width) {
+        val nh = (bmp.height.toFloat() * maxWidth / bmp.width).toInt().coerceAtLeast(1)
+        bmp = Bitmap.createScaledBitmap(bmp, maxWidth, nh, true)
+    }
+    val out = java.io.ByteArrayOutputStream()
+    if (format == "jpeg") {
+        bmp.compress(Bitmap.CompressFormat.JPEG, 70, out)
+    } else {
+        bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+    }
+    return Triple(Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP), bmp.width, bmp.height)
+}
+
+/** Promoted from McpTools for reuse by tool providers (#mcp-backbone Stage 5). */
+internal fun desktopByIdOrThrow(deId: String): sh.haven.core.local.ProotManager.DesktopEnvironment =
+    sh.haven.core.local.ProotManager.DesktopEnvironment.entries
+        .firstOrNull { it.spec.id == deId }
+        ?: throw McpError(-32602, "Unknown deId: $deId")
