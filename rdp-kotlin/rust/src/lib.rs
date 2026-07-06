@@ -55,6 +55,14 @@ pub struct RdpConfig {
     /// only security, useful against servers where ironrdp's CredSSP
     /// doesn't interop — #109, Windows Server 2025 Datacenter.
     pub enable_credssp: bool,
+    /// Lowercase-hex SHA-256 of the server's DER leaf certificate that was
+    /// pinned on a previous connection, or None on first connect. When set,
+    /// the TLS handshake is aborted (before any credentials are sent) if the
+    /// server presents a different certificate — trust-on-first-use, closing
+    /// the "accepts any server certificate" MITM hole (security-review
+    /// critical #2). The observed fingerprint is reported back via
+    /// [SessionCallback::on_server_cert] so the caller can pin it.
+    pub pinned_cert_sha256: Option<String>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -143,6 +151,11 @@ pub trait SessionCallback: Send + Sync {
     /// Fired when the session thread exits cleanly (graceful server
     /// disconnect or local `disconnect()`).
     fn on_disconnected(&self);
+    /// Fired right after the TLS handshake with the lowercase-hex SHA-256 of
+    /// the server's DER leaf certificate. The caller pins this on first use
+    /// (trust-on-first-use); a later change is rejected during the handshake
+    /// via `RdpConfig.pinned_cert_sha256` before any credentials are sent.
+    fn on_server_cert(&self, sha256: String);
 }
 
 /// Internal state for the RDP session.
@@ -647,71 +660,172 @@ fn diagnose_credssp_error(e: &ironrdp_connector::sspi::Error) -> String {
     format!("{} ({:?}: {})", kind_label, e.error_type, e.description)
 }
 
-/// Create a rustls TLS connector that accepts any server certificate.
-/// RDP servers typically use self-signed certificates.
-fn create_tls_config() -> Result<rustls::ClientConfig, RdpError> {
-    use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
+/// Lowercase-hex SHA-256 of a byte slice. Matches Kotlin's
+/// `TlsCertVerifier.fingerprint` (SHA-256 of the DER leaf certificate).
+fn sha256_hex(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    Sha256::digest(bytes).iter().map(|b| format!("{:02x}", b)).collect()
+}
 
-    #[derive(Debug)]
-    struct AcceptAnyServerCert;
+/// rustls verifier that pins the server's leaf certificate (trust-on-first-use)
+/// instead of accepting any certificate. RDP servers overwhelmingly use
+/// self-signed certificates, so a chain-of-trust check is not viable; we pin
+/// the exact leaf fingerprint the way SSH pins host keys.
+///
+/// [pinned] is the fingerprint remembered on a prior connection (or None on
+/// first use). Identity is checked in `verify_server_cert`; crucially, key
+/// possession is still verified for real in `verify_tls*_signature` (delegated
+/// to the crypto provider) so a MITM cannot replay the victim's public cert
+/// without its private key. (security-review critical #2)
+struct PinnedCertVerifier {
+    pinned: Option<String>,
+    provider: Arc<rustls::crypto::CryptoProvider>,
+}
 
-    impl ServerCertVerifier for AcceptAnyServerCert {
-        fn verify_server_cert(
-            &self,
-            _end_entity: &rustls::pki_types::CertificateDer<'_>,
-            _intermediates: &[rustls::pki_types::CertificateDer<'_>],
-            _server_name: &rustls::pki_types::ServerName<'_>,
-            _ocsp_response: &[u8],
-            _now: rustls::pki_types::UnixTime,
-        ) -> Result<ServerCertVerified, rustls::Error> {
-            Ok(ServerCertVerified::assertion())
-        }
+impl std::fmt::Debug for PinnedCertVerifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PinnedCertVerifier")
+            .field("pinned", &self.pinned)
+            .finish()
+    }
+}
 
-        fn verify_tls12_signature(
-            &self,
-            _message: &[u8],
-            _cert: &rustls::pki_types::CertificateDer<'_>,
-            _dss: &rustls::DigitallySignedStruct,
-        ) -> Result<HandshakeSignatureValid, rustls::Error> {
-            Ok(HandshakeSignatureValid::assertion())
-        }
-
-        fn verify_tls13_signature(
-            &self,
-            _message: &[u8],
-            _cert: &rustls::pki_types::CertificateDer<'_>,
-            _dss: &rustls::DigitallySignedStruct,
-        ) -> Result<HandshakeSignatureValid, rustls::Error> {
-            Ok(HandshakeSignatureValid::assertion())
-        }
-
-        fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
-            vec![
-                rustls::SignatureScheme::RSA_PKCS1_SHA256,
-                rustls::SignatureScheme::RSA_PKCS1_SHA384,
-                rustls::SignatureScheme::RSA_PKCS1_SHA512,
-                rustls::SignatureScheme::ECDSA_NISTP256_SHA256,
-                rustls::SignatureScheme::ECDSA_NISTP384_SHA384,
-                rustls::SignatureScheme::RSA_PSS_SHA256,
-                rustls::SignatureScheme::RSA_PSS_SHA384,
-                rustls::SignatureScheme::RSA_PSS_SHA512,
-                rustls::SignatureScheme::ED25519,
-            ]
+impl rustls::client::danger::ServerCertVerifier for PinnedCertVerifier {
+    fn verify_server_cert(
+        &self,
+        end_entity: &rustls::pki_types::CertificateDer<'_>,
+        _intermediates: &[rustls::pki_types::CertificateDer<'_>],
+        _server_name: &rustls::pki_types::ServerName<'_>,
+        _ocsp_response: &[u8],
+        _now: rustls::pki_types::UnixTime,
+    ) -> Result<rustls::client::danger::ServerCertVerified, rustls::Error> {
+        let observed = sha256_hex(end_entity.as_ref());
+        match &self.pinned {
+            Some(p) if !p.eq_ignore_ascii_case(&observed) => Err(rustls::Error::General(format!(
+                "server TLS certificate has changed since the last connection \
+                 (pinned {}…, got {}…) — refusing to continue, as this can \
+                 indicate a man-in-the-middle attack. If you changed the \
+                 server's certificate on purpose, forget the saved certificate \
+                 for this host and reconnect.",
+                p.chars().take(16).collect::<String>(),
+                observed.chars().take(16).collect::<String>(),
+            ))),
+            // Pinned & matching, or first use (TOFU): accept the identity here;
+            // key possession is proven by the signature checks below.
+            _ => Ok(rustls::client::danger::ServerCertVerified::assertion()),
         }
     }
 
+    fn verify_tls12_signature(
+        &self,
+        message: &[u8],
+        cert: &rustls::pki_types::CertificateDer<'_>,
+        dss: &rustls::DigitallySignedStruct,
+    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+        rustls::crypto::verify_tls12_signature(
+            message,
+            cert,
+            dss,
+            &self.provider.signature_verification_algorithms,
+        )
+    }
+
+    fn verify_tls13_signature(
+        &self,
+        message: &[u8],
+        cert: &rustls::pki_types::CertificateDer<'_>,
+        dss: &rustls::DigitallySignedStruct,
+    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+        rustls::crypto::verify_tls13_signature(
+            message,
+            cert,
+            dss,
+            &self.provider.signature_verification_algorithms,
+        )
+    }
+
+    fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
+        self.provider.signature_verification_algorithms.supported_schemes()
+    }
+}
+
+/// Create a rustls TLS connector that pins the server's leaf certificate
+/// (trust-on-first-use). [pinned_cert_sha256] is the fingerprint remembered
+/// from a previous connection, or None on first use.
+fn create_tls_config(pinned_cert_sha256: Option<String>) -> Result<rustls::ClientConfig, RdpError> {
     // Explicitly use ring provider — auto-detection panics on Android
-    let provider = rustls::crypto::ring::default_provider();
-    let mut config = rustls::ClientConfig::builder_with_provider(provider.into())
+    let provider = Arc::new(rustls::crypto::ring::default_provider());
+    let verifier = Arc::new(PinnedCertVerifier {
+        pinned: pinned_cert_sha256,
+        provider: Arc::clone(&provider),
+    });
+    let mut config = rustls::ClientConfig::builder_with_provider(provider)
         .with_safe_default_protocol_versions()
         .map_err(|_| RdpError::TlsError)?
         .dangerous()
-        .with_custom_certificate_verifier(Arc::new(AcceptAnyServerCert))
+        .with_custom_certificate_verifier(verifier)
         .with_no_client_auth();
     // Honour SSLKEYLOGFILE (no-op when the env var is unset). Useful for host
     // wireshark debugging via rdp-cli; on device the env var is never set.
     config.key_log = Arc::new(rustls::KeyLogFile::new());
     Ok(config)
+}
+
+#[cfg(test)]
+mod tls_pin_tests {
+    use super::*;
+    use rustls::client::danger::ServerCertVerifier;
+
+    fn verifier(pinned: Option<&str>) -> PinnedCertVerifier {
+        PinnedCertVerifier {
+            pinned: pinned.map(|s| s.to_string()),
+            provider: Arc::new(rustls::crypto::ring::default_provider()),
+        }
+    }
+
+    fn check(v: &PinnedCertVerifier, der: &[u8]) -> Result<(), rustls::Error> {
+        let cert = rustls::pki_types::CertificateDer::from(der.to_vec());
+        let sn = rustls::pki_types::ServerName::try_from("example.com").unwrap();
+        let now = rustls::pki_types::UnixTime::since_unix_epoch(
+            std::time::Duration::from_secs(1_700_000_000),
+        );
+        v.verify_server_cert(&cert, &[], &sn, &[], now).map(|_| ())
+    }
+
+    #[test]
+    fn sha256_hex_matches_known_vector() {
+        assert_eq!(
+            sha256_hex(b""),
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
+    }
+
+    #[test]
+    fn first_use_is_accepted() {
+        // No pin (TOFU first connect) → identity accepted.
+        assert!(check(&verifier(None), &[1, 2, 3]).is_ok());
+    }
+
+    #[test]
+    fn matching_pin_is_accepted() {
+        let der = [10u8, 20, 30];
+        let v = verifier(Some(&sha256_hex(&der)));
+        assert!(check(&v, &der).is_ok());
+    }
+
+    #[test]
+    fn changed_cert_is_rejected() {
+        // Pinned to cert A, server presents cert B → reject (MITM signal).
+        let v = verifier(Some(&sha256_hex(&[1, 2, 3])));
+        assert!(check(&v, &[9, 9, 9]).is_err());
+    }
+
+    #[test]
+    fn pin_comparison_is_case_insensitive() {
+        let der = [5u8, 6, 7];
+        let v = verifier(Some(&sha256_hex(&der).to_uppercase()));
+        assert!(check(&v, &der).is_ok());
+    }
 }
 
 /// Run the blocking RDP session on a dedicated thread.
@@ -771,8 +885,9 @@ fn run_rdp_session(
     let should_upgrade = connect_begin(&mut framed, &mut connector)
         .map_err(|e| format!("RDP negotiation failed: {:?}", e))?;
 
-    // Phase 2: TLS upgrade
-    let tls_config = create_tls_config()
+    // Phase 2: TLS upgrade. Pin the server cert (TOFU) against the fingerprint
+    // remembered from a previous connection, if any (security-review #2).
+    let tls_config = create_tls_config(config.pinned_cert_sha256.clone())
         .map_err(|e| format!("TLS configuration failed: {}", e))?;
     let (raw_stream, leftover) = framed.into_inner();
 
@@ -831,6 +946,17 @@ fn run_rdp_session(
         .and_then(|certs| certs.first())
         .map(|cert| cert.as_ref().to_vec())
         .ok_or_else(|| "no peer certificate after TLS handshake".to_string())?;
+
+    // Report the leaf-certificate fingerprint so Kotlin can pin it (TOFU). A
+    // *changed* cert was already rejected inside the handshake above (before
+    // any credentials were sent); this callback fires only when the cert
+    // matched the pin or this is the first connection. (security-review #2)
+    {
+        let cert_fp = sha256_hex(&raw_cert_der);
+        if let Some(cb) = state.read().ok().and_then(|s| s.session_callback.clone()) {
+            cb.on_server_cert(cert_fp);
+        }
+    }
 
     let server_public_key = {
         use x509_cert::der::Decode as _;

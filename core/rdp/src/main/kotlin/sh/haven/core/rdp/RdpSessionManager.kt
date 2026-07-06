@@ -21,6 +21,7 @@ private const val TAG = "RdpSessionManager"
 @Singleton
 class RdpSessionManager @Inject constructor(
     @ApplicationContext private val context: android.content.Context,
+    private val tlsCertVerifier: sh.haven.core.data.agent.TlsCertVerifier,
 ) {
 
     data class SessionState(
@@ -30,6 +31,10 @@ class RdpSessionManager @Inject constructor(
         val status: Status,
         val host: String = "",
         val port: Int = 3389,
+        /** Stable server identity for the TLS cert pin (real remote for a
+         *  tunnelled session, where [host] is 127.0.0.1). */
+        val certHost: String = "",
+        val certPort: Int = 0,
         val username: String = "",
         val password: String = "",
         val domain: String = "",
@@ -83,6 +88,11 @@ class RdpSessionManager @Inject constructor(
         domain: String = "",
         sshClient: Closeable? = null,
         tunnelPort: Int? = null,
+        // Real remote for the TLS cert pin; defaults to the socket target. For
+        // an SSH-tunnelled session the caller passes the real remote so the pin
+        // survives across sessions (the local tunnel port changes each time).
+        certHost: String = host,
+        certPort: Int = port,
     ) {
         _sessions.value[sessionId]
             ?: throw IllegalStateException("Session $sessionId not found")
@@ -95,6 +105,8 @@ class RdpSessionManager @Inject constructor(
                 status = SessionState.Status.CONNECTED,
                 host = host,
                 port = port,
+                certHost = certHost,
+                certPort = certPort,
                 username = username,
                 password = password,
                 domain = domain,
@@ -124,6 +136,9 @@ class RdpSessionManager @Inject constructor(
                 Log.d(TAG, "Session $sessionId disconnected")
                 updateStatus(sessionId, SessionState.Status.DISCONNECTED)
             },
+            tlsCertVerifier = tlsCertVerifier,
+            certHost = session.certHost.ifEmpty { session.host },
+            certPort = if (session.certPort != 0) session.certPort else session.port,
         )
 
         _sessions.update { map ->

@@ -48,6 +48,14 @@ class TlsCertVerifier @Inject constructor(
         dao.upsert(KnownTlsCert(hostname = hostname, port = port, sha256 = sha256))
     }
 
+    /**
+     * The pinned fingerprint for this host:port, or null if none. Used by the
+     * RDP path, where the pin/mismatch decision runs inside the native TLS
+     * handshake: Kotlin passes this down and pins the observed cert afterwards.
+     */
+    suspend fun pinnedFingerprint(hostname: String, port: Int): String? =
+        dao.findByHostPort(hostname, port)?.sha256
+
     companion object {
         /** Lowercase hex SHA-256 of a DER-encoded certificate. */
         fun fingerprint(certDer: ByteArray): String =

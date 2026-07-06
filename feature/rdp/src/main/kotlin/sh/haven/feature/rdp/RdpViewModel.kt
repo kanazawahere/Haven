@@ -45,6 +45,7 @@ class RdpViewModel @Inject constructor(
     private val etSessionManager: EtSessionManager,
     private val connectionLogRepository: ConnectionLogRepository,
     private val preferencesRepository: UserPreferencesRepository,
+    private val tlsCertVerifier: sh.haven.core.data.agent.TlsCertVerifier,
 ) : ViewModel() {
 
     private val _frame = MutableStateFlow<Bitmap?>(null)
@@ -117,7 +118,10 @@ class RdpViewModel @Inject constructor(
                 tunnelPort = localPort
                 tunnelSessionId = sessionId
                 Log.d(TAG, "SSH tunnel: localhost:$localPort -> $remoteHost:$remotePort")
-                doConnect("127.0.0.1", localPort, username, password, domain)
+                doConnect(
+                    "127.0.0.1", localPort, username, password, domain,
+                    certHost = remoteHost, certPort = remotePort,
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "SSH tunnel setup failed", e)
                 _error.value = describeError(e, remoteHost, remotePort)
@@ -162,6 +166,10 @@ class RdpViewModel @Inject constructor(
         username: String,
         password: String,
         domain: String,
+        // Real remote for the TLS cert pin; defaults to the socket target. The
+        // SSH-tunnel path passes the real remote (host here is 127.0.0.1).
+        certHost: String = host,
+        certPort: Int = port,
     ) {
         Log.d(TAG, "doConnect: $host:$port user=$username domain=$domain")
         val verboseEnabled = kotlinx.coroutines.runBlocking { preferencesRepository.verboseLoggingEnabled.first() }
@@ -175,6 +183,9 @@ class RdpViewModel @Inject constructor(
             password = password,
             domain = domain,
             verboseBuffer = verboseBuffer,
+            tlsCertVerifier = tlsCertVerifier,
+            certHost = certHost,
+            certPort = certPort,
         )
 
         session.onFrameUpdate = { bitmap ->

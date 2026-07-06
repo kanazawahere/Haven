@@ -58,6 +58,9 @@ impl SessionCallback for StderrSessionCb {
     fn on_disconnected(&self) {
         eprintln!("[disconnected]");
     }
+    fn on_server_cert(&self, sha256: String) {
+        eprintln!("[server-cert] sha256={sha256}");
+    }
 }
 
 struct StderrClipCb;
@@ -112,6 +115,8 @@ fn main() -> ExitCode {
         height,
         color_depth,
         enable_credssp,
+        // Host CLI: no persisted pin store; accept-and-report on first use.
+        pinned_cert_sha256: std::env::var("RDP_PINNED_CERT").ok(),
     };
 
     let client = Arc::new(RdpClient::new(config));

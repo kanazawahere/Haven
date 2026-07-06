@@ -45,6 +45,20 @@ class RdpSession(
      * 127.0.0.1 listener (#149). Null = direct kernel dial.
      */
     private val socksProxy: SocksProxyConfig? = null,
+    /**
+     * TOFU verifier for the server's TLS certificate (security-review #2). The
+     * pinned fingerprint is looked up before connect and a changed cert is
+     * rejected inside the native handshake before credentials are sent; the
+     * observed cert is pinned on first use. Null disables pinning.
+     */
+    private val tlsCertVerifier: sh.haven.core.data.agent.TlsCertVerifier? = null,
+    /**
+     * Stable server identity for the cert pin, independent of the socket
+     * target. For an SSH-tunnelled session [host] is 127.0.0.1, so the caller
+     * passes the real remote here; defaults to [host]:[port] for direct dials.
+     */
+    private val certHost: String = host,
+    private val certPort: Int = port,
 ) : Closeable {
 
     @Volatile
@@ -103,6 +117,11 @@ class RdpSession(
         log("D", "Starting RDP session $sessionId: $host:$port user=$username")
 
         try {
+            // Trust-on-first-use pin: the fingerprint remembered from a prior
+            // connection, or null on first use. A short blocking DB read.
+            val pinnedCert = tlsCertVerifier?.let { v ->
+                kotlinx.coroutines.runBlocking { v.pinnedFingerprint(certHost, certPort) }
+            }
             val config = RdpConfig(
                 username = username,
                 password = password,
@@ -115,6 +134,7 @@ class RdpSession(
                 // RDP block of ConnectionEditDialog.
                 colorDepth = colorDepth.toUByte(),
                 enableCredssp = useNla,
+                pinnedCertSha256 = pinnedCert,
             )
 
             val c = RdpClient(config)
@@ -164,6 +184,19 @@ class RdpSession(
                     if (closed) return
                     log("D", "RDP session ended cleanly")
                     onDisconnected?.invoke()
+                }
+
+                override fun onServerCert(sha256: String) {
+                    // First-use TOFU pin (a changed cert was already rejected
+                    // in the native handshake, so this only fires on match or
+                    // first connect). Idempotent for an already-pinned cert.
+                    val v = tlsCertVerifier ?: return
+                    try {
+                        kotlinx.coroutines.runBlocking { v.accept(certHost, certPort, sha256) }
+                        log("D", "Pinned RDP TLS cert for $certHost:$certPort: ${sha256.take(16)}…")
+                    } catch (e: Exception) {
+                        log("E", "Failed to pin RDP TLS cert: ${e.message}")
+                    }
                 }
             })
 

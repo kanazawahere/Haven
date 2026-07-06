@@ -684,6 +684,9 @@ internal interface UniffiCallbackInterfaceSessionCallbackMethod1 : com.sun.jna.C
 internal interface UniffiCallbackInterfaceSessionCallbackMethod2 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
+internal interface UniffiCallbackInterfaceSessionCallbackMethod3 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`sha256`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
 @Structure.FieldOrder("onRemoteClipboard", "uniffiFree")
 internal open class UniffiVTableCallbackInterfaceClipboardCallback(
     @JvmField internal var `onRemoteClipboard`: UniffiCallbackInterfaceClipboardCallbackMethod0? = null,
@@ -744,28 +747,33 @@ internal open class UniffiVTableCallbackInterfacePointerCallback(
     }
 
 }
-@Structure.FieldOrder("onConnected", "onError", "onDisconnected", "uniffiFree")
+@Structure.FieldOrder("onConnected", "onError", "onDisconnected", "onServerCert", "uniffiFree")
 internal open class UniffiVTableCallbackInterfaceSessionCallback(
     @JvmField internal var `onConnected`: UniffiCallbackInterfaceSessionCallbackMethod0? = null,
     @JvmField internal var `onError`: UniffiCallbackInterfaceSessionCallbackMethod1? = null,
     @JvmField internal var `onDisconnected`: UniffiCallbackInterfaceSessionCallbackMethod2? = null,
+    @JvmField internal var `onServerCert`: UniffiCallbackInterfaceSessionCallbackMethod3? = null,
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
 ) : Structure() {
     class UniffiByValue(
         `onConnected`: UniffiCallbackInterfaceSessionCallbackMethod0? = null,
         `onError`: UniffiCallbackInterfaceSessionCallbackMethod1? = null,
         `onDisconnected`: UniffiCallbackInterfaceSessionCallbackMethod2? = null,
+        `onServerCert`: UniffiCallbackInterfaceSessionCallbackMethod3? = null,
         `uniffiFree`: UniffiCallbackInterfaceFree? = null,
-    ): UniffiVTableCallbackInterfaceSessionCallback(`onConnected`,`onError`,`onDisconnected`,`uniffiFree`,), Structure.ByValue
+    ): UniffiVTableCallbackInterfaceSessionCallback(`onConnected`,`onError`,`onDisconnected`,`onServerCert`,`uniffiFree`,), Structure.ByValue
 
    internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceSessionCallback) {
         `onConnected` = other.`onConnected`
         `onError` = other.`onError`
         `onDisconnected` = other.`onDisconnected`
+        `onServerCert` = other.`onServerCert`
         `uniffiFree` = other.`uniffiFree`
     }
 
 }
+
+
 
 
 
@@ -993,6 +1001,8 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_rdp_transport_fn_method_sessioncallback_on_disconnected(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    fun uniffi_rdp_transport_fn_method_sessioncallback_on_server_cert(`ptr`: Pointer,`sha256`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     fun ffi_rdp_transport_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun ffi_rdp_transport_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1155,6 +1165,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_rdp_transport_checksum_method_sessioncallback_on_disconnected(
     ): Short
+    fun uniffi_rdp_transport_checksum_method_sessioncallback_on_server_cert(
+    ): Short
     fun uniffi_rdp_transport_checksum_constructor_rdpclient_new(
     ): Short
     fun ffi_rdp_transport_uniffi_contract_version(
@@ -1247,6 +1259,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_rdp_transport_checksum_method_sessioncallback_on_disconnected() != 47606.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_rdp_transport_checksum_method_sessioncallback_on_server_cert() != 29250.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_rdp_transport_checksum_constructor_rdpclient_new() != 25630.toShort()) {
@@ -3094,6 +3109,14 @@ public interface SessionCallback {
      */
     fun `onDisconnected`()
     
+    /**
+     * Fired right after the TLS handshake with the lowercase-hex SHA-256 of
+     * the server's DER leaf certificate. The caller pins this on first use
+     * (trust-on-first-use); a later change is rejected during the handshake
+     * via `RdpConfig.pinned_cert_sha256` before any credentials are sent.
+     */
+    fun `onServerCert`(`sha256`: kotlin.String)
+    
     companion object
 }
 
@@ -3232,6 +3255,23 @@ open class SessionCallbackImpl: Disposable, AutoCloseable, SessionCallback {
     
 
     
+    /**
+     * Fired right after the TLS handshake with the lowercase-hex SHA-256 of
+     * the server's DER leaf certificate. The caller pins this on first use
+     * (trust-on-first-use); a later change is rejected during the handshake
+     * via `RdpConfig.pinned_cert_sha256` before any credentials are sent.
+     */override fun `onServerCert`(`sha256`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_rdp_transport_fn_method_sessioncallback_on_server_cert(
+        it, FfiConverterString.lower(`sha256`),_status)
+}
+    }
+    
+    
+
+    
 
     
     
@@ -3278,6 +3318,18 @@ internal object uniffiCallbackInterfaceSessionCallback {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
+    internal object `onServerCert`: UniffiCallbackInterfaceSessionCallbackMethod3 {
+        override fun callback(`uniffiHandle`: Long,`sha256`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeSessionCallback.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`onServerCert`(
+                    FfiConverterString.lift(`sha256`),
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
 
     internal object uniffiFree: UniffiCallbackInterfaceFree {
         override fun callback(handle: Long) {
@@ -3289,6 +3341,7 @@ internal object uniffiCallbackInterfaceSessionCallback {
         `onConnected`,
         `onError`,
         `onDisconnected`,
+        `onServerCert`,
         uniffiFree,
     )
 
@@ -3379,7 +3432,17 @@ data class RdpConfig (
      * only security, useful against servers where ironrdp's CredSSP
      * doesn't interop — #109, Windows Server 2025 Datacenter.
      */
-    var `enableCredssp`: kotlin.Boolean
+    var `enableCredssp`: kotlin.Boolean, 
+    /**
+     * Lowercase-hex SHA-256 of the server's DER leaf certificate that was
+     * pinned on a previous connection, or None on first connect. When set,
+     * the TLS handshake is aborted (before any credentials are sent) if the
+     * server presents a different certificate — trust-on-first-use, closing
+     * the "accepts any server certificate" MITM hole (security-review
+     * critical #2). The observed fingerprint is reported back via
+     * [SessionCallback::on_server_cert] so the caller can pin it.
+     */
+    var `pinnedCertSha256`: kotlin.String?
 ) {
     
     companion object
@@ -3398,6 +3461,7 @@ public object FfiConverterTypeRdpConfig: FfiConverterRustBuffer<RdpConfig> {
             FfiConverterUShort.read(buf),
             FfiConverterUByte.read(buf),
             FfiConverterBoolean.read(buf),
+            FfiConverterOptionalString.read(buf),
         )
     }
 
@@ -3408,7 +3472,8 @@ public object FfiConverterTypeRdpConfig: FfiConverterRustBuffer<RdpConfig> {
             FfiConverterUShort.allocationSize(value.`width`) +
             FfiConverterUShort.allocationSize(value.`height`) +
             FfiConverterUByte.allocationSize(value.`colorDepth`) +
-            FfiConverterBoolean.allocationSize(value.`enableCredssp`)
+            FfiConverterBoolean.allocationSize(value.`enableCredssp`) +
+            FfiConverterOptionalString.allocationSize(value.`pinnedCertSha256`)
     )
 
     override fun write(value: RdpConfig, buf: ByteBuffer) {
@@ -3419,6 +3484,7 @@ public object FfiConverterTypeRdpConfig: FfiConverterRustBuffer<RdpConfig> {
             FfiConverterUShort.write(value.`height`, buf)
             FfiConverterUByte.write(value.`colorDepth`, buf)
             FfiConverterBoolean.write(value.`enableCredssp`, buf)
+            FfiConverterOptionalString.write(value.`pinnedCertSha256`, buf)
     }
 }
 
@@ -3657,6 +3723,38 @@ public object FfiConverterTypeRdpError : FfiConverterRustBuffer<RdpException> {
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
     }
 
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?> {
+    override fun read(buf: ByteBuffer): kotlin.String? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterString.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.String?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterString.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.String?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterString.write(value, buf)
+        }
+    }
 }
 
 
