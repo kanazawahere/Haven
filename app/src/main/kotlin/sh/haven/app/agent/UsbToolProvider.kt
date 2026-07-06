@@ -172,6 +172,9 @@ internal class UsbToolProvider(
             description = "Delete the persistent USB-helper Linux appliance — the small installed Alpine VM (with usbip+ssh baked in) that open_usb_drive boots to mount drives. It's provisioned once and kept so repeat opens are fast; deleting it frees the disk (~280 MB) and forces a one-time re-provision (re-download + install) on the next open_usb_drive. Closes any live USB-drive VM first. Idempotent.",
             inputSchema = emptyObjectSchema(),
             consentLevel = ConsentLevel.ONCE_PER_SESSION,
+            summarise = { _ ->
+                "Delete the USB-helper Linux appliance (~280 MB; re-provisioned on next drive open)?"
+            },
         ) { _ -> deleteUsbAppliance() },
     )
 

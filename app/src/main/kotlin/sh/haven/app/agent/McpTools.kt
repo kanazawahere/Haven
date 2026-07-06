@@ -1361,6 +1361,11 @@ internal class McpTools(
                 boolean("delete", "Remove the snippet from the toolbar and the library entirely.")
             },
             consentLevel = ConsentLevel.ONCE_PER_SESSION,
+            summarise = { args ->
+                val label = args.optString("label")
+                if (args.optBoolean("delete")) "Delete toolbar snippet \"$label\"?"
+                else "Add or update toolbar snippet \"$label\"?"
+            },
         ) { args -> setSnippet(args) },
 
         "set_profile_routing" to ToolHandler(

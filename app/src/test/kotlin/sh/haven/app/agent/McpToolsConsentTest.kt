@@ -381,6 +381,52 @@ class McpToolsConsentTest {
         assertTrue("got: $s", s.contains("example.com") || s.contains("trusted"))
     }
 
+    // --- Registry-wide invariants (#mcp-backbone Stage 5, Layer E) ---
+    // Blanket checks across all ~182 tools, made cheap by the schema DSL:
+    // a typo'd required name or a forgotten consent summary is a silent
+    // contract/security bug the per-tool tests above can't catch for tools
+    // added later.
+
+    @Test
+    fun `every tool schema is a well-formed object schema`() {
+        fun checkObjectSchema(where: String, schema: JSONObject) {
+            assertEquals("$where: type", "object", schema.getString("type"))
+            val properties = schema.getJSONObject("properties")
+            schema.optJSONArray("required")?.let { required ->
+                for (i in 0 until required.length()) {
+                    val r = required.getString(i)
+                    assertTrue("$where: required '$r' missing from properties", properties.has(r))
+                }
+            }
+            for (key in properties.keys()) {
+                val items = properties.getJSONObject(key).optJSONObject("items")
+                if (items != null && items.optString("type") == "object" && items.has("properties")) {
+                    checkObjectSchema("$where.$key.items", items)
+                }
+            }
+        }
+        val tools = newTools()
+        val defs = tools.definitions()
+        assertTrue("registry unexpectedly small: ${defs.size}", defs.size > 150)
+        for (def in defs) {
+            checkObjectSchema(def.getString("name"), def.getJSONObject("inputSchema"))
+        }
+    }
+
+    @Test
+    fun `every consent-gated tool overrides the default summary`() {
+        val tools = newTools()
+        // ToolHandler's default summarise returns the literal "tool call";
+        // a gated tool must say what the user is approving. A summary that
+        // throws on empty args still proves an override.
+        val offenders = tools.definitions().map { it.getString("name") }.filter { name ->
+            val consent = tools.consentFor(name)!!
+            consent.level != ConsentLevel.NEVER &&
+                runCatching { consent.summary(JSONObject()) }.getOrNull() == "tool call"
+        }
+        assertTrue("consent-gated tools with the placeholder summary: $offenders", offenders.isEmpty())
+    }
+
     // --- Declarative capability gate (#mcp-backbone Stage 5) ---
 
     @Test

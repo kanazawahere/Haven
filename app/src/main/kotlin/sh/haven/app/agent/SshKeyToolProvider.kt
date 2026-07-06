@@ -66,6 +66,11 @@ internal class SshKeyToolProvider(
                 boolean("verifyRequired", "FIDO2/SK only: require the key's PIN at every sign-in.")
             },
             consentLevel = ConsentLevel.ONCE_PER_SESSION,
+            summarise = { args ->
+                val id = args.optString("keyId")
+                val label = runBlocking { sshKeyRepository.getById(id)?.label } ?: id.take(8) + "…"
+                "Change auth options for SSH key \"$label\"?"
+            },
         ) { args -> setSshKeyOption(args) },
     )
 
