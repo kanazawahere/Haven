@@ -19,6 +19,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONObject
@@ -249,6 +250,17 @@ class McpServer @Inject constructor(
      */
     @Volatile
     private var clientTokenHashes: Map<String, String>? = null
+
+    /**
+     * Keeps [allowedClients] and [clientTokenHashes] in sync with DataStore
+     * after [start]'s initial seed. Pairing mutates the caches synchronously
+     * (so a just-minted token works on the very next request), but *removals*
+     * — un-pairing from the MCP tool or Settings — only write DataStore, so
+     * without this collector a revoked bearer token stayed valid in the cache
+     * until an app restart (#mcp-backbone Stage 3). Cancelled in [stopLocked].
+     */
+    @Volatile
+    private var trustSyncJob: Job? = null
 
     /**
      * Session map for the streamable-HTTP transport. `initialize`
@@ -499,6 +511,14 @@ class McpServer @Inject constructor(
         clientTokenHashes = runBlocking { preferencesRepository.mcpClientTokenHashes.first() }
         trustLoopbackEnabled = runBlocking { preferencesRepository.trustLoopbackMcpClients.first() }
         Log.i(TAG, "MCP server listening on ${_endpointUrl.value} (paired clients: ${allowedClients.size}, trustLoopback=$trustLoopbackEnabled)")
+
+        // Track DataStore so an un-pair (revoking allowlist + token) takes
+        // effect immediately, not just after a restart (#mcp-backbone Stage 3).
+        trustSyncJob?.cancel()
+        trustSyncJob = scope.launch {
+            launch { preferencesRepository.mcpAllowedClients.collect { allowedClients = it } }
+            launch { preferencesRepository.mcpClientTokenHashes.collect { clientTokenHashes = it } }
+        }
 
         serverThread = acceptThread(ss, "mcp-http", McpOrigin.DEVICE)
 
@@ -850,6 +870,8 @@ class McpServer @Inject constructor(
     private fun stopLocked() {
         isRunning = false
         mcpStatusHolder.setRunning(false)
+        trustSyncJob?.cancel()
+        trustSyncJob = null
         stopWireguardBinderLocked()
         stopLanBinderLocked()
         try { serverSocket?.close() } catch (_: Exception) {}
