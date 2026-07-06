@@ -285,6 +285,9 @@ class LocalSessionManager @Inject constructor(
                 prootBinary,
                 "-0",                    // fake root
                 "--link2symlink",        // fix link() for X11 lock files
+                // #325: foreign-arch rootfs runs through the bundled qemu-user
+                // loader. Empty for host-arch rootfses.
+                *prootManager.qemuUserArgs(targetDistro).toTypedArray(),
                 *portRemap,
                 "-r", rootfsDir.absolutePath,
                 "-b", "/dev",

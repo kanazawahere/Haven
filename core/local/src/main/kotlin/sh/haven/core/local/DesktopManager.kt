@@ -800,6 +800,8 @@ class DesktopManager @Inject constructor(
 
         val prootArgs = mutableListOf(
             prootBin, "-0", "--link2symlink",
+            // #325: foreign-arch rootfs runs through the bundled qemu-user loader.
+            *prootManager.qemuUserArgs(prootManager.activeDistroId).toTypedArray(),
             "-r", rootfsDir.absolutePath,
             "-b", "/dev", "-b", "/proc", "-b", "/sys",
             // Mask /sys/fs/selinux (Android enforces SELinux; exposing enforce=1
@@ -1091,6 +1093,8 @@ class DesktopManager @Inject constructor(
         // creates its HEADLESS-1 output.
         val prootArgs = mutableListOf(
             prootBin, "-i", "1000:1000", "--link2symlink",
+            // #325: foreign-arch rootfs runs through the bundled qemu-user loader.
+            *prootManager.qemuUserArgs(prootManager.activeDistroId).toTypedArray(),
             "-r", rootfsDir.absolutePath,
             "-b", "/dev", "-b", "/proc", "-b", "/sys",
             // Mask /sys/fs/selinux (Android enforces SELinux; exposing enforce=1
@@ -1586,6 +1590,8 @@ class DesktopManager @Inject constructor(
             val customBinds = prootManager.customBindShortArgs(prootManager.activeDistroId).toTypedArray()
             val process = ProcessBuilder(
                 prootBin, "-0", "--link2symlink",
+                // #325: foreign-arch rootfs runs through the bundled qemu-user loader.
+                *prootManager.qemuUserArgs(prootManager.activeDistroId).toTypedArray(),
                 *portRemap,
                 "-r", rootfsDir.absolutePath,
                 "-b", "/dev", "-b", "/proc", "-b", "/sys",

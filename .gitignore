@@ -20,6 +20,9 @@ com/jcraft/jsch/
 build-proot/build-*/
 build-proot/dl/
 core/local/src/main/jniLibs/*/libproot*.so
+# Static qemu-user loaders — fetched (pinned + sha256-verified) by core/local's
+# fetchQemuLoaders Gradle task from Debian; see fetch-qemu-loaders.sh (#325).
+core/local/src/main/jniLibs/*/libqemu_*.so
 # Wayvnc capture-fallback shim — rebuilt by core/local's buildWayvncShim
 # Gradle task from wayland-android/wayvnc-shim/libhaven_wayvnc_shim.c.
 core/local/src/main/assets/wayvnc-shim/*/libhaven_wayvnc_shim.so

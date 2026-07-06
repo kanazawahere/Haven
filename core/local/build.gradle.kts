@@ -115,8 +115,26 @@ val buildHavenUsb by tasks.registering(Exec::class) {
     commandLine("bash", "build-haven-usb.sh")
 }
 
+// Fetch the static qemu-user loaders (#325) into jniLibs so foreign-arch
+// rootfses (e.g. x86_64 on an ARM phone) can run through proot --qemu.
+// Version-pinned Debian static-pie builds, sha256-verified; see the script
+// header for the why. Skippable for offline/F-Droid builds — the APK then
+// simply lacks foreign-arch support.
+val fetchQemuLoaders by tasks.registering(Exec::class) {
+    val script = file("fetch-qemu-loaders.sh")
+    inputs.file(script)
+    outputs.files(
+        file("src/main/jniLibs/arm64-v8a/libqemu_x86_64.so"),
+        file("src/main/jniLibs/x86_64/libqemu_aarch64.so"),
+    )
+    onlyIf { !project.hasProperty("skipQemuLoaders") }
+
+    workingDir = projectDir
+    commandLine("bash", "fetch-qemu-loaders.sh")
+}
+
 tasks.named("preBuild") {
-    dependsOn(buildProot, buildWayvncShim, buildHavenUsb)
+    dependsOn(buildProot, buildWayvncShim, buildHavenUsb, fetchQemuLoaders)
 }
 
 kotlin {

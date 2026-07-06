@@ -59,6 +59,14 @@ private const val PREF_MARKERS_BACKFILLED = "install_markers_backfilled_v1"
 internal const val ROOTFS_READY_MARKER = ".haven-rootfs-ready"
 
 /**
+ * Foreign-arch marker (#325): holds the rootfs ABI (an [Arch.abi] value, e.g.
+ * `x86_64`) when the rootfs is a different architecture than the host and its
+ * binaries must be run through a host-side qemu-user loader. Absent = host-arch
+ * rootfs (every install before #325), so its absence keeps the qemu path inert.
+ */
+internal const val ROOTFS_ARCH_MARKER = ".haven-rootfs-arch"
+
+/**
  * Whether the extracted rootfs *files* are present (busybox `bin/sh`).
  * Necessary but not sufficient for a usable install — an extract killed
  * partway can have `bin/sh` and little else, so callers that need a
@@ -530,6 +538,49 @@ class ProotManager @Inject constructor(
     /** Rootfs directory for the active distro. */
     val activeRootfsDir: File
         get() = rootfsDirFor(activeDistroId)
+
+    /**
+     * The rootfs ABI of [distroId] when it is FOREIGN to the host — i.e. its
+     * binaries need qemu-user translation — or null for a host-arch rootfs
+     * (#325). Read from [ROOTFS_ARCH_MARKER]; an absent/blank/unknown marker,
+     * or one that names the host arch, returns null so the qemu path stays off.
+     */
+    fun foreignRootfsArch(distroId: String): Arch? {
+        val abi = runCatching {
+            File(rootfsDirFor(distroId), ROOTFS_ARCH_MARKER).readText().trim()
+        }.getOrNull()?.takeIf { it.isNotEmpty() } ?: return null
+        val arch = Arch.entries.firstOrNull { it.abi == abi } ?: return null
+        return arch.takeIf { it != Arch.current() }
+    }
+
+    /**
+     * qemu-user loader jniLib basename for [arch]. Underscores, not qemu's
+     * canonical `qemu-x86_64` hyphen, so the APK packager reliably extracts
+     * the `lib<name>.so` to nativeLibraryDir (cf. `libproot_loader.so`).
+     */
+    private fun qemuLoaderName(arch: Arch): String = when (arch) {
+        Arch.X86_64 -> "qemu_x86_64"
+        Arch.AARCH64 -> "qemu_aarch64"
+        Arch.ARM -> "qemu_arm"
+    }
+
+    /**
+     * proot options that route foreign-arch execs through a bundled qemu-user
+     * loader (#325). Empty unless [distroId] carries a foreign-arch marker AND
+     * the matching loader is bundled at `nativeLibraryDir/lib<qemu-arch>.so`.
+     *
+     * `--qemu` takes an absolute HOST path — proot resolves it host-side
+     * (cli/proot.c `handle_option_q`) and execs it in place of every foreign
+     * ELF, so nativeLibraryDir (the one path our uid may exec from — app data
+     * is `noexec`) is passed directly; no bind needed. `-q` also auto-binds
+     * host `/` at `/host-rootfs` inside the guest, which qemu's own exec needs.
+     */
+    internal fun qemuUserArgs(distroId: String): List<String> {
+        val arch = foreignRootfsArch(distroId) ?: return emptyList()
+        val loader = File(context.applicationInfo.nativeLibraryDir, "lib${qemuLoaderName(arch)}.so")
+        if (!loader.canExecute()) return emptyList()
+        return listOf("--qemu=${loader.absolutePath}")
+    }
 
     /**
      * Host dir for rasterized guest app icons. cacheDir is bound into the guest
@@ -1085,6 +1136,20 @@ class ProotManager @Inject constructor(
 
                 File(targetDir, "etc/resolv.conf").writeText("nameserver 8.8.8.8\nnameserver 1.1.1.1\n")
                 seedRootHome(targetDir)
+
+                // #325: record the rootfs ELF arch so a foreign-arch import
+                // launches through the bundled qemu-user loader. Best-effort:
+                // no marker (or a host-arch value) keeps the qemu path inert.
+                detectRootfsArch(targetDir)?.let { arch ->
+                    runCatching { File(targetDir, ROOTFS_ARCH_MARKER).writeText("${arch.abi}\n") }
+                    if (arch != Arch.current()) {
+                        Log.i(TAG, "[import $slug] foreign-arch rootfs (${arch.abi}) — will run under qemu-user")
+                        installLogRepository.logEvent(
+                            distroId = slug, phase = "RootfsExtract",
+                            message = "Foreign-arch rootfs (${arch.abi}): runs under qemu-user emulation",
+                        )
+                    }
+                }
             }
 
             // Register the distro and write the completion marker only now
@@ -1111,6 +1176,43 @@ class ProotManager @Inject constructor(
 
     private fun folderSize(dir: File): Long =
         dir.walkTopDown().filter { it.isFile }.map { it.length() }.sum()
+
+    /** [Arch] from an ELF header's e_machine, or null if not a known ELF. */
+    private fun elfArch(file: File): Arch? {
+        val b = ByteArray(20)
+        val n = runCatching { file.inputStream().use { it.read(b) } }.getOrDefault(-1)
+        if (n < 20 || b[0] != 0x7F.toByte() || b[1] != 'E'.code.toByte() ||
+            b[2] != 'L'.code.toByte() || b[3] != 'F'.code.toByte()
+        ) return null
+        // e_machine, little-endian u16 at offset 18 (all supported arches are LE).
+        return when ((b[19].toInt() and 0xFF shl 8) or (b[18].toInt() and 0xFF)) {
+            0x3E -> Arch.X86_64
+            0xB7 -> Arch.AARCH64
+            0x28 -> Arch.ARM
+            else -> null
+        }
+    }
+
+    /**
+     * Best-effort ELF arch of an extracted rootfs (#325), from the first
+     * recognisable ELF among a few well-known binaries. Symlinks (Alpine's
+     * `bin/sh` → `/bin/busybox`) are resolved WITHIN the rootfs — an absolute
+     * target must not escape to the host filesystem. Null when nothing
+     * readable is found; callers treat that as "assume host arch".
+     */
+    internal fun detectRootfsArch(rootfsDir: File): Arch? {
+        for (rel in listOf("bin/busybox", "usr/bin/env", "bin/ls", "bin/sh")) {
+            var f = File(rootfsDir, rel)
+            var hops = 0
+            while (hops++ < 4 && java.nio.file.Files.isSymbolicLink(f.toPath())) {
+                val target = java.nio.file.Files.readSymbolicLink(f.toPath()).toString()
+                f = if (target.startsWith("/")) File(rootfsDir, target.trimStart('/'))
+                else File(f.parentFile, target)
+            }
+            if (f.isFile) elfArch(f)?.let { return it }
+        }
+        return null
+    }
 
     /**
      * One-shot backfill for installs predating the rootfs completion
@@ -1704,8 +1806,16 @@ class ProotManager @Inject constructor(
         // safe (chmod needs only ownership, not parent write). Without this dirs
         // stay at the app umask (0700) instead of the tar's mode (e.g. 0755),
         // breaking tools that rely on 0755 traversal/perms. (#328)
+        //
+        // Owner rwx is always OR'd in: the app uid must be able to operate
+        // inside every rootfs dir regardless of what the tar says — Alpine's
+        // minirootfs ships `proc/` as 0555, which broke proot's fake-/proc
+        // fabrication (`proc/.loadavg` EACCES) on devices where SELinux hides
+        // the real /proc/loadavg (#325 import testing). Guest-visible modes
+        // are unaffected in practice: proot fake-root reports what matters,
+        // and /proc is bind-mounted over anyway.
         for ((dir, mode) in deferredDirModes.asReversed()) {
-            try { android.system.Os.chmod(dir.absolutePath, mode) } catch (_: Exception) {}
+            try { android.system.Os.chmod(dir.absolutePath, (mode or 0b111_000_000)) } catch (_: Exception) {}
         }
 
         Log.d(TAG, "Extracted $fileCount files, $symlinkCount symlinks to ${destDir.absolutePath}")
@@ -1981,6 +2091,10 @@ class ProotManager @Inject constructor(
             "--kernel-release=6.2.1",
             "--link2symlink",
             "--kill-on-exit",
+            // #325: route foreign-arch execs through a bundled qemu-user loader.
+            // Inert unless the active rootfs is marked foreign AND its loader is
+            // bundled — otherwise an empty spread.
+            *qemuUserArgs(activeDistroId).toTypedArray(),
             "--rootfs=$rootfsPath",
             "--root-id",
             "--cwd=/root",
