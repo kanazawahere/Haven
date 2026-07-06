@@ -104,16 +104,36 @@ internal fun isRootfsComplete(rootfsDir: File): Boolean =
  * unlinks symlinks without following them.
  */
 internal fun forceDeleteRecursively(root: File): Boolean {
+    val path = root.toPath()
+    // A symlink (even a dangling one): unlink the link itself and never follow
+    // it — otherwise both the chmod pass and the delete would operate on
+    // whatever it points at, which a rootfs link can aim outside the tree.
+    // Kotlin's own walkTopDown()/deleteRecursively() follow directory symlinks
+    // (isDirectory/listFiles resolve the link), so we recurse by hand.
+    // (security-review #22)
+    if (java.nio.file.Files.isSymbolicLink(path)) return root.delete()
     if (!root.exists()) return true
-    root.walkTopDown()
-        .onEnter { dir ->
-            dir.setReadable(true, false)
-            dir.setExecutable(true, false)
-            dir.setWritable(true, false)
-            true
-        }
-        .forEach { /* side effect is the onEnter chmod; files need no chmod to unlink */ }
-    return root.deleteRecursively()
+    if (root.isDirectory) {
+        // Unlinking a child needs write+exec on the parent dir; some rootfs
+        // dirs ship 0555 (#174 — Arch's update-ca-trust), so restore owner rwx
+        // before recursing.
+        root.setReadable(true, false)
+        root.setExecutable(true, false)
+        root.setWritable(true, false)
+        root.listFiles()?.forEach { forceDeleteRecursively(it) }
+    }
+    return root.delete()
+}
+
+/**
+ * True if [child] resolves to a location inside [base] (or is [base] itself).
+ * Uses canonical paths so it also catches `..` traversal and symlinks that
+ * escape the tree — the extraction guard against zip-slip. (security-review #21)
+ */
+internal fun isWithinDir(base: File, child: File): Boolean {
+    val basePath = base.canonicalPath
+    val childPath = child.canonicalPath
+    return childPath == basePath || childPath.startsWith(basePath + File.separator)
 }
 
 /**
@@ -1694,6 +1714,15 @@ class ProotManager @Inject constructor(
                 }
 
                 val outFile = File(destDir, entryName)
+                // Zip-slip guard: reject any entry whose resolved path escapes
+                // the install dir — via `..` traversal or by writing through a
+                // symlink that points outside. A malicious imported rootfs could
+                // otherwise clobber Haven's own files. (security-review #21)
+                if (!isWithinDir(destDir, outFile)) {
+                    Log.w(TAG, "Rejecting rootfs tar entry escaping the install dir: $entryName")
+                    if (size > 0) skipToBlock(gzIn, size)
+                    continue
+                }
                 clearPathIfWrongType(outFile, entryIsDir = typeFlag == '5'.code.toByte())
 
                 when (typeFlag) {
