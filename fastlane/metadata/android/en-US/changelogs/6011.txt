@@ -3,3 +3,5 @@
 🛡️ Pairing-loop protection (#337): duplicate pairing prompts coalesce, an explicit Deny backs re-asks off for 2 minutes, pairing sheets are rate-limited across all client names, and a new Block button silences a spamming client for the session. The consent sheet now shows when more requests are queued behind the visible one.
 
 🔧 Agent-created VNC/RDP/SPICE connections now honour vncPort/rdpPort/spicePort instead of defaulting to the generic port (#353).
+
+📦 Debian 13 (Trixie) joins the distro picker alongside Bookworm (#253).

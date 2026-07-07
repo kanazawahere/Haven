@@ -13,6 +13,8 @@ compare link is appended automatically — don't add it here.
 
 🔧 **Agent-created VNC/RDP/SPICE connections land on the right port** (#353) — `create_connection` advertised `vncPort`/`rdpPort`/`spicePort` arguments but only honoured the generic `port`, so e.g. a SPICE profile aimed at 5930 silently landed on 5900.
 
+📦 **Debian 13 (Trixie) — the current Debian stable — joins the distro picker** (#253) — offered alongside Debian 12 (Bookworm), which stays for anyone who wants oldstable. Same proot-distro tarball lineage as Bookworm, all three architectures (arm64/x86_64/armv7), checksums verified by download against proot-distro's published values. The mirror picker works on it unchanged.
+
 ## v5.68.20
 
 🖥️ **Foreign-architecture Linux distros are now offered in the distro picker** (#325) — the "＋ Add another distro" list only ever showed distros built for your phone's own CPU, so running, say, an x86_64 Debian on an arm64 phone meant knowing to hand-type a rootfs URL into Import rootfs. Every built-in distro now also appears as an emulated variant for each foreign architecture this build can run ("＋ Debian 12 (Bookworm) x86_64 — emulated, slower"), installed through the same path as before (the download is arch-detected and transparently run under qemu-user). It's discovery, not a new mechanism — and it's clearly labelled "emulated, slower" so the speed trade-off is obvious. Verified on an arm64 device: all five built-ins offered as x86_64 variants.

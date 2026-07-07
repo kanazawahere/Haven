@@ -290,6 +290,44 @@ object DistroCatalog {
     )
 
     /**
+     * Debian Trixie (13) — current Debian stable (#253). Same shape as
+     * [DEBIAN_BOOKWORM], which stays in the catalog for users who want
+     * oldstable. Rootfs is proot-distro's `debian-trixie` tarball set:
+     * v4.29.0 is the newest tarball release, and the last bash-era
+     * plugin (v4.34.2) pins exactly these URLs + SHA-256s. All three
+     * checksums below were verified by download against that plugin's
+     * published `TARBALL_SHA256`. Wrapped in a top-level
+     * `debian-trixie-<arch>/` directory, hence `stripComponents = 1`.
+     */
+    val DEBIAN_TRIXIE = Distro(
+        id = "debian-trixie",
+        label = "Debian 13 (Trixie)",
+        family = PackageFamily.APT,
+        rootfsSources = mapOf(
+            Arch.AARCH64 to RootfsSource(
+                url = "https://github.com/termux/proot-distro/releases/download/v4.29.0/debian-trixie-aarch64-pd-v4.29.0.tar.xz",
+                sha256 = "3834a11cbc6496935760bdc20cca7e2c25724d0cd8f5e4926da8fd5ca1857918",
+                format = RootfsFormat.TAR_XZ,
+                stripComponents = 1,
+            ),
+            Arch.X86_64 to RootfsSource(
+                url = "https://github.com/termux/proot-distro/releases/download/v4.29.0/debian-trixie-x86_64-pd-v4.29.0.tar.xz",
+                sha256 = "4b8f33b80a10d734ff935e5934588572f860c0c38a68bf91db59af0580370716",
+                format = RootfsFormat.TAR_XZ,
+                stripComponents = 1,
+            ),
+            Arch.ARM to RootfsSource(
+                url = "https://github.com/termux/proot-distro/releases/download/v4.29.0/debian-trixie-arm-pd-v4.29.0.tar.xz",
+                sha256 = "99bcba87d8d1c66c0de06259ac0a270eb0a20f8b4af39beb0705d28846d78b90",
+                format = RootfsFormat.TAR_XZ,
+                stripComponents = 1,
+            ),
+        ),
+        baselinePackages = listOf("bash", "curl", "ca-certificates", "openssh-client", "tmux"),
+        sizeEstimateMb = 130,
+    )
+
+    /**
      * Ubuntu 24.04 LTS ("Noble Numbat") — APT, same package family
      * and launch paths as Debian, so every DE that lists an APT
      * package set (Openbox, Xfce4, Sway, Cage) is offered on Ubuntu
@@ -549,7 +587,7 @@ object DistroCatalog {
     )
 
     /** Distros shipped with the app (pinned tarball + sha + hooks). */
-    val builtins: List<Distro> = listOf(ALPINE_3_21, DEBIAN_BOOKWORM, UBUNTU_NOBLE, ARCH_LINUX, VOID_LINUX)
+    val builtins: List<Distro> = listOf(ALPINE_3_21, DEBIAN_TRIXIE, DEBIAN_BOOKWORM, UBUNTU_NOBLE, ARCH_LINUX, VOID_LINUX)
 
     /**
      * User-imported distros (#284). Registered at runtime by ProotManager

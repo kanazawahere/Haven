@@ -997,7 +997,7 @@ internal class McpTools(
         "install_distro" to ToolHandler(
             description = "Set the given distro as active and trigger installRootfs(). Returns immediately; poll `inspect_proot.osSetupState` for progress (Downloading → Extracting → BootstrapHook → Baseline → Ready, or Error with attribution). Idempotent: if the distro is already installed, just switches active.",
             inputSchema = objectSchema {
-                string("distroId", "Distro id from DistroCatalog (e.g. \"alpine-3.21\", \"debian-bookworm\", \"ubuntu-noble\", \"archlinux\", \"void\").", required = true)
+                string("distroId", "Distro id from DistroCatalog (e.g. \"alpine-3.21\", \"debian-trixie\", \"debian-bookworm\", \"ubuntu-noble\", \"archlinux\", \"void\").", required = true)
             },
             consentLevel = ConsentLevel.EVERY_CALL,
             summarise = { args ->

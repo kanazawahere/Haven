@@ -99,6 +99,7 @@ object MirrorCatalog {
     /** Subs for [distroId], or empty if the distro has no mirror options. */
     fun forDistro(distroId: String): List<MirrorSub> = when (distroId) {
         "alpine-3.21" -> listOf(ALPINE)
+        "debian-trixie" -> listOf(DEBIAN)
         "debian-bookworm" -> listOf(DEBIAN)
         "ubuntu-noble" -> listOf(UBUNTU)
         "archlinux" -> listOf(ARCH)
