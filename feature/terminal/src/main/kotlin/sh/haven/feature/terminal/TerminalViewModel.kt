@@ -1390,10 +1390,12 @@ class TerminalViewModel @Inject constructor(
             // the SelectionController / ScrollController the agent transport
             // needs for `start_selection` / `drag_selection_to` to operate.
             //
-            // OSC 7 / OSC 8 / mouse-mode tracking are not retroactively
-            // wired — the LocalSession's onDataReceived callback was set
-            // when the agent started it headlessly and can't be teed into
-            // additional handlers here. libvterm's native OSC 133 dispatch
+            // OSC 7 / OSC 8 tracking is not retroactively wired — the
+            // LocalSession's onDataReceived callback was set when the agent
+            // started it headlessly and can't be teed into additional
+            // handlers here. Mouse / bracketed-paste modes ARE live: the
+            // agent's own MouseModeTracker sits on the PTY tee (#336) and
+            // its flows are reused below. libvterm's native OSC 133 dispatch
             // still works because that runs inside the adopted emulator.
             val existingHeadless = localSessionManager.getActiveSession(sessionId)
             val agentRegistryEntry = if (existingHeadless != null) terminalSessionRegistry.get(sessionId) else null
@@ -1426,9 +1428,13 @@ class TerminalViewModel @Inject constructor(
                         label = tabLabel,
                         transportType = "LOCAL",
                         emulator = agentRegistryEntry.emulator,
-                        mouseMode = MutableStateFlow(false),
-                        activeMouseMode = MutableStateFlow(null),
-                        bracketPasteMode = MutableStateFlow(false),
+                        // The agent's headless shell runs its own MouseModeTracker
+                        // on the PTY tee (#336) — reuse those flows so the tab's
+                        // paste-wrapping / mouse routing track the live stream.
+                        // Dead stubs only when the entry predates mode tracking.
+                        mouseMode = agentRegistryEntry.mouseMode ?: MutableStateFlow(false),
+                        activeMouseMode = agentRegistryEntry.activeMouseMode ?: MutableStateFlow<Int?>(null),
+                        bracketPasteMode = agentRegistryEntry.bracketPasteMode ?: MutableStateFlow(false),
                         altScreen = MutableStateFlow(false),
                         oscHandler = adoptedOscHandler,
                         feedOutput = adoptedFeedOutput,
@@ -1645,11 +1651,15 @@ class TerminalViewModel @Inject constructor(
             // to the tab's own emulator — attaching it made
             // feed_terminal_output a silent no-op for agent reads.
             if (existing?.oscHandler == null) {
+                // Prefer the flows already on the entry: an agent-headless
+                // shell tracks modes on its own PTY tee (#336), and replacing
+                // them with a tab's stubs left bracketPasteMode dead — the
+                // dual of the feedOutput rule below.
                 terminalSessionRegistry.setAgentHandles(
                     tab.sessionId,
-                    tab.mouseMode,
-                    tab.activeMouseMode,
-                    tab.bracketPasteMode,
+                    existing?.mouseMode ?: tab.mouseMode,
+                    existing?.activeMouseMode ?: tab.activeMouseMode,
+                    existing?.bracketPasteMode ?: tab.bracketPasteMode,
                     tab.oscHandler,
                     existing?.feedOutput ?: tab.feedOutput,
                 )

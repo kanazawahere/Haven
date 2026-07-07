@@ -732,7 +732,7 @@ internal class McpTools(
         ) { args -> readLastTurn(args) },
 
         "feed_terminal_output" to ToolHandler(
-            description = "Inject raw bytes into a terminal session's OUTPUT stream — as if they had arrived from the remote — running the exact pipeline the live data callback uses (OSC scan → mouse-mode scan → emulator). Distinct from send_terminal_input, which sends to the PTY input as if typed. Use this to deterministically exercise output-side parsing without a cooperating remote: e.g. feed an OSC 52 sequence to test the clipboard round-trip, a DECSET 1000/1002/1003 to flip mouseMode, an OSC 8 hyperlink, or a partial escape split across two calls (the OSC scanner keeps state between calls). Provide exactly one of `text` (UTF-8) or `bytesBase64` (for control bytes / ESC). Hard cap 65536 bytes per call. On agent-opened local shells the bytes go straight into the agent emulator (no OSC/mouse scan — same as their live pipeline). Errors when the session has no output pipeline. Returns { sessionId, bytesFed }.",
+            description = "Inject raw bytes into a terminal session's OUTPUT stream — as if they had arrived from the remote — running the exact pipeline the live data callback uses (OSC scan → mouse-mode scan → emulator). Distinct from send_terminal_input, which sends to the PTY input as if typed. Use this to deterministically exercise output-side parsing without a cooperating remote: e.g. feed an OSC 52 sequence to test the clipboard round-trip, a DECSET 1000/1002/1003 to flip mouseMode, an OSC 8 hyperlink, or a partial escape split across two calls (the OSC scanner keeps state between calls). Provide exactly one of `text` (UTF-8) or `bytesBase64` (for control bytes / ESC). Hard cap 65536 bytes per call. On agent-opened local shells the bytes run the DECSET mode scan (mouse / bracketed paste) then go into the agent emulator — same as their live pipeline, which has no OSC scan. Errors when the session has no output pipeline. Returns { sessionId, bytesFed }.",
             inputSchema = objectSchema {
                 string("sessionId", "Active session ID with an attached terminal tab.", required = true)
                 string("text", "UTF-8 text to inject as output. Mutually exclusive with bytesBase64.")
@@ -5105,7 +5105,15 @@ internal class McpTools(
             // (notably 133 prompt markers and OSC 2 title). Mirroring
             // EmulatorWriteBuffer's main-thread post pattern.
             val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+            // Track DECSET private modes (bracketed paste 2004, mouse) on the
+            // agent feed — the one choke point both live PTY output and
+            // feed_terminal_output pass through. Without it a headless shell's
+            // bracketPasteMode read null forever and send_to_agent never
+            // bracket-pasted to a REPL in a local shell (#336). Synchronized:
+            // the PTY reader thread and an MCP feed call can interleave.
+            val modeTracker = sh.haven.feature.terminal.MouseModeTracker()
             val agentFeed: (ByteArray, Int, Int) -> Unit = { data, off, len ->
+                synchronized(modeTracker) { modeTracker.process(data, off, len) }
                 val copy = data.copyOfRange(off, off + len)
                 mainHandler.post { agentEmulator.writeInput(copy, 0, copy.size) }
             }
@@ -5121,6 +5129,12 @@ internal class McpTools(
             // (which writes to the tab's own emulator — silent no-op for
             // agent reads; found testing #226).
             terminalSessionRegistry.setFeedOutput(sessionId, agentFeed)
+            terminalSessionRegistry.setModeFlows(
+                sessionId,
+                mouseMode = modeTracker.mouseMode,
+                activeMouseMode = modeTracker.activeMouseMode,
+                bracketPasteMode = modeTracker.bracketPasteMode,
+            )
         } else {
             // No-op when an existing LocalSession is attached, regardless of
             // the original plain choice — see LocalSessionManager.startHeadlessShell.

@@ -137,6 +137,28 @@ class TerminalSessionRegistry @Inject constructor() {
         _sessions.value = _sessions.value + (sessionId to current.copy(feedOutput = feedOutput))
     }
 
+    /**
+     * Attach just the private-mode flows (mouse / bracketed paste). Used by
+     * the agent's headless shell path, which runs a MouseModeTracker on its
+     * output tee but has no OSC handler — oscHandler stays null so a later
+     * UI-tab adoption still attaches the full tab handles. (#336)
+     */
+    fun setModeFlows(
+        sessionId: String,
+        mouseMode: StateFlow<Boolean>,
+        activeMouseMode: StateFlow<Int?>,
+        bracketPasteMode: StateFlow<Boolean>,
+    ) {
+        val current = _sessions.value[sessionId] ?: return
+        _sessions.value = _sessions.value + (
+            sessionId to current.copy(
+                mouseMode = mouseMode,
+                activeMouseMode = activeMouseMode,
+                bracketPasteMode = bracketPasteMode,
+            )
+            )
+    }
+
     fun unregister(sessionId: String) {
         _sessions.value = _sessions.value - sessionId
     }
