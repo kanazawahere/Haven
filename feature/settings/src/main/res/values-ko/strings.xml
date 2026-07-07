@@ -43,6 +43,8 @@
     <string name="settings_show_linux_vm_subtitle">연결 화면에 Android Linux VM 설정을 표시합니다</string>
 
     <!-- Logging section -->
+    <string name="settings_exclude_recents_title">최근 앱에서 숨기기</string>
+    <string name="settings_exclude_recents_subtitle">최근 앱 화면에서 Haven 카드를 숨깁니다. 세션은 계속 실행됩니다. 앱 아이콘으로 다시 여세요.</string>
     <string name="settings_connection_logging_title">연결 로깅</string>
     <string name="settings_connection_logging_subtitle">연결 이벤트(연결, 연결 해제, 오류)를 기록합니다. 로컬에 저장되며 기기 암호화로 보호됩니다</string>
     <string name="settings_view_connection_log_title">연결 로그 보기</string>

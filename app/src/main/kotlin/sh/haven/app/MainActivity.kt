@@ -368,6 +368,16 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+            // Hide Haven's task card from the recents screen (#239). Dynamic
+            // (AppTask API) rather than the manifest flag so it's toggleable;
+            // sessions and services are untouched — recents UI only.
+            val excludeFromRecents by preferencesRepository.excludeFromRecents
+                .collectAsState(initial = false)
+            LaunchedEffect(excludeFromRecents) {
+                getSystemService(android.app.ActivityManager::class.java)
+                    ?.appTasks?.forEach { it.setExcludeFromRecents(excludeFromRecents) }
+            }
+
             val themeMode by preferencesRepository.theme
                 .collectAsState(initial = UserPreferencesRepository.ThemeMode.SYSTEM)
             // Mirror the user's choice to AppCompatDelegate so the next

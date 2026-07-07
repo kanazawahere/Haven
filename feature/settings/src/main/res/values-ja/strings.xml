@@ -39,6 +39,8 @@
     <string name="settings_prevent_screenshots_subtitle">画面キャプチャとタスクスイッチャーのプレビューをブロック</string>
 
     <!-- Logging section -->
+    <string name="settings_exclude_recents_title">最近のアプリから隠す</string>
+    <string name="settings_exclude_recents_subtitle">最近のアプリ画面でHavenのカードを非表示にします。セッションは継続します。アプリアイコンから再度開けます。</string>
     <string name="settings_connection_logging_title">接続ログ</string>
     <string name="settings_connection_logging_subtitle">接続イベントを記録（接続、切断、エラー）。ローカルに保存、デバイス暗号化で保護</string>
     <string name="settings_view_connection_log_title">接続ログを表示</string>

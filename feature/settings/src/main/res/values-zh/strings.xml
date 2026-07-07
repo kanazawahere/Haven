@@ -39,6 +39,8 @@
     <string name="settings_prevent_screenshots_subtitle">阻止屏幕截图和任务切换器预览</string>
 
     <!-- Logging section -->
+    <string name="settings_exclude_recents_title">从最近任务中隐藏</string>
+    <string name="settings_exclude_recents_subtitle">在最近任务列表中隐藏 Haven 卡片；会话继续运行。从应用图标重新打开。</string>
     <string name="settings_connection_logging_title">连接日志</string>
     <string name="settings_connection_logging_subtitle">记录连接事件（连接、断开、错误）。存储在本地，受设备加密保护</string>
     <string name="settings_view_connection_log_title">查看连接日志</string>

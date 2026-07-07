@@ -39,6 +39,8 @@
     <string name="settings_prevent_screenshots_subtitle">Блокировать захват экрана и превью в диспетчере задач</string>
 
     <!-- Logging section -->
+    <string name="settings_exclude_recents_title">Скрывать из недавних</string>
+    <string name="settings_exclude_recents_subtitle">Скрывает карточку Haven на экране недавних; сеансы продолжают работать. Открыть снова — с иконки приложения.</string>
     <string name="settings_connection_logging_title">Журнал подключений</string>
     <string name="settings_connection_logging_subtitle">Записывать события подключений (подключение, отключение, ошибки). Хранится локально, защищено шифрованием устройства</string>
     <string name="settings_view_connection_log_title">Просмотр журнала подключений</string>

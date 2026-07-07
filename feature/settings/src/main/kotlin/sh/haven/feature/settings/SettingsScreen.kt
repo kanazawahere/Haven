@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.VpnLock
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Wifi
@@ -181,6 +182,7 @@ fun SettingsScreen(
     val showCopyOutputButton by viewModel.showCopyOutputButton.collectAsState()
     val keepScreenOnInTerminal by viewModel.keepScreenOnInTerminal.collectAsState()
     val connectionLoggingEnabled by viewModel.connectionLoggingEnabled.collectAsState()
+    val excludeFromRecents by viewModel.excludeFromRecents.collectAsState()
     val verboseLoggingEnabled by viewModel.verboseLoggingEnabled.collectAsState()
     val mcpAgentEndpointEnabled by viewModel.mcpAgentEndpointEnabled.collectAsState()
     val agentAllowFileRead by viewModel.agentAllowFileRead.collectAsState()
@@ -888,6 +890,15 @@ fun SettingsScreen(
                 },
             )
         }
+
+        // Hide the task card from recents while sessions keep running (#239).
+        SettingsToggleItem(
+            icon = Icons.Filled.VisibilityOff,
+            title = stringResource(R.string.settings_exclude_recents_title),
+            subtitle = stringResource(R.string.settings_exclude_recents_subtitle),
+            checked = excludeFromRecents,
+            onCheckedChange = viewModel::setExcludeFromRecents,
+        )
 
         // Media extensions stays in Advanced (moved up from below the MCP
         // block when the MCP/agent settings were split into their own section).

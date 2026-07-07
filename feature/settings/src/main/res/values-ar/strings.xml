@@ -39,6 +39,8 @@
     <string name="settings_prevent_screenshots_subtitle">حظر التقاط الشاشة ومعاينة مبدّل التطبيقات</string>
 
     <!-- Logging section -->
+    <string name="settings_exclude_recents_title">الإخفاء من التطبيقات الأخيرة</string>
+    <string name="settings_exclude_recents_subtitle">يخفي بطاقة Haven من شاشة التطبيقات الأخيرة؛ تستمر الجلسات في العمل. أعد الفتح من أيقونة التطبيق.</string>
     <string name="settings_connection_logging_title">تسجيل الاتصالات</string>
     <string name="settings_connection_logging_subtitle">تسجيل أحداث الاتصال (اتصال، قطع، أخطاء). يُخزّن محلياً ومحمي بتشفير الجهاز</string>
     <string name="settings_view_connection_log_title">عرض سجل الاتصالات</string>

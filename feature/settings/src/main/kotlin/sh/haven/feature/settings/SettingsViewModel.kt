@@ -231,6 +231,9 @@ class SettingsViewModel @Inject constructor(
     val connectionLoggingEnabled: StateFlow<Boolean> = preferencesRepository.connectionLoggingEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    val excludeFromRecents: StateFlow<Boolean> = preferencesRepository.excludeFromRecents
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     val alwaysShowAllTabs: StateFlow<Boolean> = preferencesRepository.alwaysShowAllTabs
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
@@ -559,6 +562,12 @@ class SettingsViewModel @Inject constructor(
     fun setConnectionLoggingEnabled(enabled: Boolean) {
         viewModelScope.launch {
             preferencesRepository.setConnectionLoggingEnabled(enabled)
+        }
+    }
+
+    fun setExcludeFromRecents(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.setExcludeFromRecents(enabled)
         }
     }
 

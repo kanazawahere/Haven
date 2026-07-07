@@ -39,6 +39,8 @@
     <string name="settings_prevent_screenshots_subtitle">Bildschirmaufnahme und Task-Switcher-Vorschau blockieren</string>
 
     <!-- Logging section -->
+    <string name="settings_exclude_recents_title">Aus letzten Apps ausblenden</string>
+    <string name="settings_exclude_recents_subtitle">Blendet Havens Karte in der Übersicht aus; Sitzungen laufen weiter. Über das App-Symbol wieder öffnen.</string>
     <string name="settings_connection_logging_title">Verbindungsprotokoll</string>
     <string name="settings_connection_logging_subtitle">Verbindungsereignisse aufzeichnen (Verbinden, Trennen, Fehler). Lokal gespeichert, durch Geräteverschlüsselung geschützt</string>
     <string name="settings_view_connection_log_title">Verbindungsprotokoll anzeigen</string>

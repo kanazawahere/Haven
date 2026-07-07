@@ -39,6 +39,8 @@
     <string name="settings_prevent_screenshots_subtitle">Bloquear capturas de pantalla y vista previa del selector de apps</string>
 
     <!-- Logging section -->
+    <string name="settings_exclude_recents_title">Ocultar de apps recientes</string>
+    <string name="settings_exclude_recents_subtitle">Oculta la tarjeta de Haven en recientes; las sesiones siguen activas. Reábrela desde el icono.</string>
     <string name="settings_connection_logging_title">Registro de conexiones</string>
     <string name="settings_connection_logging_subtitle">Registrar eventos de conexión (conectar, desconectar, errores). Almacenado localmente, protegido por cifrado del dispositivo</string>
     <string name="settings_view_connection_log_title">Ver registro de conexiones</string>

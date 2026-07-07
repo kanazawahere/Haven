@@ -39,6 +39,8 @@
     <string name="settings_prevent_screenshots_subtitle">স্ক্রিন ক্যাপচার ও টাস্ক সুইচার প্রিভিউ ব্লক করুন</string>
 
     <!-- Logging section -->
+    <string name="settings_exclude_recents_title">সাম্প্রতিক অ্যাপ থেকে লুকান</string>
+    <string name="settings_exclude_recents_subtitle">সাম্প্রতিক স্ক্রিনে Haven-এর কার্ড লুকায়; সেশন চলতে থাকে। অ্যাপ আইকন থেকে আবার খুলুন।</string>
     <string name="settings_connection_logging_title">সংযোগ লগিং</string>
     <string name="settings_connection_logging_subtitle">সংযোগ ইভেন্ট রেকর্ড করুন (সংযোগ, বিচ্ছিন্ন, ত্রুটি)। স্থানীয়ভাবে সংরক্ষিত, ডিভাইস এনক্রিপশন দ্বারা সুরক্ষিত</string>
     <string name="settings_view_connection_log_title">সংযোগ লগ দেখুন</string>

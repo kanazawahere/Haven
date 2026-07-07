@@ -45,6 +45,8 @@
     <string name="settings_show_linux_vm_subtitle">Show Android Linux VM setup on the Connections screen</string>
 
     <!-- Logging section -->
+    <string name="settings_exclude_recents_title">Hide from recent apps</string>
+    <string name="settings_exclude_recents_subtitle">Hide Haven\'s card in the recents screen; sessions keep running. Reopen from the app icon.</string>
     <string name="settings_connection_logging_title">Connection logging</string>
     <string name="settings_connection_logging_subtitle">Record connection events (connect, disconnect, errors). Stored locally, protected by device encryption</string>
     <string name="settings_view_connection_log_title">View connection log</string>

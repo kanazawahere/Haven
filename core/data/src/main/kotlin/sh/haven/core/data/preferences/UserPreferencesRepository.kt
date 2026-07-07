@@ -61,6 +61,7 @@ class UserPreferencesRepository @Inject constructor(
     private val showCopyOutputButtonKey = booleanPreferencesKey("show_copy_output_button")
     private val keepScreenOnInTerminalKey = booleanPreferencesKey("keep_screen_on_in_terminal")
     private val connectionLoggingEnabledKey = booleanPreferencesKey("connection_logging_enabled")
+    private val excludeFromRecentsKey = booleanPreferencesKey("exclude_from_recents")
     private val mailAutomationEnabledKey = booleanPreferencesKey("mail_automation_enabled")
     private val mailDeleteToBinKey = booleanPreferencesKey("mail_delete_to_bin")
     private val alwaysShowAllTabsKey = booleanPreferencesKey("always_show_all_tabs")
@@ -231,6 +232,21 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setConnectionLoggingEnabled(enabled: Boolean) {
         dataStore.edit { prefs ->
             prefs[connectionLoggingEnabledKey] = enabled
+        }
+    }
+
+    /**
+     * Hide Haven's task card from the recents screen (#239). Off by default —
+     * sessions keep running either way; this only affects the recents UI
+     * (ActivityManager.AppTask.setExcludeFromRecents, applied by MainActivity).
+     */
+    val excludeFromRecents: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[excludeFromRecentsKey] ?: false
+    }
+
+    suspend fun setExcludeFromRecents(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[excludeFromRecentsKey] = enabled
         }
     }
 

@@ -39,6 +39,8 @@
     <string name="settings_prevent_screenshots_subtitle">स्क्रीन कैप्चर और टास्क स्विचर प्रीव्यू ब्लॉक करें</string>
 
     <!-- Logging section -->
+    <string name="settings_exclude_recents_title">हाल के ऐप्स से छिपाएँ</string>
+    <string name="settings_exclude_recents_subtitle">हाल के ऐप्स स्क्रीन में Haven का कार्ड छिपाता है; सत्र चलते रहते हैं। ऐप आइकन से दोबारा खोलें।</string>
     <string name="settings_connection_logging_title">कनेक्शन लॉगिंग</string>
     <string name="settings_connection_logging_subtitle">कनेक्शन इवेंट रिकॉर्ड करें (कनेक्ट, डिस्कनेक्ट, त्रुटियाँ)। स्थानीय रूप से संग्रहित, डिवाइस एन्क्रिप्शन से सुरक्षित</string>
     <string name="settings_view_connection_log_title">कनेक्शन लॉग देखें</string>

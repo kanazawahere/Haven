@@ -22502,6 +22502,44 @@
      }
     },
     {
+     "name": "settings_exclude_recents_title",
+     "en": "Hide from recent apps",
+     "comment": "Logging section",
+     "args": [],
+     "t": {
+      "ar": "الإخفاء من التطبيقات الأخيرة",
+      "bn": "সাম্প্রতিক অ্যাপ থেকে লুকান",
+      "de": "Aus letzten Apps ausblenden",
+      "es": "Ocultar de apps recientes",
+      "fr": "Masquer des applis récentes",
+      "hi": "हाल के ऐप्स से छिपाएँ",
+      "ja": "最近のアプリから隠す",
+      "ko": "최근 앱에서 숨기기",
+      "pt": "Ocultar dos apps recentes",
+      "ru": "Скрывать из недавних",
+      "zh": "从最近任务中隐藏"
+     }
+    },
+    {
+     "name": "settings_exclude_recents_subtitle",
+     "en": "Hide Haven\\'s card in the recents screen; sessions keep running. Reopen from the app icon.",
+     "comment": "Logging section",
+     "args": [],
+     "t": {
+      "ar": "يخفي بطاقة Haven من شاشة التطبيقات الأخيرة؛ تستمر الجلسات في العمل. أعد الفتح من أيقونة التطبيق.",
+      "bn": "সাম্প্রতিক স্ক্রিনে Haven-এর কার্ড লুকায়; সেশন চলতে থাকে। অ্যাপ আইকন থেকে আবার খুলুন।",
+      "de": "Blendet Havens Karte in der Übersicht aus; Sitzungen laufen weiter. Über das App-Symbol wieder öffnen.",
+      "es": "Oculta la tarjeta de Haven en recientes; las sesiones siguen activas. Reábrela desde el icono.",
+      "fr": "Masque la carte de Haven dans les applis récentes ; les sessions continuent. Rouvrez via l\\'icône.",
+      "hi": "हाल के ऐप्स स्क्रीन में Haven का कार्ड छिपाता है; सत्र चलते रहते हैं। ऐप आइकन से दोबारा खोलें।",
+      "ja": "最近のアプリ画面でHavenのカードを非表示にします。セッションは継続します。アプリアイコンから再度開けます。",
+      "ko": "최근 앱 화면에서 Haven 카드를 숨깁니다. 세션은 계속 실행됩니다. 앱 아이콘으로 다시 여세요.",
+      "pt": "Oculta o cartão do Haven em recentes; as sessões continuam. Reabra pelo ícone do app.",
+      "ru": "Скрывает карточку Haven на экране недавних; сеансы продолжают работать. Открыть снова — с иконки приложения.",
+      "zh": "在最近任务列表中隐藏 Haven 卡片；会话继续运行。从应用图标重新打开。"
+     }
+    },
+    {
      "name": "settings_connection_logging_title",
      "en": "Connection logging",
      "comment": "Logging section",

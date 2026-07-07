@@ -39,6 +39,8 @@
     <string name="settings_prevent_screenshots_subtitle">Bloquer la capture d\'écran et l\'aperçu du gestionnaire de tâches</string>
 
     <!-- Logging section -->
+    <string name="settings_exclude_recents_title">Masquer des applis récentes</string>
+    <string name="settings_exclude_recents_subtitle">Masque la carte de Haven dans les applis récentes ; les sessions continuent. Rouvrez via l\'icône.</string>
     <string name="settings_connection_logging_title">Journal des connexions</string>
     <string name="settings_connection_logging_subtitle">Enregistrer les événements de connexion (connexion, déconnexion, erreurs). Stocké localement, protégé par le chiffrement de l\'appareil</string>
     <string name="settings_view_connection_log_title">Voir le journal des connexions</string>
