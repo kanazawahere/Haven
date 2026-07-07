@@ -75,6 +75,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
 import sh.haven.core.local.DesktopManager
 import sh.haven.core.local.ProotManager
+import sh.haven.core.local.SystemVmManager
 import sh.haven.core.local.proot.Compatibility
 import sh.haven.core.local.proot.Distro
 import sh.haven.core.local.proot.DistroCatalog
@@ -132,6 +133,10 @@ fun DesktopManagerScreen(viewModel: DesktopViewModel = hiltViewModel()) {
     val scanningApps by viewModel.scanningApps.collectAsState()
     val defaultResolution by viewModel.appWindowDefaultResolution.collectAsState()
     val defaultScale by viewModel.appWindowDefaultScale.collectAsState()
+    val systemVmState by viewModel.systemVmState.collectAsState()
+    val systemVmImages by viewModel.systemVmImages.collectAsState()
+    val systemVmBusy by viewModel.systemVmBusy.collectAsState()
+    var showImportVmDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -194,6 +199,26 @@ fun DesktopManagerScreen(viewModel: DesktopViewModel = hiltViewModel()) {
             onBrowse = { showInstalledApps = true },
             onSetDefaultResolution = { viewModel.setAppWindowDefaultResolution(it) },
             onSetDefaultScale = { viewModel.setAppWindowDefaultScale(it) },
+        )
+
+        SystemVmSection(
+            state = systemVmState,
+            images = systemVmImages,
+            busy = systemVmBusy,
+            onImport = { showImportVmDialog = true },
+            onStart = { viewModel.startSystemVm(it.id) },
+            onStop = { viewModel.stopSystemVm() },
+            onDelete = { viewModel.deleteSystemVmImage(it.id) },
+        )
+    }
+
+    if (showImportVmDialog) {
+        SystemVmImportDialog(
+            onImport = { label, source ->
+                viewModel.importSystemVmImage(label, source)
+                showImportVmDialog = false
+            },
+            onDismiss = { showImportVmDialog = false },
         )
     }
 
@@ -395,6 +420,162 @@ private fun AppWindowsSection(
             )
         }
     }
+}
+
+/**
+ * "System VM" section (#326): boots a full QEMU x86_64 Linux VM in the active
+ * distro and views it over VNC on loopback. Lists imported disk images with
+ * Start/Delete, an Import button, and — while one is running — a Stop control.
+ * Only one VM runs at a time (TCG + phone RAM), so Start is disabled whenever
+ * any VM is up or the manager is busy importing/booting.
+ */
+@Composable
+private fun SystemVmSection(
+    state: SystemVmManager.VmState?,
+    images: List<SystemVmManager.VmImage>,
+    busy: Boolean,
+    onImport: () -> Unit,
+    onStart: (SystemVmManager.VmImage) -> Unit,
+    onStop: () -> Unit,
+    onDelete: (SystemVmManager.VmImage) -> Unit,
+) {
+    val running = state?.status == SystemVmManager.Status.RUNNING
+    val starting = state?.status == SystemVmManager.Status.STARTING
+    // Local copy: vncPort is a core:local property, which can't smart-cast across the module boundary.
+    val vncPort = state?.vncPort
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(stringResource(AppR.string.app_system_vm_title), style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(AppR.string.app_system_vm_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+
+            if (running || starting) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        if (running && vncPort != null) {
+                            stringResource(AppR.string.app_system_vm_running, vncPort)
+                        } else {
+                            stringResource(AppR.string.app_system_vm_starting)
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onStop) {
+                        Icon(Icons.Filled.Stop, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(AppR.string.app_system_vm_stop))
+                    }
+                }
+                HorizontalDivider()
+            }
+
+            if (images.isEmpty()) {
+                Text(
+                    stringResource(AppR.string.app_system_vm_empty),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                images.forEach { img ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(img.label, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
+                            Text(
+                                "%,d MB".format(img.sizeBytes / (1024 * 1024)),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        IconButton(
+                            onClick = { onStart(img) },
+                            enabled = !busy && !running && !starting,
+                        ) {
+                            Icon(
+                                Icons.Filled.PlayArrow,
+                                contentDescription = stringResource(AppR.string.app_system_vm_start_cd, img.label),
+                            )
+                        }
+                        IconButton(onClick = { onDelete(img) }, enabled = !busy) {
+                            Icon(
+                                Icons.Filled.Delete,
+                                contentDescription = stringResource(AppR.string.app_system_vm_delete_cd, img.label),
+                            )
+                        }
+                    }
+                    HorizontalDivider()
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onImport, enabled = !busy) {
+                    Text(stringResource(AppR.string.app_system_vm_import))
+                }
+                if (busy) {
+                    Spacer(Modifier.width(8.dp))
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+    }
+}
+
+/** Import dialog for a system-VM disk image: a name + a URL or on-device path. */
+@Composable
+private fun SystemVmImportDialog(
+    onImport: (label: String, source: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var label by rememberSaveable { mutableStateOf("") }
+    var source by rememberSaveable { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(AppR.string.app_system_vm_import_title)) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = label,
+                    onValueChange = { label = it },
+                    label = { Text(stringResource(AppR.string.app_system_vm_import_label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = source,
+                    onValueChange = { source = it },
+                    label = { Text(stringResource(AppR.string.app_system_vm_import_source)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onImport(label.trim(), source.trim()) },
+                enabled = label.isNotBlank() && source.isNotBlank(),
+            ) {
+                Text(stringResource(AppR.string.app_system_vm_import))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+        },
+    )
 }
 
 /** The global "Default display" defaults (resolution + scale) for all app windows. */

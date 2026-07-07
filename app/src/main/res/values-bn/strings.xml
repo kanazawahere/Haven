@@ -173,6 +173,19 @@
     <string name="app_desktop_res_custom">কাস্টম</string>
     <string name="app_desktop_res_custom_hint">প্রস্থ×উচ্চতা, যেমন 1024x600</string>
     <string name="app_desktop_app_window_defaults">ডিফল্ট ডিসপ্লে (সব অ্যাপ উইন্ডো)</string>
+
+    <string name="app_system_vm_title">সিস্টেম VM</string>
+    <string name="app_system_vm_description">সক্রিয় ডিস্ট্রোতে QEMU দিয়ে একটি সম্পূর্ণ x86_64 Linux VM বুট করে এবং VNC-এর মাধ্যমে দেখায়। একবারে একটি, এবং এমুলেটেড — তাই ধীর। VNC-সক্ষম QEMU প্রয়োজন (Debian-এ আছে, Alpine-এ নেই)।</string>
+    <string name="app_system_vm_empty">এখনও কোনো ইমেজ নেই। শুরু করতে একটি বুটযোগ্য ডিস্ক ইমেজ (.qcow2, .img, .iso) ইম্পোর্ট করুন।</string>
+    <string name="app_system_vm_import">ইমেজ ইম্পোর্ট করুন…</string>
+    <string name="app_system_vm_running">চলছে · VNC 127.0.0.1:%1$d</string>
+    <string name="app_system_vm_starting">শুরু হচ্ছে…</string>
+    <string name="app_system_vm_stop">থামান</string>
+    <string name="app_system_vm_start_cd">%1$s শুরু করুন</string>
+    <string name="app_system_vm_delete_cd">%1$s মুছুন</string>
+    <string name="app_system_vm_import_title">সিস্টেম-VM ইমেজ ইম্পোর্ট করুন</string>
+    <string name="app_system_vm_import_label">নাম</string>
+    <string name="app_system_vm_import_source">ইমেজ URL বা ডিভাইসে পথ</string>
     <string name="app_window_scale_saved">এই অ্যাপের ডিফল্ট আকার হিসেবে সংরক্ষিত</string>
 
     <!-- Agent Activity log — result summaries (#239) -->

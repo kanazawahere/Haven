@@ -173,6 +173,19 @@
     <string name="app_desktop_res_custom">مخصص</string>
     <string name="app_desktop_res_custom_hint">العرض×الارتفاع، مثال: 1024x600</string>
     <string name="app_desktop_app_window_defaults">العرض الافتراضي (جميع نوافذ التطبيقات)</string>
+
+    <string name="app_system_vm_title">الجهاز الافتراضي للنظام</string>
+    <string name="app_system_vm_description">يشغّل جهازًا افتراضيًا كامل النظام بنظام Linux من نوع x86_64 (عبر QEMU في التوزيعة النشطة) ويعرضه عبر VNC. واحد فقط في كل مرة، ومحاكى — لذا فهو بطيء. يتطلب QEMU يدعم VNC (متوفر في Debian دون Alpine).</string>
+    <string name="app_system_vm_empty">لا توجد صور بعد. استورد صورة قرص قابلة للإقلاع (‎.qcow2 أو ‎.img أو ‎.iso) للبدء.</string>
+    <string name="app_system_vm_import">استيراد صورة…</string>
+    <string name="app_system_vm_running">قيد التشغيل · VNC 127.0.0.1:%1$d</string>
+    <string name="app_system_vm_starting">جارٍ البدء…</string>
+    <string name="app_system_vm_stop">إيقاف</string>
+    <string name="app_system_vm_start_cd">تشغيل %1$s</string>
+    <string name="app_system_vm_delete_cd">حذف %1$s</string>
+    <string name="app_system_vm_import_title">استيراد صورة الجهاز الافتراضي للنظام</string>
+    <string name="app_system_vm_import_label">الاسم</string>
+    <string name="app_system_vm_import_source">رابط الصورة أو مسار على الجهاز</string>
     <string name="app_window_scale_saved">تم الحفظ كحجم افتراضي لهذا التطبيق</string>
 
     <!-- Agent Activity log — result summaries (#239) -->

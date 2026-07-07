@@ -179,6 +179,19 @@
     <string name="app_desktop_res_custom">Своё</string>
     <string name="app_desktop_res_custom_hint">Ширина×Высота, напр. 1024x600</string>
     <string name="app_desktop_app_window_defaults">Экран по умолчанию (все окна приложений)</string>
+
+    <string name="app_system_vm_title">Системная ВМ</string>
+    <string name="app_system_vm_description">Запускает полноценную x86_64 Linux-ВМ (QEMU в активном дистрибутиве) и показывает её через VNC. По одной за раз и с эмуляцией — поэтому медленно. Нужен QEMU с поддержкой VNC (в Debian есть, в Alpine нет).</string>
+    <string name="app_system_vm_empty">Пока нет образов. Импортируйте загрузочный образ диска (.qcow2, .img, .iso), чтобы начать.</string>
+    <string name="app_system_vm_import">Импорт образа…</string>
+    <string name="app_system_vm_running">Работает · VNC 127.0.0.1:%1$d</string>
+    <string name="app_system_vm_starting">Запуск…</string>
+    <string name="app_system_vm_stop">Остановить</string>
+    <string name="app_system_vm_start_cd">Запустить %1$s</string>
+    <string name="app_system_vm_delete_cd">Удалить %1$s</string>
+    <string name="app_system_vm_import_title">Импорт образа системной ВМ</string>
+    <string name="app_system_vm_import_label">Имя</string>
+    <string name="app_system_vm_import_source">URL образа или путь на устройстве</string>
     <string name="app_window_scale_saved">Сохранено как размер по умолчанию для этого приложения</string>
 
     <!-- Agent Activity log — result summaries (#239) -->

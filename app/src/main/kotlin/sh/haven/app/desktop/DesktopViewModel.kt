@@ -91,6 +91,7 @@ class DesktopViewModel @Inject constructor(
     private val appWindowLauncher: AppWindowLauncher,
     private val appWindowShortcutManager: AppWindowShortcutManager,
     private val usbDriveVmManager: sh.haven.app.usb.UsbDriveVmManager,
+    private val systemVmManager: sh.haven.core.local.SystemVmManager,
 ) : ViewModel() {
 
     // --- Distro / DE management (issue #162 Phase 3c) ---
@@ -896,6 +897,78 @@ class DesktopViewModel @Inject constructor(
             } catch (e: sh.haven.app.usb.UsbDriveVmManager.UsbVmException) {
                 _userMessages.emit(e.message ?: "Couldn't unlock the partition")
             }
+        }
+    }
+
+    // --- System VM (#326) — a full QEMU x86_64 VM in the active distro,
+    // viewed over VNC on loopback. One at a time (TCG + phone RAM). The
+    // manager owns the lifecycle; this exposes its state + image store to
+    // the Manage screen and auto-opens a VNC tab once the VM is up.
+
+    val systemVmState: StateFlow<sh.haven.core.local.SystemVmManager.VmState?> get() = systemVmManager.state
+
+    private val _systemVmImages = MutableStateFlow<List<sh.haven.core.local.SystemVmManager.VmImage>>(emptyList())
+    val systemVmImages: StateFlow<List<sh.haven.core.local.SystemVmManager.VmImage>> = _systemVmImages.asStateFlow()
+
+    /** True during an import or a boot (both slow, and both hold the manager mutex). */
+    private val _systemVmBusy = MutableStateFlow(false)
+    val systemVmBusy: StateFlow<Boolean> = _systemVmBusy.asStateFlow()
+
+    init {
+        viewModelScope.launch(Dispatchers.IO) { refreshSystemVmImages() }
+    }
+
+    private fun refreshSystemVmImages() {
+        _systemVmImages.value = runCatching { systemVmManager.listImages() }.getOrDefault(emptyList())
+    }
+
+    /** Import a bootable disk image ([source] = http(s) URL or on-device path), normalised to qcow2. */
+    fun importSystemVmImage(label: String, source: String) {
+        val id = label.lowercase().replace(Regex("[^a-z0-9._-]+"), "-").trim('-')
+        if (id.isEmpty()) {
+            viewModelScope.launch { _userMessages.emit("Give the image a name (letters/digits).") }
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            _systemVmBusy.value = true
+            try {
+                systemVmManager.importImage(id, label.ifBlank { id }, source.trim())
+                refreshSystemVmImages()
+                _userMessages.emit("Imported \"$label\".")
+            } catch (e: Exception) {
+                _userMessages.emit(e.message ?: "Couldn't import the image")
+            } finally {
+                _systemVmBusy.value = false
+            }
+        }
+    }
+
+    /** Boot a stored image and, once its VNC server is up, open a viewer tab on it. */
+    fun startSystemVm(imageId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _systemVmBusy.value = true
+            try {
+                val st = systemVmManager.startImage(imageId)
+                val port = st.vncPort
+                if (st.status == sh.haven.core.local.SystemVmManager.Status.RUNNING && port != null) {
+                    addVncSession(host = "127.0.0.1", port = port, password = null, colorDepth = "BPP_24_TRUE")
+                }
+            } catch (e: Exception) {
+                _userMessages.emit(e.message ?: "Couldn't start the VM")
+            } finally {
+                _systemVmBusy.value = false
+            }
+        }
+    }
+
+    fun stopSystemVm() {
+        viewModelScope.launch(Dispatchers.IO) { systemVmManager.stop() }
+    }
+
+    fun deleteSystemVmImage(imageId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            systemVmManager.deleteImage(imageId)
+            refreshSystemVmImages()
         }
     }
 

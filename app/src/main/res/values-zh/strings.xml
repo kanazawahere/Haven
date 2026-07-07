@@ -173,6 +173,19 @@
     <string name="app_desktop_res_custom">自定义</string>
     <string name="app_desktop_res_custom_hint">宽×高，例如 1024x600</string>
     <string name="app_desktop_app_window_defaults">默认显示（所有应用窗口）</string>
+
+    <string name="app_system_vm_title">系统虚拟机</string>
+    <string name="app_system_vm_description">在活动发行版中通过 QEMU 启动完整的 x86_64 Linux 虚拟机，并通过 VNC 查看。一次只能运行一个，且为模拟运行，因此速度较慢。需要支持 VNC 的 QEMU（Debian 自带，Alpine 则没有）。</string>
+    <string name="app_system_vm_empty">暂无镜像。导入可引导的磁盘镜像（.qcow2、.img、.iso）即可开始。</string>
+    <string name="app_system_vm_import">导入镜像…</string>
+    <string name="app_system_vm_running">运行中 · VNC 127.0.0.1:%1$d</string>
+    <string name="app_system_vm_starting">正在启动…</string>
+    <string name="app_system_vm_stop">停止</string>
+    <string name="app_system_vm_start_cd">启动 %1$s</string>
+    <string name="app_system_vm_delete_cd">删除 %1$s</string>
+    <string name="app_system_vm_import_title">导入系统虚拟机镜像</string>
+    <string name="app_system_vm_import_label">名称</string>
+    <string name="app_system_vm_import_source">镜像 URL 或设备上的路径</string>
     <string name="app_window_scale_saved">已保存为此应用的默认尺寸</string>
 
     <!-- Agent Activity log — result summaries (#239) -->

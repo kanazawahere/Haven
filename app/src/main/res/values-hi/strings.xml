@@ -173,6 +173,19 @@
     <string name="app_desktop_res_custom">कस्टम</string>
     <string name="app_desktop_res_custom_hint">चौड़ाई×ऊँचाई, उदा. 1024x600</string>
     <string name="app_desktop_app_window_defaults">डिफ़ॉल्ट डिस्प्ले (सभी ऐप विंडो)</string>
+
+    <string name="app_system_vm_title">सिस्टम VM</string>
+    <string name="app_system_vm_description">सक्रिय डिस्ट्रो में QEMU के ज़रिए पूरा x86_64 Linux VM बूट करता है और उसे VNC पर दिखाता है. एक बार में एक ही, और एमुलेटेड — इसलिए धीमा. VNC-सक्षम QEMU चाहिए (Debian में है, Alpine में नहीं).</string>
+    <string name="app_system_vm_empty">अभी कोई इमेज नहीं. शुरू करने के लिए एक बूट करने योग्य डिस्क इमेज (.qcow2, .img, .iso) इंपोर्ट करें.</string>
+    <string name="app_system_vm_import">इमेज इंपोर्ट करें…</string>
+    <string name="app_system_vm_running">चल रहा है · VNC 127.0.0.1:%1$d</string>
+    <string name="app_system_vm_starting">शुरू हो रहा है…</string>
+    <string name="app_system_vm_stop">रोकें</string>
+    <string name="app_system_vm_start_cd">%1$s शुरू करें</string>
+    <string name="app_system_vm_delete_cd">%1$s हटाएं</string>
+    <string name="app_system_vm_import_title">सिस्टम-VM इमेज इंपोर्ट करें</string>
+    <string name="app_system_vm_import_label">नाम</string>
+    <string name="app_system_vm_import_source">इमेज URL या डिवाइस पर पथ</string>
     <string name="app_window_scale_saved">इस ऐप के डिफ़ॉल्ट आकार के रूप में सहेजा गया</string>
 
     <!-- Agent Activity log — result summaries (#239) -->

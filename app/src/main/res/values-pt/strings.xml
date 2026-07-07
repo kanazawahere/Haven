@@ -173,6 +173,19 @@
     <string name="app_desktop_res_custom">Personalizada</string>
     <string name="app_desktop_res_custom_hint">Largura×Altura, ex.: 1024x600</string>
     <string name="app_desktop_app_window_defaults">Exibição padrão (todas as janelas de apps)</string>
+
+    <string name="app_system_vm_title">VM do sistema</string>
+    <string name="app_system_vm_description">Inicia uma VM Linux x86_64 completa (QEMU na distribuição ativa) e a exibe por VNC. Uma de cada vez e emulada — portanto lenta. Requer um QEMU compatível com VNC (o do Debian tem; o do Alpine não).</string>
+    <string name="app_system_vm_empty">Ainda não há imagens. Importe uma imagem de disco inicializável (.qcow2, .img, .iso) para começar.</string>
+    <string name="app_system_vm_import">Importar imagem…</string>
+    <string name="app_system_vm_running">Em execução · VNC 127.0.0.1:%1$d</string>
+    <string name="app_system_vm_starting">Iniciando…</string>
+    <string name="app_system_vm_stop">Parar</string>
+    <string name="app_system_vm_start_cd">Iniciar %1$s</string>
+    <string name="app_system_vm_delete_cd">Excluir %1$s</string>
+    <string name="app_system_vm_import_title">Importar imagem de VM do sistema</string>
+    <string name="app_system_vm_import_label">Nome</string>
+    <string name="app_system_vm_import_source">URL da imagem ou caminho no dispositivo</string>
     <string name="app_window_scale_saved">Salvo como o tamanho padrão deste app</string>
 
     <!-- Agent Activity log — result summaries (#239) -->

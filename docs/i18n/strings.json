@@ -2880,6 +2880,240 @@
      }
     },
     {
+     "name": "app_system_vm_title",
+     "en": "System VM",
+     "comment": "Desktop manager: system VM (#326)",
+     "args": [],
+     "t": {
+      "ar": "الجهاز الافتراضي للنظام",
+      "bn": "সিস্টেম VM",
+      "de": "System-VM",
+      "es": "VM del sistema",
+      "fr": "VM système",
+      "hi": "सिस्टम VM",
+      "ja": "システム VM",
+      "ko": "시스템 VM",
+      "pt": "VM do sistema",
+      "ru": "Системная ВМ",
+      "zh": "系统虚拟机"
+     }
+    },
+    {
+     "name": "app_system_vm_description",
+     "en": "Boot a full x86_64 Linux VM (QEMU in the active distro) and view it over VNC. One at a time, and emulated — so slow. Needs a VNC-capable QEMU (Debian\\'s has it; Alpine\\'s does not).",
+     "comment": "Desktop manager: system VM (#326)",
+     "args": [],
+     "t": {
+      "ar": "يشغّل جهازًا افتراضيًا كامل النظام بنظام Linux من نوع x86_64 (عبر QEMU في التوزيعة النشطة) ويعرضه عبر VNC. واحد فقط في كل مرة، ومحاكى — لذا فهو بطيء. يتطلب QEMU يدعم VNC (متوفر في Debian دون Alpine).",
+      "bn": "সক্রিয় ডিস্ট্রোতে QEMU দিয়ে একটি সম্পূর্ণ x86_64 Linux VM বুট করে এবং VNC-এর মাধ্যমে দেখায়। একবারে একটি, এবং এমুলেটেড — তাই ধীর। VNC-সক্ষম QEMU প্রয়োজন (Debian-এ আছে, Alpine-এ নেই)।",
+      "de": "Startet eine vollständige x86_64-Linux-VM (QEMU in der aktiven Distribution) und zeigt sie über VNC an. Nur eine gleichzeitig und emuliert – also langsam. Erfordert ein VNC-fähiges QEMU (Debian hat es, Alpine nicht).",
+      "es": "Arranca una VM Linux x86_64 completa (QEMU en la distribución activa) y la muestra por VNC. Una a la vez y emulada, así que lenta. Necesita un QEMU compatible con VNC (el de Debian lo tiene; el de Alpine no).",
+      "fr": "Démarre une VM Linux x86_64 complète (QEMU dans la distribution active) et l\\'affiche via VNC. Une seule à la fois, et émulée — donc lente. Nécessite un QEMU compatible VNC (celui de Debian l\\'a, pas celui d\\'Alpine).",
+      "hi": "सक्रिय डिस्ट्रो में QEMU के ज़रिए पूरा x86_64 Linux VM बूट करता है और उसे VNC पर दिखाता है. एक बार में एक ही, और एमुलेटेड — इसलिए धीमा. VNC-सक्षम QEMU चाहिए (Debian में है, Alpine में नहीं).",
+      "ja": "完全な x86_64 Linux VM（アクティブなディストリビューション内の QEMU）を起動し、VNC で表示します。同時に 1 つのみ、エミュレーションのため低速です。VNC 対応の QEMU が必要です（Debian にはありますが、Alpine にはありません）。",
+      "ko": "전체 x86_64 Linux VM(활성 배포판의 QEMU)을 부팅하고 VNC로 표시합니다. 한 번에 하나만, 에뮬레이션이므로 느립니다. VNC를 지원하는 QEMU가 필요합니다(Debian에는 있지만 Alpine에는 없음).",
+      "pt": "Inicia uma VM Linux x86_64 completa (QEMU na distribuição ativa) e a exibe por VNC. Uma de cada vez e emulada — portanto lenta. Requer um QEMU compatível com VNC (o do Debian tem; o do Alpine não).",
+      "ru": "Запускает полноценную x86_64 Linux-ВМ (QEMU в активном дистрибутиве) и показывает её через VNC. По одной за раз и с эмуляцией — поэтому медленно. Нужен QEMU с поддержкой VNC (в Debian есть, в Alpine нет).",
+      "zh": "在活动发行版中通过 QEMU 启动完整的 x86_64 Linux 虚拟机，并通过 VNC 查看。一次只能运行一个，且为模拟运行，因此速度较慢。需要支持 VNC 的 QEMU（Debian 自带，Alpine 则没有）。"
+     }
+    },
+    {
+     "name": "app_system_vm_empty",
+     "en": "No images yet. Import a bootable disk image (.qcow2, .img, .iso) to start.",
+     "comment": "Desktop manager: system VM (#326)",
+     "args": [],
+     "t": {
+      "ar": "لا توجد صور بعد. استورد صورة قرص قابلة للإقلاع (‎.qcow2 أو ‎.img أو ‎.iso) للبدء.",
+      "bn": "এখনও কোনো ইমেজ নেই। শুরু করতে একটি বুটযোগ্য ডিস্ক ইমেজ (.qcow2, .img, .iso) ইম্পোর্ট করুন।",
+      "de": "Noch keine Images. Importiere ein startfähiges Disk-Image (.qcow2, .img, .iso), um zu beginnen.",
+      "es": "Aún no hay imágenes. Importa una imagen de disco arrancable (.qcow2, .img, .iso) para empezar.",
+      "fr": "Aucune image pour l\\'instant. Importez une image disque amorçable (.qcow2, .img, .iso) pour commencer.",
+      "hi": "अभी कोई इमेज नहीं. शुरू करने के लिए एक बूट करने योग्य डिस्क इमेज (.qcow2, .img, .iso) इंपोर्ट करें.",
+      "ja": "まだイメージがありません。起動可能なディスクイメージ（.qcow2、.img、.iso）をインポートして開始してください。",
+      "ko": "아직 이미지가 없습니다. 부팅 가능한 디스크 이미지(.qcow2, .img, .iso)를 가져와 시작하세요.",
+      "pt": "Ainda não há imagens. Importe uma imagem de disco inicializável (.qcow2, .img, .iso) para começar.",
+      "ru": "Пока нет образов. Импортируйте загрузочный образ диска (.qcow2, .img, .iso), чтобы начать.",
+      "zh": "暂无镜像。导入可引导的磁盘镜像（.qcow2、.img、.iso）即可开始。"
+     }
+    },
+    {
+     "name": "app_system_vm_import",
+     "en": "Import image…",
+     "comment": "Desktop manager: system VM (#326)",
+     "args": [],
+     "t": {
+      "ar": "استيراد صورة…",
+      "bn": "ইমেজ ইম্পোর্ট করুন…",
+      "de": "Image importieren…",
+      "es": "Importar imagen…",
+      "fr": "Importer une image…",
+      "hi": "इमेज इंपोर्ट करें…",
+      "ja": "イメージをインポート…",
+      "ko": "이미지 가져오기…",
+      "pt": "Importar imagem…",
+      "ru": "Импорт образа…",
+      "zh": "导入镜像…"
+     }
+    },
+    {
+     "name": "app_system_vm_running",
+     "en": "Running · VNC 127.0.0.1:%1$d",
+     "comment": "Desktop manager: system VM (#326)",
+     "args": [
+      "%1$d"
+     ],
+     "t": {
+      "ar": "قيد التشغيل · VNC 127.0.0.1:%1$d",
+      "bn": "চলছে · VNC 127.0.0.1:%1$d",
+      "de": "Läuft · VNC 127.0.0.1:%1$d",
+      "es": "En ejecución · VNC 127.0.0.1:%1$d",
+      "fr": "En cours · VNC 127.0.0.1:%1$d",
+      "hi": "चल रहा है · VNC 127.0.0.1:%1$d",
+      "ja": "実行中 · VNC 127.0.0.1:%1$d",
+      "ko": "실행 중 · VNC 127.0.0.1:%1$d",
+      "pt": "Em execução · VNC 127.0.0.1:%1$d",
+      "ru": "Работает · VNC 127.0.0.1:%1$d",
+      "zh": "运行中 · VNC 127.0.0.1:%1$d"
+     }
+    },
+    {
+     "name": "app_system_vm_starting",
+     "en": "Starting…",
+     "comment": "Desktop manager: system VM (#326)",
+     "args": [],
+     "t": {
+      "ar": "جارٍ البدء…",
+      "bn": "শুরু হচ্ছে…",
+      "de": "Wird gestartet…",
+      "es": "Iniciando…",
+      "fr": "Démarrage…",
+      "hi": "शुरू हो रहा है…",
+      "ja": "起動中…",
+      "ko": "시작 중…",
+      "pt": "Iniciando…",
+      "ru": "Запуск…",
+      "zh": "正在启动…"
+     }
+    },
+    {
+     "name": "app_system_vm_stop",
+     "en": "Stop",
+     "comment": "Desktop manager: system VM (#326)",
+     "args": [],
+     "t": {
+      "ar": "إيقاف",
+      "bn": "থামান",
+      "de": "Stoppen",
+      "es": "Detener",
+      "fr": "Arrêter",
+      "hi": "रोकें",
+      "ja": "停止",
+      "ko": "중지",
+      "pt": "Parar",
+      "ru": "Остановить",
+      "zh": "停止"
+     }
+    },
+    {
+     "name": "app_system_vm_start_cd",
+     "en": "Start %1$s",
+     "comment": "Desktop manager: system VM (#326)",
+     "args": [
+      "%1$s"
+     ],
+     "t": {
+      "ar": "تشغيل %1$s",
+      "bn": "%1$s শুরু করুন",
+      "de": "%1$s starten",
+      "es": "Iniciar %1$s",
+      "fr": "Démarrer %1$s",
+      "hi": "%1$s शुरू करें",
+      "ja": "%1$s を起動",
+      "ko": "%1$s 시작",
+      "pt": "Iniciar %1$s",
+      "ru": "Запустить %1$s",
+      "zh": "启动 %1$s"
+     }
+    },
+    {
+     "name": "app_system_vm_delete_cd",
+     "en": "Delete %1$s",
+     "comment": "Desktop manager: system VM (#326)",
+     "args": [
+      "%1$s"
+     ],
+     "t": {
+      "ar": "حذف %1$s",
+      "bn": "%1$s মুছুন",
+      "de": "%1$s löschen",
+      "es": "Eliminar %1$s",
+      "fr": "Supprimer %1$s",
+      "hi": "%1$s हटाएं",
+      "ja": "%1$s を削除",
+      "ko": "%1$s 삭제",
+      "pt": "Excluir %1$s",
+      "ru": "Удалить %1$s",
+      "zh": "删除 %1$s"
+     }
+    },
+    {
+     "name": "app_system_vm_import_title",
+     "en": "Import system-VM image",
+     "comment": "Desktop manager: system VM (#326)",
+     "args": [],
+     "t": {
+      "ar": "استيراد صورة الجهاز الافتراضي للنظام",
+      "bn": "সিস্টেম-VM ইমেজ ইম্পোর্ট করুন",
+      "de": "System-VM-Image importieren",
+      "es": "Importar imagen de VM del sistema",
+      "fr": "Importer une image de VM système",
+      "hi": "सिस्टम-VM इमेज इंपोर्ट करें",
+      "ja": "システム VM イメージをインポート",
+      "ko": "시스템 VM 이미지 가져오기",
+      "pt": "Importar imagem de VM do sistema",
+      "ru": "Импорт образа системной ВМ",
+      "zh": "导入系统虚拟机镜像"
+     }
+    },
+    {
+     "name": "app_system_vm_import_label",
+     "en": "Name",
+     "comment": "Desktop manager: system VM (#326)",
+     "args": [],
+     "t": {
+      "ar": "الاسم",
+      "bn": "নাম",
+      "de": "Name",
+      "es": "Nombre",
+      "fr": "Nom",
+      "hi": "नाम",
+      "ja": "名前",
+      "ko": "이름",
+      "pt": "Nome",
+      "ru": "Имя",
+      "zh": "名称"
+     }
+    },
+    {
+     "name": "app_system_vm_import_source",
+     "en": "Image URL or on-device path",
+     "comment": "Desktop manager: system VM (#326)",
+     "args": [],
+     "t": {
+      "ar": "رابط الصورة أو مسار على الجهاز",
+      "bn": "ইমেজ URL বা ডিভাইসে পথ",
+      "de": "Image-URL oder Pfad auf dem Gerät",
+      "es": "URL de la imagen o ruta en el dispositivo",
+      "fr": "URL de l\\'image ou chemin sur l\\'appareil",
+      "hi": "इमेज URL या डिवाइस पर पथ",
+      "ja": "イメージ URL またはデバイス上のパス",
+      "ko": "이미지 URL 또는 기기 내 경로",
+      "pt": "URL da imagem ou caminho no dispositivo",
+      "ru": "URL образа или путь на устройстве",
+      "zh": "镜像 URL 或设备上的路径"
+     }
+    },
+    {
      "name": "app_desktop_open_shell_cd",
      "en": "Open shell in %1$s",
      "comment": "Desktop manager: distro / rootfs",
