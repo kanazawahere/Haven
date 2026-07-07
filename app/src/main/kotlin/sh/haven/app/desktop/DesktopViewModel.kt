@@ -117,6 +117,8 @@ class DesktopViewModel @Inject constructor(
 
     val installedDistros: List<Distro> get() = prootManager.installedDistros
     val availableDistros: List<Distro> get() = prootManager.availableDistros
+    val availableForeignDistros: List<Pair<Distro, sh.haven.core.local.proot.Arch>>
+        get() = prootManager.availableForeignDistros
     val installedDesktops: Set<ProotManager.DesktopEnvironment>
         get() = prootManager.installedDesktops
 
@@ -260,6 +262,30 @@ class DesktopViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "addDistro: ${distro.id} install threw", e)
                 prootManager.setActiveDistroId(previousActive)
+            }
+        }
+    }
+
+    /**
+     * Install a catalog distro for a NON-host arch — runs under qemu-user
+     * emulation (#325). Routed through the import path, which downloads the
+     * foreign tarball, auto-detects its arch, and writes the marker that
+     * arms qemu at launch; registers under the derived "<id>-<arch>" id.
+     */
+    fun addForeignDistro(distro: Distro, arch: sh.haven.core.local.proot.Arch) {
+        val source = distro.rootfsSources[arch] ?: return
+        viewModelScope.launch {
+            try {
+                prootManager.importRootfs(
+                    id = prootManager.foreignDistroId(distro, arch),
+                    label = "${distro.label} (${arch.slug})",
+                    family = distro.family,
+                    source = source.url,
+                    format = formatFor(source.url),
+                    expectedSha256 = source.sha256,
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "addForeignDistro: ${distro.id}/${arch.slug} threw", e)
             }
         }
     }
@@ -818,8 +844,32 @@ class DesktopViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Non-null while the user must choose between several attached USB
+     * drives — the manual menu item has no deviceName, and resolveDrive
+     * refuses to guess. The Manage screen renders this as a picker dialog.
+     */
+    data class UsbDrivePicker(
+        val drives: List<sh.haven.core.usb.UsbDeviceInfo>,
+        val writable: Boolean,
+    )
+    private val _usbDrivePicker = MutableStateFlow<UsbDrivePicker?>(null)
+    val usbDrivePicker: StateFlow<UsbDrivePicker?> = _usbDrivePicker.asStateFlow()
+
+    fun dismissUsbDrivePicker() {
+        _usbDrivePicker.value = null
+    }
+
     /** Boot a VM that mounts the attached USB drive; its files appear as a connection. */
     fun openUsbDrive(deviceName: String? = null, writable: Boolean = false) {
+        if (deviceName == null) {
+            val drives = usbDriveVmManager.massStorageDevices()
+            if (drives.size > 1) {
+                _usbDrivePicker.value = UsbDrivePicker(drives, writable)
+                return
+            }
+        }
+        _usbDrivePicker.value = null
         viewModelScope.launch {
             try {
                 usbDriveVmManager.open(deviceName, writable)

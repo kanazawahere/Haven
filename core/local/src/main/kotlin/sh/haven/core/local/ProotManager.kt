@@ -539,6 +539,28 @@ class ProotManager @Inject constructor(
         }
 
     /**
+     * Foreign-arch catalog installs the picker can offer (#325 UX): a
+     * (distro, arch) pair for every catalog rootfs of a NON-host arch whose
+     * qemu-user loader is bundled in this build. Installed through the
+     * import path under [foreignDistroId] — which auto-detects the arch and
+     * arms qemu at launch — so this is discovery only, no new mechanism.
+     */
+    val availableForeignDistros: List<Pair<Distro, Arch>>
+        get() {
+            val host = Arch.current() ?: return emptyList()
+            val known = DistroCatalog.all.map { it.id }.toSet()
+            return DistroCatalog.builtins.flatMap { distro ->
+                distro.rootfsSources.keys
+                    .filter { it != host && qemuLoaderAvailable(it) }
+                    .filter { foreignDistroId(distro, it) !in known }
+                    .map { distro to it }
+            }
+        }
+
+    /** Import id a foreign-arch catalog install registers under (e.g. "debian-x86_64"). */
+    fun foreignDistroId(distro: Distro, arch: Arch): String = "${distro.id}-${arch.slug}"
+
+    /**
      * Resolve the rootfs directory for a specific distro id.
      *
      * For the default Alpine distro, falls back to the legacy
@@ -597,10 +619,16 @@ class ProotManager @Inject constructor(
      */
     internal fun qemuUserArgs(distroId: String): List<String> {
         val arch = foreignRootfsArch(distroId) ?: return emptyList()
-        val loader = File(context.applicationInfo.nativeLibraryDir, "lib${qemuLoaderName(arch)}.so")
+        val loader = qemuLoaderFile(arch)
         if (!loader.canExecute()) return emptyList()
         return listOf("--qemu=${loader.absolutePath}")
     }
+
+    private fun qemuLoaderFile(arch: Arch): File =
+        File(context.applicationInfo.nativeLibraryDir, "lib${qemuLoaderName(arch)}.so")
+
+    /** True when this build bundles an executable qemu-user loader for [arch]. */
+    fun qemuLoaderAvailable(arch: Arch): Boolean = qemuLoaderFile(arch).canExecute()
 
     /**
      * Host dir for rasterized guest app icons. cacheDir is bound into the guest

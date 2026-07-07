@@ -85,6 +85,8 @@
     <string name="app_desktop_open_shell_cd">Shell in %1$s öffnen</string>
     <string name="app_desktop_delete_distro_cd">%1$s löschen</string>
     <string name="app_desktop_add_distro">+ %1$s  (~%2$d MB)</string>
+    <string name="app_desktop_add_foreign_distro">+ %1$s %2$s — emuliert, langsamer  (~%3$d MB)</string>
+    <string name="app_desktop_usb_drive_picker_title">Welches USB-Laufwerk öffnen?</string>
     <string name="app_desktop_rootfs_downloading">Rootfs wird heruntergeladen… %1$d%%</string>
     <string name="app_desktop_rootfs_extracting">Rootfs wird entpackt…</string>
     <string name="app_desktop_rootfs_initializing">Rootfs wird eingerichtet… (%1$s)</string>

@@ -17,11 +17,12 @@ import android.os.Build
  * corresponding spec from [DesktopCatalog].
  */
 
-/** Device ABI the rootfs tarballs are pinned against. */
-enum class Arch(val abi: String) {
-    AARCH64("arm64-v8a"),
-    X86_64("x86_64"),
-    ARM("armeabi-v7a");
+/** Device ABI the rootfs tarballs are pinned against. [slug] is the short
+ *  user-facing / distro-id form ("debian-x86_64"). */
+enum class Arch(val abi: String, val slug: String) {
+    AARCH64("arm64-v8a", "aarch64"),
+    X86_64("x86_64", "x86_64"),
+    ARM("armeabi-v7a", "armv7");
 
     companion object {
         /** Detect the current device arch, or null if unsupported. */

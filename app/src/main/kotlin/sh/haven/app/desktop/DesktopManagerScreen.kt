@@ -108,6 +108,8 @@ fun DesktopManagerScreen(viewModel: DesktopViewModel = hiltViewModel()) {
     val rootfsSetupState by viewModel.rootfsSetupState.collectAsState()
     val installedDistros = viewModel.installedDistros
     val availableDistros = viewModel.availableDistros
+    val availableForeignDistros = viewModel.availableForeignDistros
+    val usbDrivePicker by viewModel.usbDrivePicker.collectAsState()
     val isRootfsReady = rootfsSetupState is ProotManager.SetupState.Ready
     val mirrorRegion by viewModel.mirrorRegion.collectAsState()
     val remapLowPorts by viewModel.remapLowPorts.collectAsState()
@@ -143,6 +145,7 @@ fun DesktopManagerScreen(viewModel: DesktopViewModel = hiltViewModel()) {
             activeDistroId = activeDistroId,
             installedDistros = installedDistros,
             availableDistros = availableDistros,
+            availableForeignDistros = availableForeignDistros,
             rootfsSetupState = rootfsSetupState,
             isRootfsReady = isRootfsReady,
             mirrorRegion = mirrorRegion,
@@ -168,6 +171,7 @@ fun DesktopManagerScreen(viewModel: DesktopViewModel = hiltViewModel()) {
             onSwitchDistro = { viewModel.switchActiveDistro(it) },
             onOpenShellForDistro = { viewModel.openShellForDistro(it) },
             onAddDistro = { viewModel.addDistro(it) },
+            onAddForeignDistro = { distro, arch -> viewModel.addForeignDistro(distro, arch) },
             onDeleteDistro = { viewModel.deleteDistro(it.id) },
             onInstall = { setupDesktopDe = it },
             onStart = { viewModel.startDesktop(it) },
@@ -190,6 +194,37 @@ fun DesktopManagerScreen(viewModel: DesktopViewModel = hiltViewModel()) {
             onBrowse = { showInstalledApps = true },
             onSetDefaultResolution = { viewModel.setAppWindowDefaultResolution(it) },
             onSetDefaultScale = { viewModel.setAppWindowDefaultScale(it) },
+        )
+    }
+
+    // Several USB drives attached and the menu item can't guess — list them
+    // (the MCP tool disambiguates by deviceName; this is the UI's equivalent).
+    usbDrivePicker?.let { picker ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissUsbDrivePicker() },
+            title = { Text(stringResource(AppR.string.app_desktop_usb_drive_picker_title)) },
+            text = {
+                Column {
+                    picker.drives.forEach { drive ->
+                        val line = listOfNotNull(
+                            drive.productName?.takeIf { it.isNotBlank() },
+                            drive.deviceName,
+                        ).joinToString("  ·  ")
+                        TextButton(
+                            onClick = { viewModel.openUsbDrive(drive.deviceName, picker.writable) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(line)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissUsbDrivePicker() }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
         )
     }
 
@@ -691,6 +726,7 @@ private fun DesktopManagerSection(
     activeDistroId: String,
     installedDistros: List<Distro>,
     availableDistros: List<Distro>,
+    availableForeignDistros: List<Pair<Distro, sh.haven.core.local.proot.Arch>>,
     rootfsSetupState: ProotManager.SetupState,
     isRootfsReady: Boolean,
     mirrorRegion: MirrorRegion,
@@ -716,6 +752,7 @@ private fun DesktopManagerSection(
     onSwitchDistro: (String) -> Unit,
     onOpenShellForDistro: (String) -> Unit,
     onAddDistro: (Distro) -> Unit,
+    onAddForeignDistro: (Distro, sh.haven.core.local.proot.Arch) -> Unit,
     onDeleteDistro: (Distro) -> Unit,
     onInstall: (ProotManager.DesktopEnvironment) -> Unit,
     onStart: (ProotManager.DesktopEnvironment) -> Unit,
@@ -853,6 +890,20 @@ private fun DesktopManagerSection(
                                 },
                                 onClick = {
                                     onAddDistro(distro)
+                                    distroMenuOpen = false
+                                },
+                            )
+                        }
+                        // Foreign-arch catalog entries — run under qemu-user
+                        // emulation (#325); only offered when this build
+                        // bundles the matching loader.
+                        availableForeignDistros.forEach { (distro, arch) ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(stringResource(AppR.string.app_desktop_add_foreign_distro, distro.label, arch.slug, distro.sizeEstimateMb))
+                                },
+                                onClick = {
+                                    onAddForeignDistro(distro, arch)
                                     distroMenuOpen = false
                                 },
                             )

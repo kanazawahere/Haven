@@ -87,6 +87,8 @@
     <string name="app_desktop_open_shell_cd">Открыть оболочку в %1$s</string>
     <string name="app_desktop_delete_distro_cd">Удалить %1$s</string>
     <string name="app_desktop_add_distro">+ %1$s  (~%2$d МБ)</string>
+    <string name="app_desktop_add_foreign_distro">+ %1$s %2$s — эмуляция, медленнее  (~%3$d МБ)</string>
+    <string name="app_desktop_usb_drive_picker_title">Какой USB-накопитель открыть?</string>
     <string name="app_desktop_rootfs_downloading">Загрузка rootfs… %1$d%%</string>
     <string name="app_desktop_rootfs_extracting">Распаковка rootfs…</string>
     <string name="app_desktop_rootfs_initializing">Настройка rootfs… (%1$s)</string>

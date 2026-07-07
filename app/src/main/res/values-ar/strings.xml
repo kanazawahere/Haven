@@ -85,6 +85,8 @@
     <string name="app_desktop_open_shell_cd">فتح shell في %1$s</string>
     <string name="app_desktop_delete_distro_cd">حذف %1$s</string>
     <string name="app_desktop_add_distro">+ %1$s  (~%2$d MB)</string>
+    <string name="app_desktop_add_foreign_distro">+ %1$s %2$s — عبر المحاكاة، أبطأ  (~%3$d MB)</string>
+    <string name="app_desktop_usb_drive_picker_title">أي محرك أقراص USB تريد فتحه؟</string>
     <string name="app_desktop_rootfs_downloading">جارٍ تنزيل rootfs… %1$d%%</string>
     <string name="app_desktop_rootfs_extracting">جارٍ فك ضغط rootfs…</string>
     <string name="app_desktop_rootfs_initializing">جارٍ إعداد rootfs… (%1$s)</string>

@@ -85,6 +85,8 @@
     <string name="app_desktop_open_shell_cd">%1$s-এ শেল খুলুন</string>
     <string name="app_desktop_delete_distro_cd">%1$s মুছুন</string>
     <string name="app_desktop_add_distro">+ %1$s  (~%2$d MB)</string>
+    <string name="app_desktop_add_foreign_distro">+ %1$s %2$s — এমুলেটেড, ধীর  (~%3$d MB)</string>
+    <string name="app_desktop_usb_drive_picker_title">কোন USB ড্রাইভ খুলবেন?</string>
     <string name="app_desktop_rootfs_downloading">rootfs ডাউনলোড হচ্ছে… %1$d%%</string>
     <string name="app_desktop_rootfs_extracting">rootfs বের করা হচ্ছে…</string>
     <string name="app_desktop_rootfs_initializing">rootfs সেটআপ হচ্ছে… (%1$s)</string>
