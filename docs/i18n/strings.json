@@ -4054,6 +4054,25 @@
      }
     },
     {
+     "name": "app_agent_block_client",
+     "en": "Block",
+     "comment": "Agent consent sheet",
+     "args": [],
+     "t": {
+      "ar": "حظر",
+      "bn": "ব্লক করুন",
+      "de": "Blockieren",
+      "es": "Bloquear",
+      "fr": "Bloquer",
+      "hi": "ब्लॉक करें",
+      "ja": "ブロック",
+      "ko": "차단",
+      "pt": "Bloquear",
+      "ru": "Заблокировать",
+      "zh": "屏蔽"
+     }
+    },
+    {
      "name": "app_present_app_missing_details",
      "en": "App window is missing its connection details.",
      "comment": "Agent presentation sheet",
