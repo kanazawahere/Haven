@@ -5,6 +5,12 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.20
+
+🖥️ **Foreign-architecture Linux distros are now offered in the distro picker** (#325) — the "＋ Add another distro" list only ever showed distros built for your phone's own CPU, so running, say, an x86_64 Debian on an arm64 phone meant knowing to hand-type a rootfs URL into Import rootfs. Every built-in distro now also appears as an emulated variant for each foreign architecture this build can run ("＋ Debian 12 (Bookworm) x86_64 — emulated, slower"), installed through the same path as before (the download is arch-detected and transparently run under qemu-user). It's discovery, not a new mechanism — and it's clearly labelled "emulated, slower" so the speed trade-off is obvious. Verified on an arm64 device: all five built-ins offered as x86_64 variants.
+
+🔌 **Opening a USB drive with several attached now lets you pick which one** (#287) — "Open USB drive…" assumed a single drive and errored out ("pass deviceName") when more than one mass-storage device was plugged in; only the agent (MCP) path could choose. It now shows a short picker listing the attached drives. Opening a single drive, or none, is unchanged.
+
 ## v5.68.19
 
 ⌨️ **Local shells now track bracketed-paste and mouse modes** (#336) — an agent-opened local shell had no DECSET scan at all, and a local shell adopted into the Terminal UI got dead stub flows installed over the working ones, so `bracketPasteMode` read false forever. Two consequences fixed: `send_to_agent` now bracket-pastes multi-line messages to a REPL running in a local shell (verified on-device against bash 5.2 in the Alpine proot — a two-line message lands as one submitted paste, and drops back to plain input when the REPL exits), and an adopted local tab's own paste-wrapping now follows the live stream instead of never wrapping.

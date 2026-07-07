@@ -1,0 +1,3 @@
+🖥️ Foreign-architecture Linux distros are now offered directly in the distro picker (#325): each built-in distro also appears as an emulated variant for architectures this build can run under qemu-user (e.g. x86_64 on an arm64 phone), clearly labelled "emulated, slower". Previously these needed a hand-typed rootfs URL via Import rootfs.
+
+🔌 Opening a USB drive when several are attached now shows a picker to choose which one, instead of erroring (#287). Single-drive behaviour is unchanged.
