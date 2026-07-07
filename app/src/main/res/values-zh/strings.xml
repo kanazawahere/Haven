@@ -122,6 +122,7 @@
     <string name="app_agent_action_requested">代理操作请求</string>
     <string name="app_agent_from_client">来自：%1$s</string>
     <string name="app_agent_tool">工具：%1$s</string>
+    <string name="app_agent_more_pending">＋后面还有 %1$d 个请求在等待——处理完这个后会显示</string>
     <string name="app_agent_bypass_label">在 Haven 重启前允许来自 \'%1$s\' 的所有 MCP 请求</string>
     <string name="app_agent_bypass_description">包括破坏性操作（终端输入、文件写入/删除、APK 安装）。应用退出后清除。</string>
     <string name="app_agent_auto_allow_window">自动允许窗口：</string>

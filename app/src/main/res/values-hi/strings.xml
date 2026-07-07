@@ -122,6 +122,7 @@
     <string name="app_agent_action_requested">Agent की कार्रवाई अनुरोधित</string>
     <string name="app_agent_from_client">से: %1$s</string>
     <string name="app_agent_tool">Tool: %1$s</string>
+    <string name="app_agent_more_pending">＋इसके पीछे %1$d और अनुरोध प्रतीक्षारत — इसके बाद दिखेंगे</string>
     <string name="app_agent_bypass_label">Haven पुनः आरंभ होने तक \'%1$s\' के सभी MCP अनुरोधों की अनुमति दें</string>
     <string name="app_agent_bypass_description">इसमें विनाशकारी कार्रवाइयाँ शामिल हैं (terminal input, file write/delete, APK install)। ऐप बंद होने पर रीसेट।</string>
     <string name="app_agent_auto_allow_window">Auto-allow विंडो:</string>

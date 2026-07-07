@@ -223,6 +223,7 @@
     <string name="app_agent_action_requested">Agent action requested</string>
     <string name="app_agent_from_client">From: %1$s</string>
     <string name="app_agent_tool">Tool: %1$s</string>
+    <string name="app_agent_more_pending">＋%1$d more request(s) waiting behind this one — you\'ll see them after this</string>
     <string name="app_agent_bypass_label">Allow all MCP requests from \'%1$s\' until Haven restarts</string>
     <string name="app_agent_bypass_description">Includes destructive operations (terminal input, file write/delete, APK install). Cleared on app kill.</string>
     <string name="app_agent_auto_allow_window">Auto-allow window:</string>

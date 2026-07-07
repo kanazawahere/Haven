@@ -122,6 +122,7 @@
     <string name="app_agent_action_requested">Agent কার্য অনুরোধ করা হয়েছে</string>
     <string name="app_agent_from_client">প্রেরক: %1$s</string>
     <string name="app_agent_tool">Tool: %1$s</string>
+    <string name="app_agent_more_pending">＋এর পেছনে %1$d টি অনুরোধ অপেক্ষমাণ — এটির পরে দেখা যাবে</string>
     <string name="app_agent_bypass_label">\'%1$s\' থেকে সব MCP অনুরোধ Haven পুনরায় চালু না হওয়া পর্যন্ত অনুমোদন করুন</string>
     <string name="app_agent_bypass_description">ধ্বংসাত্মক অপারেশন অন্তর্ভুক্ত (টার্মিনাল ইনপুট, ফাইল লেখা/মোছা, APK ইনস্টল)। অ্যাপ বন্ধ হলে সাফ হয়।</string>
     <string name="app_agent_auto_allow_window">স্বয়ংক্রিয়-অনুমোদন উইন্ডো:</string>

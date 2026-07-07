@@ -122,6 +122,7 @@
     <string name="app_agent_action_requested">إجراء وكيل مطلوب</string>
     <string name="app_agent_from_client">من: %1$s</string>
     <string name="app_agent_tool">الأداة: %1$s</string>
+    <string name="app_agent_more_pending">＋%1$d طلب في الانتظار خلف هذا الطلب — سترى الطلبات بعده</string>
     <string name="app_agent_bypass_label">السماح لجميع طلبات MCP من \'%1$s\' حتى إعادة تشغيل Haven</string>
     <string name="app_agent_bypass_description">يشمل العمليات التدميرية (إدخال الطرفية، كتابة/حذف الملفات، تثبيت APK). يُمسح عند إغلاق التطبيق.</string>
     <string name="app_agent_auto_allow_window">نافذة السماح التلقائي:</string>

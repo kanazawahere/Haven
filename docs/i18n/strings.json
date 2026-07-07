@@ -3679,6 +3679,27 @@
      }
     },
     {
+     "name": "app_agent_more_pending",
+     "en": "＋%1$d more request(s) waiting behind this one — you\\'ll see them after this",
+     "comment": "Agent consent sheet",
+     "args": [
+      "%1$d"
+     ],
+     "t": {
+      "ar": "＋%1$d طلب في الانتظار خلف هذا الطلب — سترى الطلبات بعده",
+      "bn": "＋এর পেছনে %1$d টি অনুরোধ অপেক্ষমাণ — এটির পরে দেখা যাবে",
+      "de": "＋%1$d weitere Anfrage(n) warten dahinter – du siehst sie danach",
+      "es": "＋%1$d solicitud(es) más esperando detrás de esta; las verás después",
+      "fr": "＋%1$d autre(s) demande(s) en attente derrière celle-ci — vous les verrez ensuite",
+      "hi": "＋इसके पीछे %1$d और अनुरोध प्रतीक्षारत — इसके बाद दिखेंगे",
+      "ja": "＋この後ろに%1$d件のリクエストが待機中 — 完了後に表示されます",
+      "ko": "＋뒤에 %1$d개의 요청이 대기 중 — 이 요청 후에 표시됩니다",
+      "pt": "＋%1$d solicitação(ões) aguardando atrás desta — você as verá depois",
+      "ru": "＋за этим ждёт ещё запросов: %1$d — вы увидите их после",
+      "zh": "＋后面还有 %1$d 个请求在等待——处理完这个后会显示"
+     }
+    },
+    {
      "name": "app_agent_bypass_label",
      "en": "Allow all MCP requests from \\'%1$s\\' until Haven restarts",
      "comment": "Agent consent sheet",

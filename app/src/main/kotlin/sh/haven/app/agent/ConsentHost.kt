@@ -172,6 +172,23 @@ internal fun ConsentHost(viewModel: ConsentHostViewModel = hiltViewModel()) {
                 style = MaterialTheme.typography.titleMedium,
             )
             Spacer(Modifier.height(8.dp))
+            // Queue-depth cue: this sheet renders the OLDEST pending request,
+            // and pairing + per-call consent from every client share it. With
+            // two clients live (e.g. a workstation agent mid-reconnect while
+            // another drives an install) the user could approve THIS sheet
+            // believing it's the action they just triggered, when their action
+            // is actually queued behind it — the "pressed Pair, install denied"
+            // trap (#337). Tell them another request is waiting so they don't
+            // conflate the two.
+            val othersWaiting = pending.size - 1
+            if (othersWaiting > 0) {
+                Text(
+                    text = stringResource(R.string.app_agent_more_pending, othersWaiting),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(Modifier.height(8.dp))
+            }
             // For non-pairing requests show the "From: <client>" line —
             // pairing requests already have the client name in their
             // summary body so it'd be redundant.

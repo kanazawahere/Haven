@@ -130,6 +130,7 @@
     <string name="app_agent_action_requested">에이전트 작업 요청됨</string>
     <string name="app_agent_from_client">보낸 곳: %1$s</string>
     <string name="app_agent_tool">도구: %1$s</string>
+    <string name="app_agent_more_pending">＋뒤에 %1$d개의 요청이 대기 중 — 이 요청 후에 표시됩니다</string>
     <string name="app_agent_bypass_label">Haven 재시작 전까지 \'%1$s\'의 모든 MCP 요청 허용</string>
     <string name="app_agent_bypass_description">파괴적 작업 포함(터미널 입력, 파일 쓰기/삭제, APK 설치). 앱 종료 시 초기화됩니다.</string>
     <string name="app_agent_auto_allow_window">자동 허용 기간:</string>

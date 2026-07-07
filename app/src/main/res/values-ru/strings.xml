@@ -126,6 +126,7 @@
     <string name="app_agent_action_requested">Запрос действия агента</string>
     <string name="app_agent_from_client">От: %1$s</string>
     <string name="app_agent_tool">Инструмент: %1$s</string>
+    <string name="app_agent_more_pending">＋за этим ждёт ещё запросов: %1$d — вы увидите их после</string>
     <string name="app_agent_bypass_label">Разрешить все MCP-запросы от \'%1$s\' до перезапуска Haven</string>
     <string name="app_agent_bypass_description">Включает деструктивные операции (ввод в терминал, запись/удаление файлов, установка APK). Сбрасывается при закрытии приложения.</string>
     <string name="app_agent_auto_allow_window">Окно автоодобрения:</string>

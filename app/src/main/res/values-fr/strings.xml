@@ -122,6 +122,7 @@
     <string name="app_agent_action_requested">Action agent demandée</string>
     <string name="app_agent_from_client">De : %1$s</string>
     <string name="app_agent_tool">Outil : %1$s</string>
+    <string name="app_agent_more_pending">＋%1$d autre(s) demande(s) en attente derrière celle-ci — vous les verrez ensuite</string>
     <string name="app_agent_bypass_label">Autoriser toutes les requêtes MCP de \'%1$s\' jusqu\'au redémarrage de Haven</string>
     <string name="app_agent_bypass_description">Inclut les opérations destructives (saisie terminal, écriture/suppression de fichiers, installation d\'APK). Effacé à la fermeture de l\'app.</string>
     <string name="app_agent_auto_allow_window">Fenêtre d\'autorisation automatique :</string>
