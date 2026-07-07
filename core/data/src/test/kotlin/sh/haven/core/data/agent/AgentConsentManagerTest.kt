@@ -512,6 +512,102 @@ class AgentConsentManagerTest {
     }
 
     @Test
+    fun `concurrent pairing requests for the same client coalesce into one sheet`() = runTest(UnconfinedTestDispatcher()) {
+        val mgr = AgentConsentManager()
+        mgr.setForegroundActive(true)
+
+        // A reconnecting client retries initialize faster than the user can
+        // answer — the retries must attach to the first sheet, not stack
+        // three more identical ones behind it (#337).
+        val first = async { mgr.requestClientPairing("claude-code", "1.0", timeoutMs = Long.MAX_VALUE) }
+        val second = async { mgr.requestClientPairing("claude-code", "1.0", timeoutMs = Long.MAX_VALUE) }
+        assertEquals("one sheet, not two", 1, mgr.pending.value.size)
+
+        mgr.respond(mgr.pending.value.single().id, ConsentDecision.ALLOW)
+        assertEquals(ConsentDecision.ALLOW, first.await())
+        assertEquals("the coalesced waiter shares the outcome", ConsentDecision.ALLOW, second.await())
+    }
+
+    @Test
+    fun `explicit pairing deny arms a cooldown - an immediate retry is denied without a prompt`() = runTest(UnconfinedTestDispatcher()) {
+        val mgr = AgentConsentManager()
+        mgr.setForegroundActive(true)
+
+        val pair = async { mgr.requestClientPairing("spammy", null, timeoutMs = Long.MAX_VALUE) }
+        mgr.respond(mgr.pending.value.single().id, ConsentDecision.DENY)
+        assertEquals(ConsentDecision.DENY, pair.await())
+
+        // The client's retry loop must not re-raise the sheet seconds later.
+        assertEquals(ConsentDecision.DENY, mgr.requestClientPairing("spammy", null))
+        assertTrue("cooldown denies without queueing a prompt", mgr.pending.value.isEmpty())
+    }
+
+    @Test
+    fun `Block on the pairing sheet silences future pairing from that client`() = runTest(UnconfinedTestDispatcher()) {
+        val mgr = AgentConsentManager()
+        mgr.setForegroundActive(true)
+
+        val pair = async { mgr.requestClientPairing("rogue", null, timeoutMs = Long.MAX_VALUE) }
+        mgr.respond(mgr.pending.value.single().id, ConsentDecision.DENY, blockClient = true)
+        assertEquals(ConsentDecision.DENY, pair.await())
+
+        assertEquals(ConsentDecision.DENY, mgr.requestClientPairing("rogue", null))
+        assertTrue("blocked client must not queue a prompt", mgr.pending.value.isEmpty())
+
+        // clearMemoised is the recovery path — the client can pair again.
+        mgr.clearMemoised()
+        val retry = async { mgr.requestClientPairing("rogue", null, timeoutMs = Long.MAX_VALUE) }
+        assertEquals("after reset the sheet is offered again", 1, mgr.pending.value.size)
+        mgr.respond(mgr.pending.value.single().id, ConsentDecision.ALLOW)
+        assertEquals(ConsentDecision.ALLOW, retry.await())
+    }
+
+    @Test
+    fun `blockClient is ignored on non-pairing consent - tools are unaffected`() = runTest(UnconfinedTestDispatcher()) {
+        val mgr = AgentConsentManager()
+        mgr.setForegroundActive(true)
+
+        // Even if a DENY+block somehow lands on a per-tool sheet, the block
+        // set only gates PAIRING — later tool calls still prompt normally.
+        val call = async {
+            mgr.requestConsent("run_in_proot", "agent-A", "x", ConsentLevel.EVERY_CALL, timeoutMs = Long.MAX_VALUE)
+        }
+        mgr.respond(mgr.pending.value.single().id, ConsentDecision.DENY, blockClient = true)
+        assertEquals(ConsentDecision.DENY, call.await())
+
+        val follow = async {
+            mgr.requestConsent("run_in_proot", "agent-A", "y", ConsentLevel.EVERY_CALL, timeoutMs = Long.MAX_VALUE)
+        }
+        assertEquals("tool consent still prompts", 1, mgr.pending.value.size)
+        mgr.respond(mgr.pending.value.single().id, ConsentDecision.DENY)
+        follow.await()
+    }
+
+    @Test
+    fun `pairing prompts are rate-limited across rotating client names`() = runTest(UnconfinedTestDispatcher()) {
+        val mgr = AgentConsentManager()
+        mgr.setForegroundActive(true)
+
+        // The reproduced spam loop presented a different clientInfo.name per
+        // call, defeating any name-keyed guard (#337). After the window cap
+        // is hit, a fourth "new client" is denied without a sheet.
+        val calls = (1..AgentConsentManager.MAX_PAIRING_PROMPTS_PER_WINDOW).map { n ->
+            async { mgr.requestClientPairing("rotating-$n", null, timeoutMs = Long.MAX_VALUE) }
+        }
+        assertEquals(AgentConsentManager.MAX_PAIRING_PROMPTS_PER_WINDOW, mgr.pending.value.size)
+
+        assertEquals(ConsentDecision.DENY, mgr.requestClientPairing("rotating-next", null))
+        assertEquals(
+            "rate-limited request must not add a sheet",
+            AgentConsentManager.MAX_PAIRING_PROMPTS_PER_WINDOW,
+            mgr.pending.value.size,
+        )
+
+        mgr.pending.value.toList().forEach { mgr.respond(it.id, ConsentDecision.DENY) }
+        calls.forEach { assertEquals(ConsentDecision.DENY, it.await()) }
+    }
+
+    @Test
     fun `clearMemoised drops the persistent bypass snapshot`() = runTest(UnconfinedTestDispatcher()) {
         val mgr = AgentConsentManager()
         mgr.setForegroundActive(true)

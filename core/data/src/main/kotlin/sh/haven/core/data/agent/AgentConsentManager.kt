@@ -169,6 +169,47 @@ class AgentConsentManager @Inject constructor() {
     @Volatile
     private var blockedPairing: BlockedPairing? = null
 
+    /**
+     * In-flight pairing prompt per client name (#337). A reconnecting client
+     * retries `initialize` faster than a human answers a sheet, and without
+     * this each retry queued ANOTHER identical pairing sheet — the user
+     * answered four in a row believing they were different requests. A second
+     * pairing request for a name that already has a sheet up awaits the same
+     * deferred instead of queueing its own.
+     */
+    private val pairingInFlight = mutableMapOf<String, CompletableDeferred<ConsentDecision>>()
+
+    /**
+     * `clientName -> expiry`: after the user explicitly denies (or blocks) a
+     * pairing, re-attempts from the same name auto-deny without a prompt until
+     * the cooldown lapses (#337). Deliberately short — pairing DENYs, unlike
+     * consent DENYs, are re-attempted by *software* in a tight loop, so an
+     * unremembered deny turns into a prompt storm. A genuine re-pair only has
+     * to wait out the cooldown (or the user clears it in Settings).
+     */
+    private val pairingDenyCooldowns = mutableMapOf<String, Long>()
+
+    /**
+     * Client names the user blocked from the pairing sheet's "Block" action
+     * (#337). Pairing requests from these names auto-deny silently for the
+     * rest of the process lifetime. Session-scoped like [sessionBypassClients]
+     * and cleared by [clearMemoised], so a misclick can't brick a client
+     * permanently.
+     */
+    private val blockedPairingClients = mutableSetOf<String>()
+
+    /**
+     * Timestamps of recently *raised* pairing sheets, across all client names
+     * (#337). This is the guard the name-keyed cooldown can't provide: the
+     * reproduced spam loop presented a slightly different `clientInfo.name`
+     * per call, so every request looked like a brand-new client. If more than
+     * [MAX_PAIRING_PROMPTS_PER_WINDOW] sheets get raised within
+     * [PAIRING_PROMPT_WINDOW_MS], further pairing prompts auto-deny until the
+     * window drains — the user stops being held hostage, and a legitimate
+     * client just retries a minute later.
+     */
+    private val recentPairingPrompts = ArrayDeque<Long>()
+
     private val _pending = MutableStateFlow<List<ConsentRequest>>(emptyList())
     /** All currently-waiting requests, oldest first. Drives the bottom sheet. */
     val pending: StateFlow<List<ConsentRequest>> = _pending.asStateFlow()
@@ -352,11 +393,21 @@ class AgentConsentManager @Inject constructor() {
         clientVersion: String?,
         timeoutMs: Long = 60_000,
     ): ConsentDecision {
+        // Blocked outranks everything — it's the user's explicit "stop asking
+        // me about this client" from the pairing sheet (#337).
+        mutex.withLock {
+            if (clientName in blockedPairingClients) {
+                Log.w(LOG_TAG, "requestClientPairing('$clientName'): user-blocked — DENY without prompt")
+                return ConsentDecision.DENY
+            }
+        }
         // A pairing approval granted from the foreground re-prompt
         // ([repromptBlockedPairing]): the client wasn't connected when the
         // user tapped Pair, so the grant waits in [windowedAllows] until the
         // client's next initialize lands here. Window-scoped and name-keyed —
-        // same trust caliber as [armRetryWindow].
+        // same trust caliber as [armRetryWindow]. Checked before the deny
+        // cooldown: the window means the user *just* tapped Pair, which
+        // outranks a stale deny.
         mutex.withLock {
             val key = memoKey(clientName, PAIRING_TOOL_NAME)
             val expiry = windowedAllows[key]
@@ -368,7 +419,56 @@ class AgentConsentManager @Inject constructor() {
                 windowedAllows.remove(key)
             }
         }
-        if (!foregroundActive) {
+        // Deny cooldown: the user already said no to this name moments ago;
+        // don't let a retry loop turn that into a prompt storm (#337).
+        mutex.withLock {
+            val cooldownExpiry = pairingDenyCooldowns[clientName]
+            if (cooldownExpiry != null) {
+                if (cooldownExpiry > System.currentTimeMillis()) {
+                    Log.w(LOG_TAG, "requestClientPairing('$clientName'): deny cooldown active — DENY without prompt")
+                    return ConsentDecision.DENY
+                }
+                pairingDenyCooldowns.remove(clientName)
+            }
+        }
+        // Coalesce / foreground / rate-limit are decided under ONE lock
+        // acquisition, so two same-name retries can't both slip past the
+        // coalesce check and raise duplicate sheets, and N parallel requests
+        // can't all slip past the rate-limit cap (#337).
+        val deferred = CompletableDeferred<ConsentDecision>()
+        var joined: CompletableDeferred<ConsentDecision>? = null
+        var backgrounded = false
+        var rateLimited = false
+        mutex.withLock {
+            val existing = pairingInFlight[clientName]
+            when {
+                // A sheet for this exact name is already on screen (a
+                // reconnecting client retrying initialize) — share its
+                // outcome rather than queueing an identical second sheet.
+                existing != null -> joined = existing
+                !foregroundActive -> backgrounded = true
+                else -> {
+                    // Rotating-name spam guard: a spammer that varies its
+                    // clientInfo.name per call defeats the name-keyed
+                    // cooldown, so cap sheets raised per sliding window.
+                    val now = System.currentTimeMillis()
+                    while (recentPairingPrompts.isNotEmpty() && now - recentPairingPrompts.first() > PAIRING_PROMPT_WINDOW_MS) {
+                        recentPairingPrompts.removeFirst()
+                    }
+                    if (recentPairingPrompts.size >= MAX_PAIRING_PROMPTS_PER_WINDOW) {
+                        rateLimited = true
+                    } else {
+                        recentPairingPrompts.addLast(now)
+                        pairingInFlight[clientName] = deferred
+                    }
+                }
+            }
+        }
+        joined?.let {
+            Log.i(LOG_TAG, "requestClientPairing('$clientName'): prompt already in flight — awaiting its outcome")
+            return withTimeoutOrNull(timeoutMs) { it.await() } ?: ConsentDecision.DENY
+        }
+        if (backgrounded) {
             Log.w(LOG_TAG, "requestClientPairing('$clientName'): foreground=false — failing closed + notifying")
             blockedPairing = BlockedPairing(clientName, clientVersion, System.currentTimeMillis())
             _blockedWhileBackground.tryEmit(
@@ -381,10 +481,17 @@ class AgentConsentManager @Inject constructor() {
             )
             return ConsentDecision.DENY
         }
+        if (rateLimited) {
+            Log.w(
+                LOG_TAG,
+                "requestClientPairing('$clientName'): $MAX_PAIRING_PROMPTS_PER_WINDOW pairing prompts already raised " +
+                    "in ${PAIRING_PROMPT_WINDOW_MS / 1000}s — rate-limited, DENY without prompt",
+            )
+            return ConsentDecision.DENY
+        }
 
         val id = nextId.getAndIncrement()
         Log.i(LOG_TAG, "requestClientPairing('$clientName' v${clientVersion ?: "?"}): queueing prompt id=$id")
-        val deferred = CompletableDeferred<ConsentDecision>()
         val versionSuffix = clientVersion?.takeIf { it.isNotBlank() }?.let { " v$it" } ?: ""
         val request = ConsentRequest(
             id = id,
@@ -406,13 +513,26 @@ class AgentConsentManager @Inject constructor() {
             withTimeoutOrNull(timeoutMs) { deferred.await() }
         } finally {
             withContext(NonCancellable) {
+                // Resolve coalesced waiters before deregistering: on timeout the
+                // deferred is still open, and a waiter left awaiting it would
+                // hang to its own timeout. complete() is a no-op if answered.
+                deferred.complete(ConsentDecision.DENY)
                 mutex.withLock {
+                    pairingInFlight.remove(clientName)
                     pendingEntries.remove(id)
                     _pending.value = _pending.value.filterNot { it.id == id }
                 }
             }
         }
         val decision = raw ?: ConsentDecision.DENY
+        if (raw == ConsentDecision.DENY) {
+            // Explicit deny → arm the cooldown so a client retry loop can't
+            // re-raise the same sheet seconds later (#337). Timeout doesn't
+            // arm it: an unanswered sheet isn't a user decision.
+            mutex.withLock {
+                pairingDenyCooldowns[clientName] = System.currentTimeMillis() + PAIRING_DENY_COOLDOWN_MS
+            }
+        }
         Log.i(LOG_TAG, "requestClientPairing('$clientName') id=$id resolved: ${if (raw == null) "TIMEOUT->DENY" else decision.toString()}")
         return decision
     }
@@ -431,11 +551,18 @@ class AgentConsentManager @Inject constructor() {
         decision: ConsentDecision,
         bypassClient: Boolean = false,
         allowForMinutes: Int? = null,
+        blockClient: Boolean = false,
     ) {
         mutex.withLock {
             val entry = pendingEntries[requestId] ?: return
             if (decision == ConsentDecision.ALLOW && bypassClient && entry.clientHint != null) {
                 sessionBypassClients.add(entry.clientHint)
+            }
+            // "Block" on the pairing sheet (#337): a one-tap escape from a
+            // client spamming pairing requests. Deny-only and session-scoped;
+            // only consulted by requestClientPairing, so it can't gate tools.
+            if (decision == ConsentDecision.DENY && blockClient && entry.clientHint != null) {
+                blockedPairingClients.add(entry.clientHint)
             }
             if (decision == ConsentDecision.ALLOW && allowForMinutes != null && allowForMinutes > 0) {
                 // Set/refresh the windowed-allow expiry for this
@@ -518,6 +645,8 @@ class AgentConsentManager @Inject constructor() {
             sessionAllowed.clear()
             sessionBypassClients.clear()
             windowedAllows.clear()
+            blockedPairingClients.clear()
+            pairingDenyCooldowns.clear()
         }
     }
 
@@ -551,6 +680,22 @@ class AgentConsentManager @Inject constructor() {
          * standing bypass.
          */
         const val NOTIFICATION_ALLOW_WINDOW_MS = 120_000L
+
+        /**
+         * How long an explicit pairing DENY auto-denies re-attempts from the
+         * same client name without prompting (#337). Short: long enough to
+         * break a retry loop, short enough that a genuinely wanted re-pair
+         * isn't painful.
+         */
+        const val PAIRING_DENY_COOLDOWN_MS = 2 * 60_000L
+
+        /**
+         * Sliding window + cap for the rotating-name pairing spam guard
+         * (#337): at most [MAX_PAIRING_PROMPTS_PER_WINDOW] pairing sheets may
+         * be raised per [PAIRING_PROMPT_WINDOW_MS], across all client names.
+         */
+        const val PAIRING_PROMPT_WINDOW_MS = 60_000L
+        const val MAX_PAIRING_PROMPTS_PER_WINDOW = 3
 
         /**
          * How long a background-blocked pairing attempt stays re-promptable

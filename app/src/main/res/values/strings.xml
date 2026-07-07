@@ -244,6 +244,7 @@
     <string name="app_agent_minutes">%1$dm</string>
     <string name="app_agent_allow_for_minutes">Allow for %1$dm</string>
     <string name="app_agent_pair">Pair</string>
+    <string name="app_agent_block_client">Block</string>
 
     <!-- Agent presentation sheet -->
     <string name="app_present_app_missing_details">App window is missing its connection details.</string>

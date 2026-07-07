@@ -133,6 +133,7 @@
     <string name="app_agent_minutes">%1$dm</string>
     <string name="app_agent_allow_for_minutes">Permitir durante %1$dm</string>
     <string name="app_agent_pair">Vincular</string>
+    <string name="app_agent_block_client">Bloquear</string>
 
     <!-- Agent presentation -->
     <string name="app_present_app_missing_details">Faltan los detalles de conexión de la ventana de app.</string>

@@ -64,9 +64,10 @@ internal class ConsentHostViewModel @Inject constructor(
         decision: ConsentDecision,
         bypassClient: Boolean = false,
         allowForMinutes: Int? = null,
+        blockClient: Boolean = false,
     ) {
         viewModelScope.launch {
-            consentManager.respond(requestId, decision, bypassClient, allowForMinutes)
+            consentManager.respond(requestId, decision, bypassClient, allowForMinutes, blockClient)
         }
     }
 }
@@ -274,6 +275,18 @@ internal fun ConsentHost(viewModel: ConsentHostViewModel = hiltViewModel()) {
             ) {
                 OutlinedButton(onClick = { resolve(ConsentDecision.DENY) }) {
                     Text(stringResource(R.string.agent_deny))
+                }
+                // One-tap escape from a pairing-spam loop (#337): deny AND
+                // stop prompting for this client name for the session.
+                if (isPairing && clientHint != null) {
+                    OutlinedButton(
+                        onClick = { viewModel.respond(current.id, ConsentDecision.DENY, blockClient = true) },
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error,
+                        ),
+                    ) {
+                        Text(stringResource(R.string.app_agent_block_client))
+                    }
                 }
                 if (current.offerTimedAllow) {
                     OutlinedButton(

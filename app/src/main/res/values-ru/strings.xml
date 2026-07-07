@@ -133,6 +133,7 @@
     <string name="app_agent_minutes">%1$dм</string>
     <string name="app_agent_allow_for_minutes">Разрешить на %1$dм</string>
     <string name="app_agent_pair">Привязать</string>
+    <string name="app_agent_block_client">Заблокировать</string>
 
     <!-- Present / media overlay -->
     <string name="app_present_app_missing_details">В окне приложения отсутствуют данные подключения.</string>
