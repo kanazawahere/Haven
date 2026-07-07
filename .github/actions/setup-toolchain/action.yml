@@ -37,6 +37,14 @@ runs:
       # below strips even more. Without these, the cross gcc fails at
       # compile time with "bits/wordsize.h: No such file or directory".
       run: |
+        # The runner image ships packages.microsoft.com apt sources
+        # (azure-cli + microsoft-prod) that intermittently serve corrupt
+        # InRelease files ("Clearsigned file isn't valid, got 'NOSPLIT'"),
+        # failing this unwrapped apt-get update with exit 100 — two CI runs
+        # on 2026-07-07 alone. The cross-compilers below come from the
+        # Ubuntu archive, so drop the third-party sources instead of
+        # letting them flake the build.
+        sudo rm -f /etc/apt/sources.list.d/*microsoft* /etc/apt/sources.list.d/azure-cli*
         sudo apt-get update -qq
         sudo apt-get install -y --no-install-recommends \
           gcc-aarch64-linux-gnu libc6-dev-arm64-cross \
