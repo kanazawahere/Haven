@@ -322,36 +322,6 @@ class AgentConsentManager @Inject constructor() {
             }
         }
 
-        val startedAt = System.currentTimeMillis()
-        if (!foregroundState.value) {
-            // §85 forbids proceeding without the user; it does not require
-            // failing instantly. Raise the blocked-action notification, then
-            // HOLD the call — within the caller's timeout budget — waiting
-            // for a foreground activity that can render the prompt. The
-            // prompt renders on return with the remaining budget; DENY only
-            // on timeout. (#337 mechanism 3, maintainer-approved: the deny
-            // semantics change from immediate-DENY to DENY-only-on-timeout.
-            // Never auto-ALLOW — the wheel stays with the user.)
-            _blockedWhileBackground.tryEmit(
-                ConsentRequest(
-                    id = nextId.getAndIncrement(),
-                    toolName = toolName,
-                    clientHint = clientHint,
-                    summary = summary,
-                ),
-            )
-            val cameForeground =
-                withTimeoutOrNull(timeoutMs) { foregroundState.first { it } } != null
-            if (!cameForeground) {
-                Log.w(LOG_TAG, "requestConsent('$toolName'): no foreground within ${timeoutMs}ms — DENY on timeout")
-                return ConsentDecision.DENY
-            }
-        }
-        // Elapsed-based remainder (not deadline arithmetic) so the tests'
-        // Long.MAX_VALUE timeouts can't overflow into an instant DENY.
-        val remainingMs = timeoutMs - (System.currentTimeMillis() - startedAt)
-        if (remainingMs <= 0) return ConsentDecision.DENY
-
         val id = nextId.getAndIncrement()
         val deferred = CompletableDeferred<ConsentDecision>()
         val request = ConsentRequest(
@@ -362,9 +332,26 @@ class AgentConsentManager @Inject constructor() {
             offerTimedAllow = offerTimedAllow,
         )
 
+        // §85 forbids proceeding without the user; it does not require failing
+        // instantly. Queue the request unconditionally and await the user's
+        // answer within the caller's timeout: while Haven is backgrounded
+        // nothing renders (ConsentHost isn't composing), and the sheet appears
+        // for this SAME live request the moment an activity resumes. DENY only
+        // on timeout or an explicit deny — never auto-ALLOW. (#337 mechanism 3.)
+        //
+        // Queueing before the foreground wait — rather than after it, as the
+        // first cut did — is also what makes a held request observable via
+        // `pending` / get_pending_consent (#355). Without it an agent cannot
+        // distinguish "waiting for the user" from "denied", which is the whole
+        // point of the hold. Caught by driving a real backgrounded call.
         mutex.withLock {
             pendingEntries[id] = PendingEntry(deferred, clientHint)
             _pending.value = _pending.value + request
+        }
+        if (!foregroundState.value) {
+            // Nudge the user: nothing can render the sheet until they return.
+            Log.i(LOG_TAG, "requestConsent('$toolName') id=$id: holding for foreground (denied on timeout)")
+            _blockedWhileBackground.tryEmit(request)
         }
 
         // The caller (McpServer) wraps this in its own withTimeoutOrNull, so a
@@ -374,7 +361,7 @@ class AgentConsentManager @Inject constructor() {
         // buttons resolve a dead deferred (the "UI frozen after a consent
         // timeout" bug). Hence finally + NonCancellable.
         val decision = try {
-            withTimeoutOrNull(remainingMs) { deferred.await() } ?: ConsentDecision.DENY
+            withTimeoutOrNull(timeoutMs) { deferred.await() } ?: ConsentDecision.DENY
         } finally {
             withContext(NonCancellable) {
                 mutex.withLock {

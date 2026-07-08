@@ -70,7 +70,7 @@ class AgentConsentManagerTest {
             level = ConsentLevel.EVERY_CALL,
         )
         assertEquals(ConsentDecision.DENY, decision)
-        assertTrue("no prompt is ever queued without a foreground", mgr.pending.value.isEmpty())
+        assertTrue("the queue drains once the hold times out", mgr.pending.value.isEmpty())
     }
 
     @Test
@@ -86,7 +86,12 @@ class AgentConsentManagerTest {
                 timeoutMs = Long.MAX_VALUE,
             )
         }
-        assertTrue("no sheet while backgrounded", mgr.pending.value.isEmpty())
+        // The request is QUEUED while backgrounded (nothing renders it — the
+        // activity isn't composing) so an agent can observe that its call is
+        // waiting rather than denied (#355, get_pending_consent). Enqueuing
+        // only after foreground returned made a held call invisible.
+        assertEquals("held request must be observable", 1, mgr.pending.value.size)
+        assertEquals("run_in_proot", mgr.pending.value.single().toolName)
         assertFalse("call must still be waiting, not denied", call.isCompleted)
 
         // User opens Haven (e.g. taps the blocked-action notification):
