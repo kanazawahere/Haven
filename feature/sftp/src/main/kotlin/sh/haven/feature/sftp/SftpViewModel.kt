@@ -3414,10 +3414,14 @@ class SftpViewModel @Inject constructor(
                 // cursor's columns and rebuilds each child from its document id, so
                 // every subsequent child.name / child.isDirectory / child.length()
                 // costs a separate ContentResolver.query() — ~3 cross-process round
-                // trips per file. Against a slow provider (Termux storage) that's
-                // tens of seconds for a few hundred small files, looking hung.
-                // Query each directory ONCE with a full projection instead, and
-                // report scan progress so a slow provider looks busy, not stalled.
+                // trips per file. Query each directory ONCE with a full projection
+                // instead, and report scan progress so a slow provider looks busy
+                // rather than hung.
+                //
+                // Measured against Termux's DocumentsProvider (OnePlus 13, flat tree):
+                //   400 files:  1628 ms -> 155 ms
+                //   4000 files: see #273 — the old walk is ~linear in file count,
+                //               the new one is ~flat (one query per directory).
                 data class FileItem(val uri: Uri, val relativePath: String, val length: Long)
                 val enumerated = withContext(Dispatchers.IO) {
                     val rootId = runCatching { DocumentsContract.getTreeDocumentId(folderUri) }
@@ -3460,11 +3464,32 @@ class SftpViewModel @Inject constructor(
                 var totalBytes = initialTotalBytes
                 var transferredBytes = 0L
 
+                // Destination directories we've already created. Folder upload used
+                // to call the backend's single-level mkdir per file, so the first
+                // file inside a nested directory died with SSH_FX_NO_SUCH_FILE (its
+                // grandparent didn't exist) — i.e. uploading ANY folder with
+                // subdirectories to SFTP failed outright (#273, found on-device).
+                // Route through ensureDestParent(), the mkdir-p helper the
+                // copy/paste path already uses, once per directory rather than
+                // once per file.
+                val destType = when {
+                    _isRcloneProfile.value -> BackendType.RCLONE
+                    _isSmbProfile.value -> BackendType.SMB
+                    else -> BackendType.SFTP
+                }
+                val ensuredDirs = mutableSetOf<String>()
+
                 for (item in files) {
                     val destPath = destBase.trimEnd('/') + "/" + item.relativePath
                     val destDir = destPath.substringBeforeLast('/')
                     val fileName = item.relativePath.substringAfterLast('/')
                     val fileSize = item.length
+
+                    if (ensuredDirs.add(destDir)) {
+                        withContext(Dispatchers.IO) {
+                            ensureDestParent(destType, profileId, activeRcloneRemote, destPath)
+                        }
+                    }
 
                     _transferProgress.value = TransferProgress(
                         "${completedFiles + 1}/$totalFiles: $fileName",
@@ -3475,8 +3500,7 @@ class SftpViewModel @Inject constructor(
                     withContext(Dispatchers.IO) {
                         if (_isRcloneProfile.value) {
                             val remote = activeRcloneRemote ?: throw IllegalStateException("Rclone not connected")
-                            // Ensure parent directory exists
-                            rcloneClient.mkdir(remote, destDir)
+                            // Parent dirs already created by ensureDestParent above.
                             // Copy via temp file
                             val tempFile = java.io.File(appContext.cacheDir, "rclone_ul_$fileName")
                             try {
@@ -3489,14 +3513,11 @@ class SftpViewModel @Inject constructor(
                             }
                         } else if (_isSmbProfile.value) {
                             val client = activeSmbClient ?: throw IllegalStateException("SMB not connected")
-                            client.mkdir(destDir)
                             appContext.contentResolver.openInputStream(item.uri)?.use { input ->
                                 client.upload(input, destPath, fileSize) { _, _ -> }
                             }
                         } else {
                             val session = getOrOpenSession(profileId) ?: throw IllegalStateException("Not connected")
-                            // Create parent dirs recursively
-                            try { session.mkdir(destDir) } catch (_: Exception) {}
                             appContext.contentResolver.openInputStream(item.uri)?.use { input ->
                                 session.upload(input, fileSize, destPath) { _, _ -> }
                             }
