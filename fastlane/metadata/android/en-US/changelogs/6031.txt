@@ -1,0 +1,3 @@
+📁 Uploading a folder containing sub-folders now works (#273). Previously the first file inside any sub-folder failed with "No such file" and the whole upload aborted — only flat folders uploaded. Parent directories are now created properly.
+
+⏱️ Measured the v5.68.22 folder-scan speed-up against a real Termux folder: 400 files 1.6s → 0.16s; 4,000 files 14.4s → 0.29s.

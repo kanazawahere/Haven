@@ -5,6 +5,12 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.23
+
+📁 **Uploading a folder that contains sub-folders now works** (#273) — it didn't. Folder upload asked the destination to create each file's parent directory one level at a time, so the very first file inside a sub-folder failed ("No such file") because its grandparent didn't exist yet, and the whole upload aborted. Only completely flat folders ever uploaded successfully. Parent directories are now created properly, once per directory. Found by testing a real Termux folder on a phone rather than trusting the code comment, which claimed this already worked.
+
+⏱️ **Measured: the v5.68.22 folder-scan speed-up, on a real Termux folder** — 400 files: 1.6 s → 0.16 s. 4,000 files: **14.4 s → 0.29 s**. The old scan cost grew with every file; the new one barely moves. If a folder upload used to sit on a blank screen for half a minute, that was roughly 8,000 files' worth of waiting.
+
 ## v5.68.22
 
 🛡️ **An agent action that arrives while Haven is in the background now waits for you instead of being denied on the spot** (#337) — previously, if an AI agent called a tool needing your approval while you were in another app (even one Haven itself had launched, like the system installer), the call failed immediately with "denied", and nothing you'd done said no. Now the call holds, the heads-up notification tells you it's waiting, and opening Haven shows the approval sheet for that *same, still-live* call — tap Allow and it proceeds. It's still denied automatically if you never answer, and it can never be approved without you: Haven does not become a silent automation channel. Device-verified end to end, along with the pairing-loop guards from v5.68.21 (a spamming client can't stack duplicate prompts, gets a two-minute cooldown after a Deny, is rate-limited across renamed retries, and can be silenced with one tap on **Block**).
