@@ -2,8 +2,11 @@ package sh.haven.feature.sftp
 
 import android.content.Context
 import android.net.Uri
+import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
 import android.util.Log
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import sh.haven.core.ssh.SshIoException
@@ -131,6 +134,51 @@ data class ConflictPrompt(
 )
 
 /** Transfer progress for download/upload operations. */
+/** Columns [scanDocumentTree] needs — the whole point is fetching them in ONE query per directory. */
+internal val SCAN_PROJECTION = arrayOf(
+    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+    DocumentsContract.Document.COLUMN_MIME_TYPE,
+    DocumentsContract.Document.COLUMN_SIZE,
+)
+
+/** One file found by [scanDocumentTree]. `docId` is a SAF document id, not a URI. */
+internal data class ScannedFile(val docId: String, val relativePath: String, val length: Long)
+
+/**
+ * Walk a SAF document tree, issuing exactly ONE [queryChildren] call per directory
+ * (#273). [queryChildren] must return a cursor over [SCAN_PROJECTION] for a document
+ * id, or null; it is also where the caller checks for cancellation. Iterative, so a
+ * deep tree can't overflow the stack. Directories are not emitted, only leaf files.
+ */
+internal suspend fun scanDocumentTree(
+    rootDocId: String,
+    rootName: String,
+    queryChildren: suspend (docId: String) -> android.database.Cursor?,
+    onProgress: (fileCount: Int) -> Unit = {},
+): List<ScannedFile> {
+    val files = mutableListOf<ScannedFile>()
+    val pending = ArrayDeque<Pair<String, String>>() // docId -> relative prefix
+    pending.addLast(rootDocId to rootName)
+    while (pending.isNotEmpty()) {
+        val (docId, prefix) = pending.removeLast()
+        queryChildren(docId)?.use { c ->
+            while (c.moveToNext()) {
+                val childId = c.getString(0) ?: continue
+                val childName = c.getString(1) ?: continue
+                val childPath = "$prefix/$childName"
+                if (c.getString(2) == DocumentsContract.Document.MIME_TYPE_DIR) {
+                    pending.addLast(childId to childPath)
+                } else {
+                    files.add(ScannedFile(childId, childPath, if (c.isNull(3)) 0L else c.getLong(3)))
+                    if (files.size % 25 == 0) onProgress(files.size)
+                }
+            }
+        }
+    }
+    return files
+}
+
 data class TransferProgress(
     val fileName: String,
     val totalBytes: Long,
@@ -3361,30 +3409,42 @@ class SftpViewModel @Inject constructor(
             try {
                 _loading.value = true
 
-                // Enumerate the picked tree OFF the main thread: DocumentFile
-                // listFiles()/length() are synchronous ContentResolver queries, so
-                // recursively walking a large or slow provider (e.g. Termux storage)
-                // on the main thread freezes the UI into a blank stall (#273). Each
-                // file's length is captured here too, to avoid a main-thread query
-                // per file in the upload loop below.
-                data class FileItem(val doc: DocumentFile, val relativePath: String, val length: Long)
+                // Enumerate the picked tree OFF the main thread (#273). DocumentFile
+                // is the trap here, not just the thread: listFiles() throws away the
+                // cursor's columns and rebuilds each child from its document id, so
+                // every subsequent child.name / child.isDirectory / child.length()
+                // costs a separate ContentResolver.query() — ~3 cross-process round
+                // trips per file. Against a slow provider (Termux storage) that's
+                // tens of seconds for a few hundred small files, looking hung.
+                // Query each directory ONCE with a full projection instead, and
+                // report scan progress so a slow provider looks busy, not stalled.
+                data class FileItem(val uri: Uri, val relativePath: String, val length: Long)
                 val enumerated = withContext(Dispatchers.IO) {
-                    val folder = DocumentFile.fromTreeUri(appContext, folderUri)
-                        ?: return@withContext null
-                    val name = folder.name ?: "upload"
-                    val files = mutableListOf<FileItem>()
-                    fun walk(dir: DocumentFile, prefix: String) {
-                        for (child in dir.listFiles()) {
-                            val childPath = if (prefix.isEmpty()) child.name!! else "$prefix/${child.name}"
-                            if (child.isDirectory) {
-                                walk(child, childPath)
-                            } else {
-                                files.add(FileItem(child, childPath, child.length()))
-                            }
-                        }
+                    val rootId = runCatching { DocumentsContract.getTreeDocumentId(folderUri) }
+                        .getOrNull() ?: return@withContext null
+                    val rootName = DocumentFile.fromTreeUri(appContext, folderUri)?.name ?: "upload"
+                    val scanned = scanDocumentTree(
+                        rootDocId = rootId,
+                        rootName = rootName,
+                        queryChildren = { docId ->
+                            currentCoroutineContext().ensureActive() // cancellable mid-scan
+                            appContext.contentResolver.query(
+                                DocumentsContract.buildChildDocumentsUriUsingTree(folderUri, docId),
+                                SCAN_PROJECTION, null, null, null,
+                            )
+                        },
+                        onProgress = { n ->
+                            _transferProgress.value = TransferProgress("Scanning… $n files", 0, 0)
+                        },
+                    )
+                    val files = scanned.map {
+                        FileItem(
+                            DocumentsContract.buildDocumentUriUsingTree(folderUri, it.docId),
+                            it.relativePath,
+                            it.length,
+                        )
                     }
-                    walk(folder, name)
-                    Triple(name, files, files.sumOf { it.length })
+                    Triple(rootName, files, files.sumOf { it.length })
                 } ?: return@launch
                 val (folderName, files, initialTotalBytes) = enumerated
 
@@ -3403,7 +3463,7 @@ class SftpViewModel @Inject constructor(
                 for (item in files) {
                     val destPath = destBase.trimEnd('/') + "/" + item.relativePath
                     val destDir = destPath.substringBeforeLast('/')
-                    val fileName = item.doc.name ?: continue
+                    val fileName = item.relativePath.substringAfterLast('/')
                     val fileSize = item.length
 
                     _transferProgress.value = TransferProgress(
@@ -3420,7 +3480,7 @@ class SftpViewModel @Inject constructor(
                             // Copy via temp file
                             val tempFile = java.io.File(appContext.cacheDir, "rclone_ul_$fileName")
                             try {
-                                appContext.contentResolver.openInputStream(item.doc.uri)?.use { input ->
+                                appContext.contentResolver.openInputStream(item.uri)?.use { input ->
                                     tempFile.outputStream().use { input.copyTo(it) }
                                 }
                                 rcloneClient.copyFile(tempFile.parent!!, tempFile.name, remote, destPath)
@@ -3430,14 +3490,14 @@ class SftpViewModel @Inject constructor(
                         } else if (_isSmbProfile.value) {
                             val client = activeSmbClient ?: throw IllegalStateException("SMB not connected")
                             client.mkdir(destDir)
-                            appContext.contentResolver.openInputStream(item.doc.uri)?.use { input ->
+                            appContext.contentResolver.openInputStream(item.uri)?.use { input ->
                                 client.upload(input, destPath, fileSize) { _, _ -> }
                             }
                         } else {
                             val session = getOrOpenSession(profileId) ?: throw IllegalStateException("Not connected")
                             // Create parent dirs recursively
                             try { session.mkdir(destDir) } catch (_: Exception) {}
-                            appContext.contentResolver.openInputStream(item.doc.uri)?.use { input ->
+                            appContext.contentResolver.openInputStream(item.uri)?.use { input ->
                                 session.upload(input, fileSize, destPath) { _, _ -> }
                             }
                         }
