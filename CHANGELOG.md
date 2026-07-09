@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.36
+
+🗂️ **Workspaces reopen your tmux sessions automatically** — restoring a saved workspace now reattaches each terminal to the exact tmux/zellij/screen session it was on, instead of dropping you into the session picker for every tab. Haven records each tab's session when you **Save current** and, on restore, dials the connection and attaches straight to that session by name — so a workspace with four terminals comes back as your four sessions with no prompting. Re-save any workspace made before this update once, so its tabs pick up their session names.
+
 ## v5.68.35
 
 🔑 **The Keys tab is always available** (#360) — key and identity management no longer hides on a fresh install. Previously the Keys tab appeared only once you had a key, a step-ca CA, or an SSH connection, so a first-run user who prefers to add keys *before* their first connection had to find key management buried in Settings. It's now always present, like the Desktop and Files tabs.
