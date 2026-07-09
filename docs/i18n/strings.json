@@ -8739,7 +8739,7 @@
       "de": "Eine Identität liefert Benutzername, Passwort und Schlüssel beim Verbinden. Verwalte Identitäten im Tab „Schlüssel“.",
       "es": "Una identidad aporta el usuario, la contraseña y la clave al conectar. Gestiona las identidades en la pestaña Claves.",
       "fr": "Une identité fournit le nom d’utilisateur, le mot de passe et la clé au moment de la connexion. Gérez les identités dans l’onglet Clés.",
-      "hi": "पहचान कनेक्ट होते समय उपयोगकर्ता नाम, पासवर्ड और की देती है। पहचान कुंजी टैब में प्रबंधित करें।",
+      "hi": "पहचान कनेक्ट होते समय उपयोगकर्ता नाम, पासवर्ड और कुंजी देती है। पहचान कुंजी टैब में प्रबंधित करें।",
       "ja": "アイデンティティは接続時にユーザー名・パスワード・鍵を提供します。管理は「鍵」タブで行います。",
       "ko": "아이덴티티는 연결 시 사용자 이름, 비밀번호, 키를 제공합니다. 키 탭에서 관리하세요.",
       "pt": "Uma identidade fornece o usuário, a senha e a chave ao conectar. Gerencie identidades na aba Chaves.",
@@ -18778,9 +18778,9 @@
       "fr": "Identités · %1$d",
       "hi": "पहचानें · %1$d",
       "ja": "アイデンティティ · %1$d",
-      "ko": "ID · %1$d",
+      "ko": "아이덴티티 · %1$d",
       "pt": "Identidades · %1$d",
-      "ru": "Идентификаторы · %1$d",
+      "ru": "Идентификации · %1$d",
       "zh": "身份 · %1$d"
      }
     },
@@ -18797,9 +18797,9 @@
       "fr": "Ajouter une identité",
       "hi": "पहचान जोड़ें",
       "ja": "アイデンティティを追加",
-      "ko": "ID 추가",
+      "ko": "아이덴티티 추가",
       "pt": "Adicionar identidade",
-      "ru": "Добавить идентификатор",
+      "ru": "Добавить идентификацию",
       "zh": "添加身份"
      }
     },
@@ -18835,9 +18835,9 @@
       "fr": "Nouvelle identité",
       "hi": "नई पहचान",
       "ja": "新しいアイデンティティ",
-      "ko": "새 ID",
+      "ko": "새 아이덴티티",
       "pt": "Nova identidade",
-      "ru": "Новый идентификатор",
+      "ru": "Новая идентификация",
       "zh": "新建身份"
      }
     },
@@ -18854,9 +18854,9 @@
       "fr": "Modifier l\\'identité",
       "hi": "पहचान संपादित करें",
       "ja": "アイデンティティを編集",
-      "ko": "ID 편집",
+      "ko": "아이덴티티 편집",
       "pt": "Editar identidade",
-      "ru": "Изменить идентификатор",
+      "ru": "Изменить идентификацию",
       "zh": "编辑身份"
      }
     },

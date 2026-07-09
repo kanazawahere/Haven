@@ -204,11 +204,11 @@
     <string name="keys_generate_age_title">Новый идентификатор age</string>
     <string name="keys_age_label_hint">Метка</string>
     <string name="keys_age_recipient_copied">Получатель скопирован</string>
-    <string name="keys_identity_section_header">Идентификаторы · %1$d</string>
-    <string name="keys_identity_add">Добавить идентификатор</string>
+    <string name="keys_identity_section_header">Идентификации · %1$d</string>
+    <string name="keys_identity_add">Добавить идентификацию</string>
     <string name="keys_identity_add_hint">Имя пользователя, пароль и ключ для повторного использования на многих хостах</string>
-    <string name="keys_identity_add_title">Новый идентификатор</string>
-    <string name="keys_identity_edit_title">Изменить идентификатор</string>
+    <string name="keys_identity_add_title">Новая идентификация</string>
+    <string name="keys_identity_edit_title">Изменить идентификацию</string>
     <string name="keys_identity_name_label">Название</string>
     <string name="keys_identity_username_label">Имя пользователя</string>
     <string name="keys_identity_password_label">Пароль (необязательно)</string>
