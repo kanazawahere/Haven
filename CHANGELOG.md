@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.35
+
+🔑 **The Keys tab is always available** (#360) — key and identity management no longer hides on a fresh install. Previously the Keys tab appeared only once you had a key, a step-ca CA, or an SSH connection, so a first-run user who prefers to add keys *before* their first connection had to find key management buried in Settings. It's now always present, like the Desktop and Files tabs.
+
 ## v5.68.34
 
 🪪 **New: reusable SSH identities** (#360) — a named identity bundles a username, an optional password, and an optional SSH key, entered once and assignable anywhere. Manage identities on the Keys tab (**Add identity**); assign one per host from the new **Identity** picker in the connection editor's Authentication section, or per group via long-press → **Set identity** — hosts inherit the group's identity unless they override it, including an explicit "use this connection's own credentials" opt-out. The chosen identity's credentials are applied at connect time, so nothing about how you connect changes. Fully opt-in: existing per-host logins keep working untouched. Translated into all 12 UI languages.

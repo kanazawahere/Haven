@@ -1,0 +1,1 @@
+🔑 The Keys tab is now always available (#360) — key and identity management no longer hides on a fresh install, so you can add keys before your first connection without digging into Settings. It's always present now, like the Desktop and Files tabs.
