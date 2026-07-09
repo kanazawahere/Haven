@@ -1,3 +1,4 @@
+import java.io.IOException
 import java.net.URI
 import java.security.MessageDigest
 
@@ -114,8 +115,23 @@ val fetchTessdata = tasks.register("fetchTessdata") {
         }
         target.parentFile?.mkdirs()
         logger.lifecycle("Downloading $tessdataUrl …")
-        URI(tessdataUrl).toURL().openStream().use { input ->
-            target.outputStream().use { output -> input.copyTo(output) }
+        // GitHub raw rate-limits shared CI runner IPs (HTTP 429); back off
+        // and retry before failing the build.
+        val maxAttempts = 4
+        for (attempt in 1..maxAttempts) {
+            try {
+                URI(tessdataUrl).toURL().openStream().use { input ->
+                    target.outputStream().use { output -> input.copyTo(output) }
+                }
+                break
+            } catch (e: IOException) {
+                if (attempt == maxAttempts) throw e
+                val delaySec = 15L shl (attempt - 1) // 15s, 30s, 60s
+                logger.lifecycle(
+                    "tessdata download failed (attempt $attempt/$maxAttempts): ${e.message} — retrying in ${delaySec}s",
+                )
+                Thread.sleep(delaySec * 1000)
+            }
         }
         val actual = sha256Hex(target.readBytes())
         if (expected.isEmpty()) {
