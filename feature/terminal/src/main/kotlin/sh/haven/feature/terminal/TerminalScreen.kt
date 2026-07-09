@@ -947,6 +947,7 @@ fun TerminalScreen(
 
                     val isMouseMode by activeTab.mouseMode.collectAsState()
                     val isBracketPaste by activeTab.bracketPasteMode.collectAsState()
+                    val isAltScreen by activeTab.altScreen.collectAsState()
 
                     // Build gesture callback when mouse mode is active. Gesture
                     // routing follows the mode (#186):
@@ -959,7 +960,7 @@ fun TerminalScreen(
                     // scroll wheel forwards whenever the app requested mouse mode.
                     // Haven's local scrollback and row-based selection are reached
                     // with a two-finger swipe / tap-and-hold in non-mouse-mode.
-                    val gestureCallback = remember(activeTab, isMouseMode, mouseInputEnabled, terminalRightClick) {
+                    val gestureCallback = remember(activeTab, isMouseMode, isAltScreen, mouseInputEnabled, terminalRightClick) {
                         if (isMouseMode) object : org.connectbot.terminal.TerminalGestureCallback {
                             override fun onTap(col: Int, row: Int): Boolean {
                                 if (!mouseInputEnabled) return false
@@ -996,6 +997,30 @@ fun TerminalScreen(
                                         activeTab.sendInput(sgrMouseButton(0, col + 1, row + 1, false))
                                 }
                                 return true // claim the drag — terminal stops scroll fallback
+                            }
+                        } else if (isAltScreen) object : org.connectbot.terminal.TerminalGestureCallback {
+                            // Alt screen without mouse tracking (tmux default,
+                            // nano, vim, less): Haven's local scrollback is the
+                            // frozen *primary* buffer, so scrolling it paints
+                            // stale history over the TUI and rubber-bands on
+                            // every app redraw. Route the swipe to the app as
+                            // arrow keys instead — Termux parity. Taps and
+                            // long-press keep the native handling (defaults
+                            // return false), so text selection still works. (#255)
+                            override fun onScroll(col: Int, row: Int, scrollUp: Boolean): Boolean {
+                                // The tracker scans raw bytes, so it sees
+                                // ESC[?1049h even when the emulator was built
+                                // with enableAltScreen=false (profile opt-out,
+                                // `screen` session manager) and the TUI's output
+                                // actually lands in the primary buffer. Trust the
+                                // emulator: decline so the swipe falls back to
+                                // native local scrollback — which is exactly what
+                                // those opt-outs are for.
+                                if (!activeTab.emulator.isAltScreenActive()) return false
+                                activeTab.sendInput(
+                                    arrowKeyBytes(scrollUp, activeTab.cursorKeyAppMode.value),
+                                )
+                                return true
                             }
                         } else null
                     }
@@ -1464,6 +1489,17 @@ private fun sgrMouseMotion(button: Int, col: Int, row: Int): ByteArray {
 private fun sgrMouseButton(button: Int, col: Int, row: Int, pressed: Boolean): ByteArray {
     val suffix = if (pressed) 'M' else 'm'
     return "\u001b[<$button;$col;${row}$suffix".toByteArray()
+}
+
+/**
+ * Cursor Up/Down key for the alt-screen swipe-to-arrows path (#255).
+ * DECCKM set (application cursor keys — what vim/less/nano normally run
+ * under) wants the SS3 form ESC O A/B; otherwise the CSI form ESC [ A/B.
+ * ncurses apps match terminfo kcuu1 exactly, so the mode matters.
+ */
+internal fun arrowKeyBytes(up: Boolean, appMode: Boolean): ByteArray {
+    val prefix = if (appMode) "\u001bO" else "\u001b["
+    return (prefix + if (up) "A" else "B").toByteArray()
 }
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)

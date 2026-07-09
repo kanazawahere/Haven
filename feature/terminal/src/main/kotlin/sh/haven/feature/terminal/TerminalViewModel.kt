@@ -236,6 +236,9 @@ data class TerminalTab(
     val bracketPasteMode: StateFlow<Boolean>,
     /** True while the remote is on the alternate screen buffer (vim/less/…). (#175) */
     val altScreen: StateFlow<Boolean>,
+    /** True while DECCKM (application cursor keys) is set — alt-screen swipe
+     *  arrows are SS3-encoded (ESC O A) instead of CSI (ESC [ A). (#255) */
+    val cursorKeyAppMode: StateFlow<Boolean>,
     val oscHandler: OscHandler,
     /** Injects raw bytes through this tab's real output pipeline (OSC scan
      *  → mouse-mode scan → emulator), as if received from the remote.
@@ -1065,6 +1068,7 @@ class TerminalViewModel @Inject constructor(
                     activeMouseMode = b.mouseTracker.activeMouseMode,
                     bracketPasteMode = b.mouseTracker.bracketPasteMode,
                     altScreen = b.mouseTracker.altScreen,
+                    cursorKeyAppMode = b.mouseTracker.cursorKeyAppMode,
                     oscHandler = b.oscHandler,
                     feedOutput = b.feedOutput,
                     cwd = b.cwdFlow,
@@ -1149,6 +1153,7 @@ class TerminalViewModel @Inject constructor(
                     activeMouseMode = rnsMouseTracker.activeMouseMode,
                     bracketPasteMode = rnsMouseTracker.bracketPasteMode,
                     altScreen = rnsMouseTracker.altScreen,
+                    cursorKeyAppMode = rnsMouseTracker.cursorKeyAppMode,
                     oscHandler = rnsOscHandler,
                     feedOutput = rnsFeedOutput,
                     cwd = rnsCwdFlow,
@@ -1255,6 +1260,7 @@ class TerminalViewModel @Inject constructor(
                     activeMouseMode = moshMouseTracker.activeMouseMode,
                     bracketPasteMode = moshMouseTracker.bracketPasteMode,
                     altScreen = moshMouseTracker.altScreen,
+                    cursorKeyAppMode = moshMouseTracker.cursorKeyAppMode,
                     oscHandler = moshOscHandler,
                     feedOutput = moshFeedOutput,
                     cwd = moshCwdFlow,
@@ -1360,6 +1366,7 @@ class TerminalViewModel @Inject constructor(
                     activeMouseMode = etMouseTracker.activeMouseMode,
                     bracketPasteMode = etMouseTracker.bracketPasteMode,
                     altScreen = etMouseTracker.altScreen,
+                    cursorKeyAppMode = etMouseTracker.cursorKeyAppMode,
                     oscHandler = etOscHandler,
                     feedOutput = etFeedOutput,
                     cwd = etCwdFlow,
@@ -1436,6 +1443,7 @@ class TerminalViewModel @Inject constructor(
                         activeMouseMode = agentRegistryEntry.activeMouseMode ?: MutableStateFlow<Int?>(null),
                         bracketPasteMode = agentRegistryEntry.bracketPasteMode ?: MutableStateFlow(false),
                         altScreen = MutableStateFlow(false),
+                        cursorKeyAppMode = MutableStateFlow(false),
                         oscHandler = adoptedOscHandler,
                         feedOutput = adoptedFeedOutput,
                         cwd = MutableStateFlow(null),
@@ -1520,6 +1528,7 @@ class TerminalViewModel @Inject constructor(
                         activeMouseMode = reMouseTracker.activeMouseMode,
                         bracketPasteMode = reMouseTracker.bracketPasteMode,
                         altScreen = reMouseTracker.altScreen,
+                        cursorKeyAppMode = reMouseTracker.cursorKeyAppMode,
                         oscHandler = reOscHandler,
                         feedOutput = reFeedOutput,
                         cwd = reCwdFlow,
@@ -1603,6 +1612,7 @@ class TerminalViewModel @Inject constructor(
                     activeMouseMode = localMouseTracker.activeMouseMode,
                     bracketPasteMode = localMouseTracker.bracketPasteMode,
                     altScreen = localMouseTracker.altScreen,
+                    cursorKeyAppMode = localMouseTracker.cursorKeyAppMode,
                     oscHandler = localOscHandler,
                     feedOutput = localFeedOutput,
                     cwd = localCwdFlow,

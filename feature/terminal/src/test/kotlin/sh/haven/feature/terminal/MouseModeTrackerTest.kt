@@ -86,4 +86,35 @@ class MouseModeTrackerTest {
         assertTrue(t.altScreen.value)
         assertTrue(t.mouseMode.value)
     }
+
+    @Test
+    fun `DECCKM toggles application cursor key mode`() {
+        val t = MouseModeTracker()
+        assertFalse(t.cursorKeyAppMode.value)
+        t.feed("$esc[?1h")
+        assertTrue(t.cursorKeyAppMode.value)
+        t.feed("$esc[?1l")
+        assertFalse(t.cursorKeyAppMode.value)
+    }
+
+    @Test
+    fun `vim-style startup sets DECCKM and alt screen together`() {
+        val t = MouseModeTracker()
+        // vim emits smkx (ESC[?1h ESC=) then smcup (ESC[?1049h).
+        t.feed("$esc[?1h$esc=$esc[?1049h")
+        assertTrue(t.cursorKeyAppMode.value)
+        assertTrue(t.altScreen.value)
+        // :q restores both.
+        t.feed("$esc[?1049l$esc[?1l")
+        assertFalse(t.cursorKeyAppMode.value)
+        assertFalse(t.altScreen.value)
+    }
+
+    @Test
+    fun `arrow key bytes follow DECCKM encoding`() {
+        assertTrue(arrowKeyBytes(true, false).contentEquals("$esc[A".toByteArray()))
+        assertTrue(arrowKeyBytes(false, false).contentEquals("$esc[B".toByteArray()))
+        assertTrue(arrowKeyBytes(true, true).contentEquals("${esc}OA".toByteArray()))
+        assertTrue(arrowKeyBytes(false, true).contentEquals("${esc}OB".toByteArray()))
+    }
 }
