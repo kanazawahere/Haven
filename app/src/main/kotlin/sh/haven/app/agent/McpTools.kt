@@ -5264,13 +5264,14 @@ internal class McpTools(
 
     /**
      * Dispatch [workspaceLauncher] for the supplied workspace id.
-     * The launcher walks items via [agentUiCommandBus] tryEmit calls,
-     * which are non-blocking — the actual session/tab opening happens
-     * in the corresponding feature ViewModels' collectors. So this
-     * returns once every item has been dispatched (fast), with the
-     * launcher state machine settled at Completed/Cancelled/Failed.
-     * Live progress also shows up in the Connections-screen banner
-     * via the same StateFlow the user's tap drives.
+     * The launcher attaches SSH terminal sessions directly (per-profile
+     * plans, concurrent across profiles) and dispatches the remaining
+     * kinds via [agentUiCommandBus]; it suspends until every plan
+     * settles — bounded by the slowest single profile (one from-cold
+     * dial waits up to ~45s), not the sum of items. Returns with the
+     * launcher state machine at Completed/Cancelled/Failed. Live
+     * progress also shows up in the Connections-screen banner via the
+     * same StateFlow the user's tap drives.
      */
     private suspend fun composeWorkspace(args: JSONObject): JSONObject {
         val workspaceId = args.optString("workspaceId").ifEmpty {

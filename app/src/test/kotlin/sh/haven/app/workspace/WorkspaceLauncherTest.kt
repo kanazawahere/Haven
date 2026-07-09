@@ -1,10 +1,12 @@
 package sh.haven.app.workspace
 
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -17,6 +19,7 @@ import sh.haven.core.data.db.entities.WorkspaceProfile
 import sh.haven.core.data.repository.ConnectionRepository
 import sh.haven.core.data.repository.WorkspaceRepository
 import sh.haven.core.data.repository.WorkspaceWithItems
+import sh.haven.core.ssh.SshSessionAttacher
 import sh.haven.core.ssh.SshSessionManager
 
 class WorkspaceLauncherTest {
@@ -56,12 +59,7 @@ class WorkspaceLauncherTest {
     fun launchUnknownWorkspaceReportsFailedState() = runBlocking {
         val workspaceRepo = mockk<WorkspaceRepository>()
         coEvery { workspaceRepo.getWorkspace("missing") } returns null
-        val launcher = WorkspaceLauncher(
-            workspaceRepository = workspaceRepo,
-            connectionRepository = mockk(),
-            agentUiCommandBus = mockk(),
-            sshSessionManager = sessionManager(),
-        )
+        val launcher = launcher(workspaceRepo, mockk(), mockk(), mockk(), mockk())
 
         launcher.launch("missing")
 
@@ -74,14 +72,14 @@ class WorkspaceLauncherTest {
     }
 
     @Test
-    fun launchEmitsKindAppropriateCommandsInPriorityOrder() = runBlocking {
+    fun launchAttachesTerminalsThenEmitsNonTerminalCommandsInPriorityOrder() = runBlocking {
         val sshProfile = profile("ssh-1", connectionType = "SSH")
         val vncProfile = profile("vnc-1", connectionType = "VNC")
         val ws = WorkspaceProfile(id = "ws-1", name = "Work")
         val items = listOf(
             item("ws-1", "vnc-item", WorkspaceItem.Kind.DESKTOP, "vnc-1"),
             item("ws-1", "wayland-item", WorkspaceItem.Kind.WAYLAND, null),
-            item("ws-1", "ssh-item", WorkspaceItem.Kind.TERMINAL, "ssh-1"),
+            item("ws-1", "ssh-item", WorkspaceItem.Kind.TERMINAL, "ssh-1", sessionName = "main"),
             item("ws-1", "sftp-item", WorkspaceItem.Kind.FILE_BROWSER, "ssh-1", path = "/srv"),
         )
 
@@ -93,22 +91,24 @@ class WorkspaceLauncherTest {
         coEvery { connRepo.getById("ssh-1") } returns sshProfile
         coEvery { connRepo.getById("vnc-1") } returns vncProfile
 
-        val bus = mockk<AgentUiCommandBus>()
-        val emitted = mutableListOf<AgentUiCommand>()
-        every { bus.emit(any()) } answers {
-            emitted += firstArg<AgentUiCommand>()
-            true
-        }
+        val (bus, emitted) = recordingBus()
+        val attacher = mockk<SshSessionAttacher>()
+        coEvery { attacher.ensureAttached("ssh-1", "main") } returns
+            SshSessionAttacher.Result.Attached("s-1")
 
-        val launcher = WorkspaceLauncher(workspaceRepo, connRepo, bus, sessionManager())
+        val launcher = launcher(workspaceRepo, connRepo, bus, mockk(), attacher)
         launcher.launch("ws-1")
 
         val state = launcher.state.value
         assertTrue("expected Completed, got $state", state is WorkspaceLaunchState.Completed)
-        // Priority order: TERMINAL → WAYLAND → FILE_BROWSER → DESKTOP.
+        assertTrue(
+            "all items succeed",
+            (state as WorkspaceLaunchState.Completed).items.all { it.status == ItemProgress.Status.Succeeded },
+        )
+        // The terminal attached directly (no bus). Then: focus the terminal
+        // screen, then WAYLAND → FILE_BROWSER → DESKTOP.
         assertEquals(4, emitted.size)
-        assertTrue("first should be OpenTerminalSession",
-            emitted[0] is AgentUiCommand.OpenTerminalSession)
+        assertEquals("s-1", (emitted[0] as AgentUiCommand.FocusTerminalSession).sessionId)
         assertTrue("second should be OpenWaylandDesktop",
             emitted[1] is AgentUiCommand.OpenWaylandDesktop)
         assertTrue("third should be NavigateToSftpPath",
@@ -134,10 +134,9 @@ class WorkspaceLauncherTest {
             WorkspaceWithItems(ws, items)
         val connRepo = mockk<ConnectionRepository>()
         coEvery { connRepo.getById("missing-profile") } returns null
-        val bus = mockk<AgentUiCommandBus>(relaxed = true)
-        every { bus.emit(any()) } returns true
+        val (bus, _) = recordingBus()
 
-        val launcher = WorkspaceLauncher(workspaceRepo, connRepo, bus, sessionManager())
+        val launcher = launcher(workspaceRepo, connRepo, bus, mockk(), mockk())
         launcher.launch("ws-1")
 
         val state = launcher.state.value
@@ -161,10 +160,9 @@ class WorkspaceLauncherTest {
             WorkspaceWithItems(ws, items)
         val connRepo = mockk<ConnectionRepository>()
         coEvery { connRepo.getById("ssh-1") } returns sshProfile
-        val bus = mockk<AgentUiCommandBus>()
-        every { bus.emit(any()) } returns true
+        val (bus, _) = recordingBus()
 
-        val launcher = WorkspaceLauncher(workspaceRepo, connRepo, bus, sessionManager())
+        val launcher = launcher(workspaceRepo, connRepo, bus, mockk(), mockk())
         launcher.launch("ws-1")
 
         val itemProgress = (launcher.state.value as WorkspaceLaunchState.Completed).items.single()
@@ -179,7 +177,7 @@ class WorkspaceLauncherTest {
         val vncProfile = profile("vnc-1", connectionType = "VNC")
         val ws = WorkspaceProfile(id = "ws-1", name = "Work")
         val items = listOf(
-            item("ws-1", "term", WorkspaceItem.Kind.TERMINAL, "ssh-1"),
+            item("ws-1", "term", WorkspaceItem.Kind.TERMINAL, "ssh-1", sessionName = "main"),
             item("ws-1", "vnc", WorkspaceItem.Kind.DESKTOP, "vnc-1"),
         )
 
@@ -189,17 +187,17 @@ class WorkspaceLauncherTest {
         val connRepo = mockk<ConnectionRepository>()
         coEvery { connRepo.getById("ssh-1") } returns sshProfile
         coEvery { connRepo.getById("vnc-1") } returns vncProfile
-        val bus = mockk<AgentUiCommandBus>()
-        // Forward reference: assigned right after construction, used by
-        // the lambda below at call time (not at every {} setup time).
+        val (bus, emitted) = recordingBus()
+
+        // Cancel lands while the terminal attach is in flight — the desktop
+        // item behind it must skip, and no navigation fires post-cancel.
         lateinit var launcher: WorkspaceLauncher
-        every { bus.emit(any()) } answers {
-            // Cancel after the first emit so the second item is reached
-            // with cancelRequested already set.
+        val attacher = mockk<SshSessionAttacher>()
+        coEvery { attacher.ensureAttached("ssh-1", "main") } answers {
             launcher.cancel()
-            true
+            SshSessionAttacher.Result.Attached("s-1")
         }
-        launcher = WorkspaceLauncher(workspaceRepo, connRepo, bus, sessionManager())
+        launcher = launcher(workspaceRepo, connRepo, bus, mockk(), attacher)
 
         launcher.launch("ws-1")
 
@@ -209,23 +207,24 @@ class WorkspaceLauncherTest {
         assertEquals(ItemProgress.Status.Succeeded, items2[0].status) // term ran
         assertEquals(ItemProgress.Status.Skipped, items2[1].status)   // vnc skipped
         assertEquals("cancelled", items2[1].message)
+        assertTrue("no commands after cancel", emitted.isEmpty())
     }
 
     @Test
     fun launchPropagatesBusOverflowAsFailure() = runBlocking {
-        val sshProfile = profile("ssh-1", connectionType = "SSH")
+        val vncProfile = profile("vnc-1", connectionType = "VNC")
         val ws = WorkspaceProfile(id = "ws-1", name = "Work")
-        val items = listOf(item("ws-1", "term", WorkspaceItem.Kind.TERMINAL, "ssh-1"))
+        val items = listOf(item("ws-1", "vnc", WorkspaceItem.Kind.DESKTOP, "vnc-1"))
 
         val workspaceRepo = mockk<WorkspaceRepository>()
         coEvery { workspaceRepo.getWorkspace("ws-1") } returns
             WorkspaceWithItems(ws, items)
         val connRepo = mockk<ConnectionRepository>()
-        coEvery { connRepo.getById("ssh-1") } returns sshProfile
+        coEvery { connRepo.getById("vnc-1") } returns vncProfile
         val bus = mockk<AgentUiCommandBus>()
-        every { bus.emit(any()) } returns false  // overflow
+        every { bus.emit(any()) } returns false  // persistent overflow
 
-        val launcher = WorkspaceLauncher(workspaceRepo, connRepo, bus, sessionManager())
+        val launcher = launcher(workspaceRepo, connRepo, bus, mockk(), mockk())
         launcher.launch("ws-1")
 
         val itemProgress = (launcher.state.value as WorkspaceLaunchState.Completed).items.single()
@@ -233,32 +232,12 @@ class WorkspaceLauncherTest {
         assertEquals("ui bus overflow", itemProgress.message)
     }
 
-    /**
-     * A mocked [SshSessionManager]. [connected] backs `isProfileConnected` for
-     * every profile: true (default) keeps the existing "connection already up →
-     * OpenTerminalSession" behaviour; false drives the from-cold dial path,
-     * where [sessions] is stubbed with a CONNECTED session so the launcher's
-     * await resolves.
-     */
-    private fun sessionManager(connected: Boolean = true): SshSessionManager {
-        val sm = mockk<SshSessionManager>()
-        every { sm.isProfileConnected(any()) } returns connected
-        if (!connected) {
-            val session = mockk<SshSessionManager.SessionState> {
-                every { profileId } returns "ssh-1"
-                every { status } returns SshSessionManager.SessionState.Status.CONNECTED
-            }
-            every { sm.sessions } returns MutableStateFlow(mapOf("s-1" to session))
-        }
-        return sm
-    }
-
     @Test
-    fun coldSshTerminalDialsProfileAndReusesForFurtherTabs() = runBlocking {
-        // Two terminal items on the same SSH profile, nothing connected yet.
-        // The first item dials (ConnectProfile); once the session is up the
-        // second reuses it (OpenTerminalSession) — the workspace cold-restore
-        // path (#360-adjacent): previously both no-opped with "no config".
+    fun coldPlanDialsOncePerProfileThenAttachesTheRest() = runBlocking {
+        // Two terminal items on one SSH profile, nothing connected. The first
+        // NoLiveConnection triggers ONE interactive dial (ConnectProfile with
+        // the item's session name); once CONNECTED the remaining item attaches
+        // over the same connection via the attacher.
         val sshProfile = profile("ssh-1", connectionType = "SSH")
         val ws = WorkspaceProfile(id = "ws-1", name = "Work")
         val items = listOf(
@@ -270,36 +249,22 @@ class WorkspaceLauncherTest {
         coEvery { workspaceRepo.getWorkspace("ws-1") } returns WorkspaceWithItems(ws, items)
         val connRepo = mockk<ConnectionRepository>()
         coEvery { connRepo.getById("ssh-1") } returns sshProfile
+        val (bus, emitted) = recordingBus()
 
-        val bus = mockk<AgentUiCommandBus>()
-        val emitted = mutableListOf<AgentUiCommand>()
-        every { bus.emit(any()) } answers {
-            emitted += firstArg<AgentUiCommand>()
-            true
-        }
+        val attacher = mockk<SshSessionAttacher>()
+        coEvery { attacher.ensureAttached("ssh-1", "cctv") } returns
+            SshSessionAttacher.Result.NoLiveConnection
+        coEvery { attacher.ensureAttached("ssh-1", "civic") } returns
+            SshSessionAttacher.Result.Attached("s-2")
 
-        // isProfileConnected=false → dial; but the connected-session stub only
-        // fires the await for term-a. For term-b to take the reuse path it must
-        // read isProfileConnected=true after the dial, so flip it on first read.
-        val sm = mockk<SshSessionManager>()
-        val session = mockk<SshSessionManager.SessionState> {
-            every { profileId } returns "ssh-1"
-            every { status } returns SshSessionManager.SessionState.Status.CONNECTED
-        }
-        every { sm.sessions } returns MutableStateFlow(mapOf("s-1" to session))
-        var connectedYet = false
-        every { sm.isProfileConnected("ssh-1") } answers { connectedYet.also { connectedYet = true } }
-
-        val launcher = WorkspaceLauncher(workspaceRepo, connRepo, bus, sm)
+        val launcher = launcher(workspaceRepo, connRepo, bus, sessionManager("ssh-1"), attacher)
         launcher.launch("ws-1")
 
+        // One dial carrying term-a's session name, then the focus command —
+        // term-b attached directly, no OpenTerminalSession hop.
         assertEquals(2, emitted.size)
-        assertTrue("first item should dial", emitted[0] is AgentUiCommand.ConnectProfile)
-        assertTrue("second item should reuse", emitted[1] is AgentUiCommand.OpenTerminalSession)
-        // Each command carries its saved tmux session so restore reattaches by
-        // name instead of prompting.
         assertEquals("cctv", (emitted[0] as AgentUiCommand.ConnectProfile).sessionName)
-        assertEquals("civic", (emitted[1] as AgentUiCommand.OpenTerminalSession).sessionName)
+        assertEquals("s-2", (emitted[1] as AgentUiCommand.FocusTerminalSession).sessionId)
         val state = launcher.state.value as WorkspaceLaunchState.Completed
         assertTrue("both items succeed", state.items.all { it.status == ItemProgress.Status.Succeeded })
     }
@@ -319,25 +284,186 @@ class WorkspaceLauncherTest {
         coEvery { workspaceRepo.getWorkspace("ws-1") } returns WorkspaceWithItems(ws, items)
         val connRepo = mockk<ConnectionRepository>()
         coEvery { connRepo.getById("ssh-1") } returns sshProfile
+        val (bus, emitted) = recordingBus()
 
+        val attacher = mockk<SshSessionAttacher>()
+        coEvery { attacher.ensureAttached("ssh-1", "cctv") } returns
+            SshSessionAttacher.Result.NoLiveConnection
+        coEvery { attacher.ensureAttached("ssh-1", "civic") } returns
+            SshSessionAttacher.Result.Attached("s-2")
+
+        launcher(workspaceRepo, connRepo, bus, sessionManager("ssh-1"), attacher)
+            .launch("ws-1")
+
+        assertEquals("cctv", (emitted[0] as AgentUiCommand.ConnectProfile).sessionName)
+        coVerify { attacher.ensureAttached("ssh-1", "civic") }
+    }
+
+    @Test
+    fun relaunchOverLiveSessionsIsIdempotent() = runBlocking {
+        // Everything already up: no dial, no duplicate tabs — items succeed
+        // via AlreadyLive and the launcher just refocuses the terminal.
+        val sshProfile = profile("ssh-1", connectionType = "SSH")
+        val ws = WorkspaceProfile(id = "ws-1", name = "Work")
+        val items = listOf(
+            item("ws-1", "term-a", WorkspaceItem.Kind.TERMINAL, "ssh-1", sessionName = "cctv"),
+            item("ws-1", "term-b", WorkspaceItem.Kind.TERMINAL, "ssh-1", sessionName = "civic"),
+        )
+        val workspaceRepo = mockk<WorkspaceRepository>()
+        coEvery { workspaceRepo.getWorkspace("ws-1") } returns WorkspaceWithItems(ws, items)
+        val connRepo = mockk<ConnectionRepository>()
+        coEvery { connRepo.getById("ssh-1") } returns sshProfile
+        val (bus, emitted) = recordingBus()
+
+        val attacher = mockk<SshSessionAttacher>()
+        coEvery { attacher.ensureAttached("ssh-1", "cctv") } returns
+            SshSessionAttacher.Result.AlreadyLive("s-a")
+        coEvery { attacher.ensureAttached("ssh-1", "civic") } returns
+            SshSessionAttacher.Result.AlreadyLive("s-b")
+
+        val launcher = launcher(workspaceRepo, connRepo, bus, mockk(), attacher)
+        launcher.launch("ws-1")
+
+        val state = launcher.state.value as WorkspaceLaunchState.Completed
+        assertTrue(state.items.all { it.status == ItemProgress.Status.Succeeded })
+        assertEquals(1, emitted.size)
+        assertEquals("s-a", (emitted[0] as AgentUiCommand.FocusTerminalSession).sessionId)
+    }
+
+    @Test
+    fun plansOnDifferentProfilesFailIndependently() = runBlocking {
+        val profileA = profile("ssh-a", connectionType = "SSH")
+        val profileB = profile("ssh-b", connectionType = "SSH")
+        val ws = WorkspaceProfile(id = "ws-1", name = "Work")
+        val items = listOf(
+            item("ws-1", "term-a", WorkspaceItem.Kind.TERMINAL, "ssh-a", sessionName = "one"),
+            item("ws-1", "term-b", WorkspaceItem.Kind.TERMINAL, "ssh-b", sessionName = "two"),
+        )
+        val workspaceRepo = mockk<WorkspaceRepository>()
+        coEvery { workspaceRepo.getWorkspace("ws-1") } returns WorkspaceWithItems(ws, items)
+        val connRepo = mockk<ConnectionRepository>()
+        coEvery { connRepo.getById("ssh-a") } returns profileA
+        coEvery { connRepo.getById("ssh-b") } returns profileB
+        val (bus, _) = recordingBus()
+
+        val attacher = mockk<SshSessionAttacher>()
+        coEvery { attacher.ensureAttached("ssh-a", "one") } returns
+            SshSessionAttacher.Result.Failed("shell closed")
+        coEvery { attacher.ensureAttached("ssh-b", "two") } returns
+            SshSessionAttacher.Result.Attached("s-b")
+
+        val launcher = launcher(workspaceRepo, connRepo, bus, mockk(), attacher)
+        launcher.launch("ws-1")
+
+        val state = launcher.state.value as WorkspaceLaunchState.Completed
+        val byId = state.items.associateBy { it.itemId }
+        assertEquals(ItemProgress.Status.Failed, byId.getValue("term-a").status)
+        assertEquals("shell closed", byId.getValue("term-a").message)
+        assertEquals(ItemProgress.Status.Succeeded, byId.getValue("term-b").status)
+    }
+
+    @Test
+    fun dialTimeoutFailsOnlyThatProfilesPlan() = runTest {
+        // Profile A's dial never reaches CONNECTED (45s virtual timeout);
+        // profile B attaches fine. The launch as a whole completes — one
+        // stuck host no longer blocks the workspace.
+        val profileA = profile("ssh-a", connectionType = "SSH")
+        val profileB = profile("ssh-b", connectionType = "SSH")
+        val ws = WorkspaceProfile(id = "ws-1", name = "Work")
+        val items = listOf(
+            item("ws-1", "term-a", WorkspaceItem.Kind.TERMINAL, "ssh-a", sessionName = "one"),
+            item("ws-1", "term-b", WorkspaceItem.Kind.TERMINAL, "ssh-b", sessionName = "two"),
+        )
+        val workspaceRepo = mockk<WorkspaceRepository>()
+        coEvery { workspaceRepo.getWorkspace("ws-1") } returns WorkspaceWithItems(ws, items)
+        val connRepo = mockk<ConnectionRepository>()
+        coEvery { connRepo.getById("ssh-a") } returns profileA
+        coEvery { connRepo.getById("ssh-b") } returns profileB
+        val (bus, _) = recordingBus()
+
+        val attacher = mockk<SshSessionAttacher>()
+        coEvery { attacher.ensureAttached("ssh-a", "one") } returns
+            SshSessionAttacher.Result.NoLiveConnection
+        coEvery { attacher.ensureAttached("ssh-b", "two") } returns
+            SshSessionAttacher.Result.Attached("s-b")
+
+        // No session ever appears for ssh-a — the await must time out.
+        val sm = mockk<SshSessionManager>()
+        every { sm.sessions } returns MutableStateFlow(emptyMap())
+
+        val launcher = launcher(workspaceRepo, connRepo, bus, sm, attacher)
+        launcher.launch("ws-1")
+
+        val state = launcher.state.value as WorkspaceLaunchState.Completed
+        val byId = state.items.associateBy { it.itemId }
+        assertEquals(ItemProgress.Status.Failed, byId.getValue("term-a").status)
+        assertTrue(byId.getValue("term-a").message!!.contains("did not come up"))
+        assertEquals(ItemProgress.Status.Succeeded, byId.getValue("term-b").status)
+    }
+
+    @Test
+    fun namelessDialDoesNotBlockAndFollowersReportUnavailable() = runBlocking {
+        // No stored or remembered session names at all: the dial shows the
+        // interactive picker, so the launcher must not wait on CONNECTED, and
+        // a second nameless item can't ride a connection that isn't up yet.
+        val sshProfile = profile("ssh-1", connectionType = "SSH")
+        val ws = WorkspaceProfile(id = "ws-1", name = "Work")
+        val items = listOf(
+            item("ws-1", "term-a", WorkspaceItem.Kind.TERMINAL, "ssh-1", sortOrder = 0),
+            item("ws-1", "term-b", WorkspaceItem.Kind.TERMINAL, "ssh-1", sortOrder = 1),
+        )
+        val workspaceRepo = mockk<WorkspaceRepository>()
+        coEvery { workspaceRepo.getWorkspace("ws-1") } returns WorkspaceWithItems(ws, items)
+        val connRepo = mockk<ConnectionRepository>()
+        coEvery { connRepo.getById("ssh-1") } returns sshProfile
+        val (bus, emitted) = recordingBus()
+
+        val attacher = mockk<SshSessionAttacher>()
+        coEvery { attacher.ensureAttached("ssh-1", null) } returns
+            SshSessionAttacher.Result.NoLiveConnection
+
+        val launcher = launcher(workspaceRepo, connRepo, bus, mockk(), attacher)
+        launcher.launch("ws-1")
+
+        assertEquals(1, emitted.size)
+        val dial = emitted[0] as AgentUiCommand.ConnectProfile
+        assertEquals(null, dial.sessionName)
+        val state = launcher.state.value as WorkspaceLaunchState.Completed
+        val byId = state.items.associateBy { it.itemId }
+        assertEquals(ItemProgress.Status.Succeeded, byId.getValue("term-a").status)
+        assertEquals(ItemProgress.Status.Failed, byId.getValue("term-b").status)
+        assertEquals("connection unavailable", byId.getValue("term-b").message)
+    }
+
+    // ---- helpers ----
+
+    private fun launcher(
+        workspaceRepo: WorkspaceRepository,
+        connRepo: ConnectionRepository,
+        bus: AgentUiCommandBus,
+        sessionManager: SshSessionManager,
+        attacher: SshSessionAttacher,
+    ) = WorkspaceLauncher(workspaceRepo, connRepo, bus, sessionManager, attacher)
+
+    private fun recordingBus(): Pair<AgentUiCommandBus, MutableList<AgentUiCommand>> {
         val bus = mockk<AgentUiCommandBus>()
         val emitted = mutableListOf<AgentUiCommand>()
-        every { bus.emit(any()) } answers { emitted += firstArg<AgentUiCommand>(); true }
+        every { bus.emit(any()) } answers {
+            emitted += firstArg<AgentUiCommand>()
+            true
+        }
+        return bus to emitted
+    }
 
+    /** A session manager whose flow reports the profile CONNECTED, so a dial's await resolves. */
+    private fun sessionManager(connectedProfileId: String): SshSessionManager {
         val sm = mockk<SshSessionManager>()
         val session = mockk<SshSessionManager.SessionState> {
-            every { profileId } returns "ssh-1"
+            every { profileId } returns connectedProfileId
             every { status } returns SshSessionManager.SessionState.Status.CONNECTED
         }
         every { sm.sessions } returns MutableStateFlow(mapOf("s-1" to session))
-        var connectedYet = false
-        every { sm.isProfileConnected("ssh-1") } answers { connectedYet.also { connectedYet = true } }
-
-        WorkspaceLauncher(workspaceRepo, connRepo, bus, sm).launch("ws-1")
-
-        assertEquals(2, emitted.size)
-        assertEquals("cctv", (emitted[0] as AgentUiCommand.ConnectProfile).sessionName)
-        assertEquals("civic", (emitted[1] as AgentUiCommand.OpenTerminalSession).sessionName)
+        return sm
     }
 
     private fun item(
