@@ -1,0 +1,1 @@
+🖥️ Fixed: tmux session manager failed on hosts addressed by IP (#358) — auto-generated session names like user-10.0.0.5 contain dots, which tmux rejects, so the connection closed with a misleading "is your session manager installed?" error. Dots/colons are now replaced with dashes.

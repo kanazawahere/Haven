@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.28
+
+🖥️ **Fixed: tmux session manager failed on hosts addressed by IP** (#358) — sessions are auto-named after `user@host`, so an IP host produced a name like `user-10.0.0.5`; tmux treats `.` and `:` as pane separators and refused to attach, and the connection closed with the misleading *"Shell closed — is your session manager installed on this host?"* error. Dots and colons in session names are now replaced with dashes (`user-10-0-0-5`). Thanks @Panthaaaa for the precise diagnosis.
+
 ## v5.68.27
 
 🛟 **Fixed: restoring a backup could leave the app crashing on launch** — if your backup was taken after you'd changed the terminal background opacity, mail font size, or app-window scale, restoring it corrupted that setting and the app then crash-looped on every open, recoverable only by clearing all app data. Restore now keeps those settings the right type, **and this update self-heals an install already stuck this way** — just update and reopen; your connections and keys are intact. (Affected the existing Restore, not only the new remote sync below.)
