@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.33
+
+🪪 **New: reusable SSH identities** (#360) — a named identity bundles a username, an optional password, and an optional SSH key, entered once and assignable anywhere. Manage identities on the Keys tab (**Add identity**); assign one per host from the new **Identity** picker in the connection editor's Authentication section, or per group via long-press → **Set identity** — hosts inherit the group's identity unless they override it, including an explicit "use this connection's own credentials" opt-out. The chosen identity's credentials are applied at connect time, so nothing about how you connect changes. Fully opt-in: existing per-host logins keep working untouched. Translated into all 12 UI languages.
+
 ## v5.68.32
 
 🖥️ **New: Custom command (X11) desktop** (#361) — termux-x11-style custom sessions for the Linux VM. The Desktops view gains a **Custom command (X11)** entry: Haven still runs the X server and the VNC display, but the session command is yours — e.g. `dbus-launch startxfce4` — instead of a fixed catalog desktop. It installs only what it needs (~15 MB: X server, dbus, xterm); your WM/DE comes from the distro's own package manager. Edit the command any time from the desktop row — changes apply on the next start, no reinstall — and a blank command routes into the editor instead of launching an empty screen. The usual X11 constraint applies: software rendering, so desktops that require a GL compositor (GNOME Shell, KWin) still won't start (#261).
