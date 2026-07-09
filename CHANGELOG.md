@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.31
+
+🔄 **New: automatic backup push** (#359) — the encrypted backup can now keep itself current on your remote. Turn on **Push automatically** under Settings → Backup → Sync to a remote: Haven re-pushes the encrypted backup a couple of minutes after settings change (a burst of edits collapses into one push), plus a daily catch-up, with each result recorded in the connection audit log. Enabling asks for your backup password once and stores it encrypted on the device so background pushes can run without prompting — the dialog says exactly that, and turning auto-push off deletes it. Push-only by design: restoring (Pull) stays a manual action, so automatic sync can't silently overwrite your local config. SFTP destinations connect on demand and suit background sync best; SMB/rclone destinations still need to be connected. Translated into all 12 UI languages.
+
 ## v5.68.30
 
 📜 **Fixed: scrolling fought tmux/nano/vim and painted stale history over them** (#255) — with a full-screen app (tmux without `mouse on`, nano, vim, less) on screen, a one-finger swipe scrolled Haven's local scrollback — which for these apps is the frozen pre-app history, so the display showed old content and rubber-banded on every redraw. Swipes over a full-screen app now send arrow keys to the app itself (as Termux does), so tmux, nano, vim, and less scroll their own content smoothly. Normal shell scrollback, two-finger local scroll, long-press selection, and `mouse on` behaviour are unchanged; profiles that disable the alternate screen keep local scrolling.

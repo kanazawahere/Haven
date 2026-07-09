@@ -1,0 +1,1 @@
+🔄 New: automatic backup push (#359) — turn on "Push automatically" in Settings → Backup → Sync to a remote and Haven re-pushes the encrypted backup shortly after settings change, plus a daily catch-up. Your backup password is stored encrypted on-device so background pushes can run; results appear in the connection audit log. Restore (Pull) stays manual by design.
