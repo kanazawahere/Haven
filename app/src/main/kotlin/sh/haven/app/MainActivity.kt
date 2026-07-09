@@ -67,7 +67,6 @@ class MainActivity : AppCompatActivity() {
     // Eagerly injected to trigger one-time password encryption migration
     @Inject lateinit var connectionRepository: ConnectionRepository
     @Inject lateinit var sshKeyRepository: sh.haven.core.data.repository.SshKeyRepository
-    @Inject lateinit var stepCaConfigRepository: sh.haven.core.data.repository.StepCaConfigRepository
     // Drives the Mail tab's visibility (shown only while a mail session is open).
     @Inject lateinit var mailSessionManager: sh.haven.core.mail.MailSessionManager
     // Published to FidoAuthenticator in onResume so NFC reader mode can
@@ -486,7 +485,6 @@ class MainActivity : AppCompatActivity() {
                         preferencesRepository = preferencesRepository,
                         connectionRepository = connectionRepository,
                         sshKeyRepository = sshKeyRepository,
-                        stepCaConfigRepository = stepCaConfigRepository,
                         agentUiCommandBus = agentUiCommandBus,
                         userMessageBus = userMessageBus,
                         mailSessionManager = mailSessionManager,

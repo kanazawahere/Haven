@@ -95,7 +95,6 @@ fun HavenNavHost(
     preferencesRepository: UserPreferencesRepository,
     connectionRepository: ConnectionRepository,
     sshKeyRepository: sh.haven.core.data.repository.SshKeyRepository,
-    stepCaConfigRepository: sh.haven.core.data.repository.StepCaConfigRepository,
     agentUiCommandBus: sh.haven.core.data.agent.AgentUiCommandBus,
     userMessageBus: sh.haven.core.data.message.UserMessageBus,
     mailSessionManager: sh.haven.core.mail.MailSessionManager,
@@ -141,8 +140,6 @@ fun HavenNavHost(
         .collectAsState(initial = emptyList())
     val sshKeys by sshKeyRepository.observeAll()
         .collectAsState(initial = emptyList())
-    val stepCaConfigs by stepCaConfigRepository.observeAll()
-        .collectAsState(initial = emptyList())
     val alwaysShowAllTabs by preferencesRepository.alwaysShowAllTabs
         .collectAsState(initial = false)
 
@@ -162,12 +159,6 @@ fun HavenNavHost(
     val hasOpenEmailSession = mailSessions.values.any {
         it.status == sh.haven.core.mail.MailSessionManager.SessionState.Status.CONNECTED
     }
-    // Show Keys once the user has any key/CA config OR any SSH connection
-    // to attach a key to — otherwise there's a chicken-and-egg: a fresh
-    // SSH connection can't reach key management to generate/import a key
-    // (#170). isSsh covers the key-auth-capable profiles.
-    val hasKeysOrCaConfigs = sshKeys.isNotEmpty() || stepCaConfigs.isNotEmpty() ||
-        connections.any { it.isSsh }
 
     val screenOrderPref by preferencesRepository.screenOrder
         .collectAsState(initial = emptyList())
@@ -175,7 +166,6 @@ fun HavenNavHost(
         screenOrderPref,
         hasTerminalProfiles,
         hasOpenEmailSession,
-        hasKeysOrCaConfigs,
         alwaysShowAllTabs,
     ) {
         val ordered = if (screenOrderPref.isNotEmpty()) {
@@ -210,9 +200,13 @@ fun HavenNavHost(
                 // Terminal hides until there's any SSH/Mosh/ET/Reticulum
                 // profile (ConnectionProfile.isTerminal covers them all).
                 Screen.Terminal -> hasTerminalProfiles
-                // Keys hides until any SSH key or step-ca config exists;
-                // user can still reach key management from Settings.
-                Screen.Keys -> hasKeysOrCaConfigs
+                // Keys/identity management is always shown — like Desktop and
+                // Sftp above, it's useful before any connection exists (adding
+                // keys or identities first is a normal first step). Hiding it
+                // until a key/CA/SSH host existed left it only in Settings on a
+                // fresh install, which was undiscoverable for a keys-first user
+                // (#360).
+                Screen.Keys -> true
             }
         }
     }
