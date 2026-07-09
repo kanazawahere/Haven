@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.30
+
+📜 **Fixed: scrolling fought tmux/nano/vim and painted stale history over them** (#255) — with a full-screen app (tmux without `mouse on`, nano, vim, less) on screen, a one-finger swipe scrolled Haven's local scrollback — which for these apps is the frozen pre-app history, so the display showed old content and rubber-banded on every redraw. Swipes over a full-screen app now send arrow keys to the app itself (as Termux does), so tmux, nano, vim, and less scroll their own content smoothly. Normal shell scrollback, two-finger local scroll, long-press selection, and `mouse on` behaviour are unchanged; profiles that disable the alternate screen keep local scrolling.
+
 ## v5.68.29
 
 📟 **New: "Agent log" button on the ongoing notification** (#239) — while the agent (MCP) endpoint is running, the persistent notification carries an **Agent log** action that jumps straight to the Agent Activity screen, including from a cold start or from behind the biometric lock. The expanded notification also now lists each session on its own line, so the MCP status line (`running <tool>…` / last error) is no longer truncated behind other connection names.

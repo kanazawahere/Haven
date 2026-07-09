@@ -1,0 +1,1 @@
+📜 Fixed: scrolling fought tmux/nano/vim and showed stale history (#255) — swipes over a full-screen app now send arrow keys to the app (Termux parity) so it scrolls its own content. Normal shell scrollback and two-finger local scroll are unchanged.
