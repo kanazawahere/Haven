@@ -1281,7 +1281,14 @@ fun ConnectionsScreen(
                                     hasKeys = sshKeys.isNotEmpty(),
                                     hasDependents = profile.id in dependentsByParent,
                                     jumpHostLabel = profile.jumpProfileId?.let { profileMap[it]?.label },
-                                    onTap = { onTapProfile(profile, profileStatuses[profile.id], sshKeys, viewModel, onNavigateToSmb, onNavigateToRclone, onNavigateToEmail) { connectingProfile = profile } },
+                                    onTap = {
+                                        val id = effectiveIdentityFor(profile, groupMap, identities)
+                                        onTapProfile(
+                                            profile, profileStatuses[profile.id], sshKeys,
+                                            id != null && (id.keyId != null || id.password != null),
+                                            viewModel, onNavigateToSmb, onNavigateToRclone, onNavigateToEmail,
+                                        ) { connectingProfile = profile }
+                                    },
                                     onRename = { newLabel -> viewModel.saveConnection(profile.copy(label = newLabel)) },
                                     onEdit = { editingProfileId = profile.id },
                                     onDelete = { viewModel.deleteConnection(profile.id) },
@@ -1387,7 +1394,14 @@ fun ConnectionsScreen(
                                         hasKeys = sshKeys.isNotEmpty(),
                                         hasDependents = dep.id in dependentsByParent,
                                         jumpHostLabel = null,
-                                        onTap = { onTapProfile(dep, profileStatuses[dep.id], sshKeys, viewModel, onNavigateToSmb, onNavigateToRclone, onNavigateToEmail) { connectingProfile = dep } },
+                                        onTap = {
+                                            val id = effectiveIdentityFor(dep, groupMap, identities)
+                                            onTapProfile(
+                                                dep, profileStatuses[dep.id], sshKeys,
+                                                id != null && (id.keyId != null || id.password != null),
+                                                viewModel, onNavigateToSmb, onNavigateToRclone, onNavigateToEmail,
+                                            ) { connectingProfile = dep }
+                                        },
                                         onRename = { newLabel -> viewModel.saveConnection(dep.copy(label = newLabel)) },
                                         onEdit = { editingProfileId = dep.id },
                                         onDelete = { viewModel.deleteConnection(dep.id) },
@@ -1445,10 +1459,31 @@ private fun quickConnectAction(
     }
 }
 
+/**
+ * The identity that fills this profile's credentials at connect time, or null.
+ * Mirrors [sh.haven.core.data.repository.SshIdentityRepository.effectiveIdentity]
+ * against the already-collected lists so the synchronous tap handler can decide
+ * whether an identity will supply the login before it prompts (#360).
+ */
+private fun effectiveIdentityFor(
+    profile: ConnectionProfile,
+    groups: Map<String, ConnectionGroup>,
+    identities: List<sh.haven.core.data.db.entities.SshIdentity>,
+): sh.haven.core.data.db.entities.SshIdentity? {
+    val id = when (val own = profile.identityId) {
+        sh.haven.core.data.db.entities.SshIdentity.NONE_ID -> return null
+        null -> groups[profile.groupId]?.identityId
+            ?.takeUnless { it == sh.haven.core.data.db.entities.SshIdentity.NONE_ID }
+        else -> own
+    } ?: return null
+    return identities.firstOrNull { it.id == id }
+}
+
 private fun onTapProfile(
     profile: ConnectionProfile,
     profileStatus: ProfileStatus?,
     sshKeys: List<sh.haven.core.data.db.entities.SshKey>,
+    hasUsableIdentity: Boolean,
     viewModel: ConnectionsViewModel,
     onNavigateToSmb: (String) -> Unit,
     onNavigateToRclone: (String) -> Unit,
@@ -1506,6 +1541,14 @@ private fun onTapProfile(
         // straight through `connect()` lets connectRclone handle that
         // (#108: previously fell through to the password catch-all and
         // confused the user).
+        viewModel.connect(profile, "")
+    } else if (hasUsableIdentity) {
+        // An assigned identity supplies the username plus a key or password at
+        // connect time (#360). connect() resolves it via applyTo(), so route
+        // straight through instead of prompting for credentials the identity
+        // already carries — otherwise an identity-backed host with a blank
+        // per-connection username is trapped in the password dialog (whose
+        // Connect button stays disabled until a username is typed).
         viewModel.connect(profile, "")
     } else if (profile.username.isBlank()) {
         // Profile saved without a username — always prompt so the user can pick one.

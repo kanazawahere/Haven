@@ -457,12 +457,12 @@ class TerminalViewModel @Inject constructor(
                                 profile.isLocal ->
                                     addLocalTabForProfile(profile.id, profile.label)
                                 profile.isSsh ->
-                                    // Connects from-scratch only when an SSH
-                                    // session for the profile is already up;
-                                    // surfaces a toast and no-ops otherwise.
-                                    // Workspace launcher v1 limitation —
-                                    // tracked under the deferred connect_profile
-                                    // verb in VISION.md §1a.
+                                    // Adds a tab on an already-live SSH session
+                                    // (reusing its connection); toasts and
+                                    // no-ops if none is up. The workspace
+                                    // launcher now dials cold profiles itself
+                                    // (ConnectProfile) before emitting this, so
+                                    // it only reaches here once connected.
                                     addSshTabForProfile(profile.id)
                                 else -> {
                                     _newTabMessage.value =

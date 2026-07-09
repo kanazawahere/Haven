@@ -3,6 +3,7 @@ package sh.haven.app.workspace
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -16,6 +17,7 @@ import sh.haven.core.data.db.entities.WorkspaceProfile
 import sh.haven.core.data.repository.ConnectionRepository
 import sh.haven.core.data.repository.WorkspaceRepository
 import sh.haven.core.data.repository.WorkspaceWithItems
+import sh.haven.core.ssh.SshSessionManager
 
 class WorkspaceLauncherTest {
 
@@ -58,6 +60,7 @@ class WorkspaceLauncherTest {
             workspaceRepository = workspaceRepo,
             connectionRepository = mockk(),
             agentUiCommandBus = mockk(),
+            sshSessionManager = sessionManager(),
         )
 
         launcher.launch("missing")
@@ -97,7 +100,7 @@ class WorkspaceLauncherTest {
             true
         }
 
-        val launcher = WorkspaceLauncher(workspaceRepo, connRepo, bus)
+        val launcher = WorkspaceLauncher(workspaceRepo, connRepo, bus, sessionManager())
         launcher.launch("ws-1")
 
         val state = launcher.state.value
@@ -134,7 +137,7 @@ class WorkspaceLauncherTest {
         val bus = mockk<AgentUiCommandBus>(relaxed = true)
         every { bus.emit(any()) } returns true
 
-        val launcher = WorkspaceLauncher(workspaceRepo, connRepo, bus)
+        val launcher = WorkspaceLauncher(workspaceRepo, connRepo, bus, sessionManager())
         launcher.launch("ws-1")
 
         val state = launcher.state.value
@@ -161,7 +164,7 @@ class WorkspaceLauncherTest {
         val bus = mockk<AgentUiCommandBus>()
         every { bus.emit(any()) } returns true
 
-        val launcher = WorkspaceLauncher(workspaceRepo, connRepo, bus)
+        val launcher = WorkspaceLauncher(workspaceRepo, connRepo, bus, sessionManager())
         launcher.launch("ws-1")
 
         val itemProgress = (launcher.state.value as WorkspaceLaunchState.Completed).items.single()
@@ -196,7 +199,7 @@ class WorkspaceLauncherTest {
             launcher.cancel()
             true
         }
-        launcher = WorkspaceLauncher(workspaceRepo, connRepo, bus)
+        launcher = WorkspaceLauncher(workspaceRepo, connRepo, bus, sessionManager())
 
         launcher.launch("ws-1")
 
@@ -222,12 +225,79 @@ class WorkspaceLauncherTest {
         val bus = mockk<AgentUiCommandBus>()
         every { bus.emit(any()) } returns false  // overflow
 
-        val launcher = WorkspaceLauncher(workspaceRepo, connRepo, bus)
+        val launcher = WorkspaceLauncher(workspaceRepo, connRepo, bus, sessionManager())
         launcher.launch("ws-1")
 
         val itemProgress = (launcher.state.value as WorkspaceLaunchState.Completed).items.single()
         assertEquals(ItemProgress.Status.Failed, itemProgress.status)
         assertEquals("ui bus overflow", itemProgress.message)
+    }
+
+    /**
+     * A mocked [SshSessionManager]. [connected] backs `isProfileConnected` for
+     * every profile: true (default) keeps the existing "connection already up →
+     * OpenTerminalSession" behaviour; false drives the from-cold dial path,
+     * where [sessions] is stubbed with a CONNECTED session so the launcher's
+     * await resolves.
+     */
+    private fun sessionManager(connected: Boolean = true): SshSessionManager {
+        val sm = mockk<SshSessionManager>()
+        every { sm.isProfileConnected(any()) } returns connected
+        if (!connected) {
+            val session = mockk<SshSessionManager.SessionState> {
+                every { profileId } returns "ssh-1"
+                every { status } returns SshSessionManager.SessionState.Status.CONNECTED
+            }
+            every { sm.sessions } returns MutableStateFlow(mapOf("s-1" to session))
+        }
+        return sm
+    }
+
+    @Test
+    fun coldSshTerminalDialsProfileAndReusesForFurtherTabs() = runBlocking {
+        // Two terminal items on the same SSH profile, nothing connected yet.
+        // The first item dials (ConnectProfile); once the session is up the
+        // second reuses it (OpenTerminalSession) — the workspace cold-restore
+        // path (#360-adjacent): previously both no-opped with "no config".
+        val sshProfile = profile("ssh-1", connectionType = "SSH")
+        val ws = WorkspaceProfile(id = "ws-1", name = "Work")
+        val items = listOf(
+            item("ws-1", "term-a", WorkspaceItem.Kind.TERMINAL, "ssh-1", sortOrder = 0),
+            item("ws-1", "term-b", WorkspaceItem.Kind.TERMINAL, "ssh-1", sortOrder = 1),
+        )
+
+        val workspaceRepo = mockk<WorkspaceRepository>()
+        coEvery { workspaceRepo.getWorkspace("ws-1") } returns WorkspaceWithItems(ws, items)
+        val connRepo = mockk<ConnectionRepository>()
+        coEvery { connRepo.getById("ssh-1") } returns sshProfile
+
+        val bus = mockk<AgentUiCommandBus>()
+        val emitted = mutableListOf<AgentUiCommand>()
+        every { bus.emit(any()) } answers {
+            emitted += firstArg<AgentUiCommand>()
+            true
+        }
+
+        // isProfileConnected=false → dial; but the connected-session stub only
+        // fires the await for term-a. For term-b to take the reuse path it must
+        // read isProfileConnected=true after the dial, so flip it on first read.
+        val sm = mockk<SshSessionManager>()
+        val session = mockk<SshSessionManager.SessionState> {
+            every { profileId } returns "ssh-1"
+            every { status } returns SshSessionManager.SessionState.Status.CONNECTED
+        }
+        every { sm.sessions } returns MutableStateFlow(mapOf("s-1" to session))
+        var connectedYet = false
+        every { sm.isProfileConnected("ssh-1") } answers { connectedYet.also { connectedYet = true } }
+
+        val launcher = WorkspaceLauncher(workspaceRepo, connRepo, bus, sm)
+        launcher.launch("ws-1")
+
+        assertEquals(2, emitted.size)
+        assertTrue("first item should dial", emitted[0] is AgentUiCommand.ConnectProfile)
+        assertTrue("second item should reuse", emitted[1] is AgentUiCommand.OpenTerminalSession)
+        val state = launcher.state.value as WorkspaceLaunchState.Completed
+        assertTrue("both items succeed", state.items.all { it.status == ItemProgress.Status.Succeeded })
     }
 
     private fun item(

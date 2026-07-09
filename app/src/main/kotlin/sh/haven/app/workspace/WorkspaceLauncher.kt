@@ -4,12 +4,15 @@ import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import sh.haven.core.data.agent.AgentUiCommand
 import sh.haven.core.data.agent.AgentUiCommandBus
 import sh.haven.core.data.db.entities.ConnectionProfile
 import sh.haven.core.data.db.entities.WorkspaceItem
 import sh.haven.core.data.repository.ConnectionRepository
 import sh.haven.core.data.repository.WorkspaceRepository
+import sh.haven.core.ssh.SshSessionManager
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -56,6 +59,7 @@ class WorkspaceLauncher @Inject constructor(
     private val workspaceRepository: WorkspaceRepository,
     private val connectionRepository: ConnectionRepository,
     private val agentUiCommandBus: AgentUiCommandBus,
+    private val sshSessionManager: SshSessionManager,
 ) {
     private val _state = MutableStateFlow<WorkspaceLaunchState>(WorkspaceLaunchState.Idle)
     val state: StateFlow<WorkspaceLaunchState> = _state.asStateFlow()
@@ -103,6 +107,11 @@ class WorkspaceLauncher @Inject constructor(
 
         val progressMap = initialProgress.associateBy { it.itemId }.toMutableMap()
 
+        // Profiles we have already issued a from-cold dial for this run, so a
+        // failed connect isn't restacked once per remaining item on the same
+        // profile (a workspace with N terminals on one host dials at most once).
+        val dialed = mutableSetOf<String>()
+
         for (item in sortedItems) {
             if (cancelRequested) {
                 progressMap[item.id] = progressMap.getValue(item.id).copy(
@@ -118,7 +127,7 @@ class WorkspaceLauncher @Inject constructor(
             )
             publishLaunching(workspace.profile.id, workspace.profile.name, progressMap, sortedItems)
 
-            val outcome = dispatch(item)
+            val outcome = dispatch(item, dialed)
             progressMap[item.id] = progressMap.getValue(item.id).copy(
                 status = if (outcome.success) ItemProgress.Status.Succeeded
                 else ItemProgress.Status.Failed,
@@ -161,7 +170,7 @@ class WorkspaceLauncher @Inject constructor(
         }
     }
 
-    private suspend fun dispatch(item: WorkspaceItem): DispatchOutcome {
+    private suspend fun dispatch(item: WorkspaceItem, dialed: MutableSet<String>): DispatchOutcome {
         val command = when (item.kind) {
             WorkspaceItem.Kind.WAYLAND -> AgentUiCommand.OpenWaylandDesktop
             WorkspaceItem.Kind.TERMINAL -> {
@@ -169,6 +178,32 @@ class WorkspaceLauncher @Inject constructor(
                     ?: return DispatchOutcome(false, "profile missing")
                 if (!profile.isTerminal) {
                     return DispatchOutcome(false, "${profile.label} is not a terminal profile")
+                }
+                // A plain-SSH terminal tab can only attach to an already-live
+                // session (OpenTerminalSession reads the connection config off
+                // one). On a cold workspace restore none is up, so it would
+                // no-op with "Connection config not found". Dial the profile
+                // instead — connect() establishes the SSH session AND opens the
+                // first tab — and wait until it is CONNECTED so the remaining
+                // items on the same profile reuse the connection rather than
+                // racing the in-flight dial. Mosh/ET/Reticulum/Local keep the
+                // tab-only path (separate session managers; not this bug).
+                val isPlainSsh = profile.isSsh && !profile.isMosh && !profile.isEternalTerminal
+                if (isPlainSsh && !sshSessionManager.isProfileConnected(profile.id)) {
+                    if (profile.id in dialed) {
+                        // Already tried to bring this profile up and it isn't
+                        // connected — don't restack another dial.
+                        return DispatchOutcome(false, "connection unavailable")
+                    }
+                    dialed += profile.id
+                    if (!agentUiCommandBus.emit(AgentUiCommand.ConnectProfile(profile.id))) {
+                        return DispatchOutcome(false, "ui bus overflow")
+                    }
+                    return if (awaitProfileConnected(profile.id, CONNECT_TIMEOUT_MS)) {
+                        DispatchOutcome(true, null)
+                    } else {
+                        DispatchOutcome(false, "connection did not come up")
+                    }
                 }
                 AgentUiCommand.OpenTerminalSession(profile.id)
             }
@@ -202,6 +237,25 @@ class WorkspaceLauncher @Inject constructor(
         }
     }
 
+    /**
+     * Suspend until a CONNECTED session exists for [profileId], or [timeoutMs]
+     * elapses. Watches the sessions flow directly (not
+     * [SshSessionManager.awaitConnected], which returns false the instant it is
+     * called before the just-emitted ConnectProfile has moved the session into
+     * CONNECTING). Returns false on timeout so a failed dial fails the item
+     * rather than hanging the whole launch.
+     */
+    private suspend fun awaitProfileConnected(profileId: String, timeoutMs: Long): Boolean =
+        withTimeoutOrNull(timeoutMs) {
+            sshSessionManager.sessions.first { sessions ->
+                sessions.values.any {
+                    it.profileId == profileId &&
+                        it.status == SshSessionManager.SessionState.Status.CONNECTED
+                }
+            }
+            true
+        } ?: false
+
     private fun publishLaunching(
         workspaceId: String,
         workspaceName: String,
@@ -218,6 +272,13 @@ class WorkspaceLauncher @Inject constructor(
     private data class DispatchOutcome(val success: Boolean, val message: String?)
 
     companion object {
+        /**
+         * How long to wait for a from-cold SSH dial to reach CONNECTED before
+         * giving up on that item. Generous enough to cover an interactive
+         * host-key / password / FIDO step on the connect it triggers.
+         */
+        private const val CONNECT_TIMEOUT_MS = 45_000L
+
         /**
          * Rank items by kind so SSH terminals come up before tunneled
          * desktops attach. Stable within a kind: ties broken by the
