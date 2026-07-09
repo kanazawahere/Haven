@@ -102,4 +102,21 @@ class McpStatusHolder @Inject constructor() {
             lastError = error?.let { e -> "$tool: ${e.take(140)}" },
         )
     }
+
+    private val _openActivityLog = MutableStateFlow(false)
+
+    /**
+     * Latched request to open the Agent Activity screen, set by the
+     * foreground notification's "Agent log" action (#239). Latched state
+     * rather than an [AgentUiCommandBus] emit because the tap can cold-start
+     * the app (the replay=0 bus would drop it before the NavHost collector
+     * exists) or land while the biometric lock still blocks composition.
+     * The NavHost consumes it via [consumeOpenActivityLog] once the overlay
+     * is shown.
+     */
+    val openActivityLog: StateFlow<Boolean> = _openActivityLog.asStateFlow()
+
+    fun requestOpenActivityLog() { _openActivityLog.value = true }
+
+    fun consumeOpenActivityLog() { _openActivityLog.value = false }
 }

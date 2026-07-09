@@ -78,6 +78,13 @@ class SshConnectionService : Service() {
         const val NOTIFICATION_ID = 1
         const val ACTION_DISCONNECT_ALL = "sh.haven.action.DISCONNECT_ALL"
 
+        /**
+         * Boolean extra on the launch intent fired by the notification's
+         * "Agent log" action; MainActivity routes it to
+         * [McpStatusHolder.requestOpenActivityLog] (#239).
+         */
+        const val EXTRA_OPEN_AGENT_LOG = "sh.haven.extra.OPEN_AGENT_LOG"
+
         /** Set when "Disconnect All" is tapped; cleared after the activity finishes. */
         @Volatile
         var disconnectedAll = false
@@ -170,9 +177,10 @@ class SshConnectionService : Service() {
     private fun buildNotification(): Notification {
         val activeByParticipant = participants.map { it.activeSessions }
         val count = activeByParticipant.sumOf { it.size }
-        val labels = activeByParticipant
+        val labelList = activeByParticipant
             .flatMap { sessions -> sessions.distinctBy { it.profileId } }
-            .joinToString(", ") { it.label }
+            .map { it.label }
+        val labels = labelList.joinToString(", ")
 
         val disconnectIntent = Intent(this, SshConnectionService::class.java).apply {
             action = ACTION_DISCONNECT_ALL
@@ -192,10 +200,14 @@ class SshConnectionService : Service() {
             )
         }
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_haven_notification)
             .setContentTitle("Haven — $count active session${if (count != 1) "s" else ""}")
             .setContentText(labels.ifEmpty { "Connecting..." })
+            // Expanded view: one session per line, so the MCP status line
+            // (running tool / last error) isn't truncated behind the other
+            // session labels in the single collapsed row (#239).
+            .setStyle(NotificationCompat.BigTextStyle().bigText(labelList.joinToString("\n").ifEmpty { "Connecting..." }))
             .setOngoing(true)
             .setContentIntent(contentPending)
             .addAction(
@@ -203,7 +215,23 @@ class SshConnectionService : Service() {
                 "Disconnect All",
                 disconnectPending,
             )
-            .build()
+        if (mcpStatusHolder.activity.value.running) {
+            val agentLogIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                putExtra(EXTRA_OPEN_AGENT_LOG, true)
+            }
+            if (agentLogIntent != null) {
+                builder.addAction(
+                    R.drawable.ic_haven_notification,
+                    "Agent log",
+                    PendingIntent.getActivity(
+                        this, 2, agentLogIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                    ),
+                )
+            }
+        }
+        return builder.build()
     }
 
     private fun createNotificationChannel() {

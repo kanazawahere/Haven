@@ -67,6 +67,19 @@ class McpStatusHolderTest {
     }
 
     @Test
+    fun `open activity log request latches until consumed`() {
+        val h = McpStatusHolder()
+        assertFalse(h.openActivityLog.value)
+        h.requestOpenActivityLog()
+        assertTrue(h.openActivityLog.value)
+        // Latched: still set until the NavHost consumes it (a cold-start
+        // notification tap arrives before any collector exists).
+        assertTrue(h.openActivityLog.value)
+        h.consumeOpenActivityLog()
+        assertFalse(h.openActivityLog.value)
+    }
+
+    @Test
     fun `fresh holder has no activity`() {
         val a = McpStatusHolder().activity.value
         assertNull(a.lastTool)

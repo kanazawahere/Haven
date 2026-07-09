@@ -99,6 +99,7 @@ fun HavenNavHost(
     agentUiCommandBus: sh.haven.core.data.agent.AgentUiCommandBus,
     userMessageBus: sh.haven.core.data.message.UserMessageBus,
     mailSessionManager: sh.haven.core.mail.MailSessionManager,
+    mcpStatusHolder: sh.haven.core.data.agent.McpStatusHolder,
 ) {
     // Desktop multi-session ViewModel — hoisted to nav scope so it survives tab switches
     val desktopViewModel: DesktopViewModel = hiltViewModel()
@@ -109,6 +110,18 @@ fun HavenNavHost(
     // Settings as a fallback. Settings still has its own entry; both
     // surfaces render the same screen.
     var showAgentActivityOverlay by remember { mutableStateOf(false) }
+
+    // Notification "Agent log" action → open the audit overlay. Latched state
+    // on the holder (not a bus event) so a tap that cold-starts the app, or
+    // lands while the biometric lock delays composition, isn't dropped;
+    // consumed once shown so back-dismiss sticks (#239).
+    val openAgentLogRequested by mcpStatusHolder.openActivityLog.collectAsState()
+    LaunchedEffect(openAgentLogRequested) {
+        if (openAgentLogRequested) {
+            showAgentActivityOverlay = true
+            mcpStatusHolder.consumeOpenActivityLog()
+        }
+    }
 
     // Native Wayland desktop — poll compositor state reactively
     var waylandRunning by remember { mutableStateOf(false) }

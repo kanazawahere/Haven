@@ -84,6 +84,10 @@ class MainActivity : AppCompatActivity() {
     // App-global user-facing messages (e.g. shell-closed connect errors);
     // HavenNavHost shows these in a root snackbar over every screen (#215 follow-up).
     @Inject lateinit var userMessageBus: sh.haven.core.data.message.UserMessageBus
+    // The foreground notification's "Agent log" action lands here as a launch
+    // intent extra; routed via this holder's latched flag so a cold-start tap
+    // (or one behind the biometric lock) isn't dropped (#239).
+    @Inject lateinit var mcpStatusHolder: sh.haven.core.data.agent.McpStatusHolder
     // Cert renewal request bus: notifications fire haven://renew-cert/<id>
     // intents which land here and we re-publish via the existing
     // AgentUiCommandBus so HavenNavHost flips to Keys and KeysViewModel
@@ -154,6 +158,20 @@ class MainActivity : AppCompatActivity() {
         handleRenewCertDeepLink(intent)
         handleConnectDeepLink(intent)
         handleOpenUsbDriveIntent(intent)
+        handleOpenAgentLogExtra(intent)
+    }
+
+    /**
+     * The foreground notification's "Agent log" action (posted while the MCP
+     * endpoint runs) fires the launch intent with this extra. Latch it on
+     * [mcpStatusHolder] — HavenNavHost collects the flag and opens the Agent
+     * Activity overlay. Extra cleared once consumed so a configuration change
+     * doesn't re-open it (#239).
+     */
+    private fun handleOpenAgentLogExtra(intent: Intent?) {
+        if (intent?.getBooleanExtra(SshConnectionService.EXTRA_OPEN_AGENT_LOG, false) != true) return
+        intent.removeExtra(SshConnectionService.EXTRA_OPEN_AGENT_LOG)
+        mcpStatusHolder.requestOpenActivityLog()
     }
 
     /**
@@ -356,6 +374,7 @@ class MainActivity : AppCompatActivity() {
         handleRenewCertDeepLink(intent)
         handleConnectDeepLink(intent)
         handleOpenUsbDriveIntent(intent)
+        handleOpenAgentLogExtra(intent)
         setContent {
             // Prevent screenshots/screen recording when enabled
             val screenSecurity by preferencesRepository.screenSecurity
@@ -471,6 +490,7 @@ class MainActivity : AppCompatActivity() {
                         agentUiCommandBus = agentUiCommandBus,
                         userMessageBus = userMessageBus,
                         mailSessionManager = mailSessionManager,
+                        mcpStatusHolder = mcpStatusHolder,
                     )
                     // Floats above whatever screen is active so an
                     // agent's consent prompt is unmissable. No-op when
