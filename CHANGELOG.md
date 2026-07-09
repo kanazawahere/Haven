@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.32
+
+🖥️ **New: Custom command (X11) desktop** (#361) — termux-x11-style custom sessions for the Linux VM. The Desktops view gains a **Custom command (X11)** entry: Haven still runs the X server and the VNC display, but the session command is yours — e.g. `dbus-launch startxfce4` — instead of a fixed catalog desktop. It installs only what it needs (~15 MB: X server, dbus, xterm); your WM/DE comes from the distro's own package manager. Edit the command any time from the desktop row — changes apply on the next start, no reinstall — and a blank command routes into the editor instead of launching an empty screen. The usual X11 constraint applies: software rendering, so desktops that require a GL compositor (GNOME Shell, KWin) still won't start (#261).
+
 ## v5.68.31
 
 🔄 **New: automatic backup push** (#359) — the encrypted backup can now keep itself current on your remote. Turn on **Push automatically** under Settings → Backup → Sync to a remote: Haven re-pushes the encrypted backup a couple of minutes after settings change (a burst of edits collapses into one push), plus a daily catch-up, with each result recorded in the connection audit log. Enabling asks for your backup password once and stores it encrypted on the device so background pushes can run without prompting — the dialog says exactly that, and turning auto-push off deletes it. Push-only by design: restoring (Pull) stays a manual action, so automatic sync can't silently overwrite your local config. SFTP destinations connect on demand and suit background sync best; SMB/rclone destinations still need to be connected. Translated into all 12 UI languages.

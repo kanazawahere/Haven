@@ -1,0 +1,1 @@
+🖥️ New: Custom command (X11) desktop (#361) — run your own X11 session command (e.g. dbus-launch startxfce4) against Haven's X server, termux-x11 style. Haven installs just the X server; your WM/DE comes from the distro. Edit the command from the desktop row. Software rendering applies: GL-compositor desktops (GNOME Shell, KWin) won't start.
