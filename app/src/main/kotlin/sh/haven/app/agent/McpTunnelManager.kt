@@ -21,7 +21,6 @@ import sh.haven.core.ssh.HostKeyResult
 import sh.haven.core.ssh.HostKeyVerifier
 import sh.haven.core.ssh.SessionManager
 import sh.haven.core.ssh.SshClient
-import sh.haven.core.ssh.SshKeyExporter
 import sh.haven.core.ssh.SshSessionManager
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -490,42 +489,13 @@ class McpTunnelManager @Inject constructor(
 
     /**
      * Resolve a non-interactive [ConnectionConfig.AuthMethod] for the
-     * endpoint, or null if the profile would require a UI prompt
-     * (encrypted/biometric key, FIDO2 hardware key, or no credential at
-     * all). FIDO2 (`sk-`) and encrypted keys are excluded deliberately.
+     * endpoint, or null if the profile would require a UI prompt. The
+     * actual rules live in [HeadlessSshAuth], shared with the run_command
+     * executor ([HeadlessSshExec]) so the two headless connectors can't
+     * drift.
      */
-    private suspend fun resolveHeadlessAuth(profile: ConnectionProfile): ConnectionConfig.AuthMethod? {
-        val keyId = profile.keyId
-        if (keyId != null) {
-            val key = sshKeyRepository.getById(keyId) ?: return null
-            if (key.keyType.startsWith("sk-") || key.isEncrypted) return null
-            val keyBytes = sshKeyRepository.getDecryptedKeyBytes(keyId) ?: return null
-            val certBytes = sshKeyRepository.getCertificateBytes(keyId)
-            return ConnectionConfig.AuthMethod.PrivateKey(
-                keyBytes = SshKeyExporter.toPem(keyBytes, key.keyType),
-                certificateBytes = certBytes,
-            )
-        }
-        // No explicit key — try every stored unencrypted, non-FIDO key.
-        val usableKeys = sshKeyRepository.getAllDecrypted()
-            .filter { !it.isEncrypted && !it.keyType.startsWith("sk-") }
-        if (usableKeys.isNotEmpty()) {
-            return ConnectionConfig.AuthMethod.PrivateKeys(
-                keys = usableKeys.map {
-                    ConnectionConfig.AuthMethod.PrivateKeys.KeyEntry(
-                        label = it.label,
-                        keyBytes = SshKeyExporter.toPem(it.privateKeyBytes, it.keyType),
-                        certificateBytes = it.certificateBytes, // CA-only servers (#185)
-                    )
-                },
-            )
-        }
-        val password = profile.sshPassword
-        if (!password.isNullOrEmpty()) {
-            return ConnectionConfig.AuthMethod.Password(password)
-        }
-        return null
-    }
+    private suspend fun resolveHeadlessAuth(profile: ConnectionProfile): ConnectionConfig.AuthMethod? =
+        HeadlessSshAuth.resolve(profile, sshKeyRepository)
 
     private companion object {
         const val ADB_FORWARD_RULE_ID = "adb-reverse"

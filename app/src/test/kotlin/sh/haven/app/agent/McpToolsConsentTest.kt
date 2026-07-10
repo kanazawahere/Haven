@@ -210,6 +210,9 @@ class McpToolsConsentTest {
             "usb_bulk_transfer",
             // set_spa writes SPA key material onto a profile.
             "set_spa",
+            // Arbitrary remote exec on a saved SSH profile (#367) — the
+            // per-call prompt is what a standing policy scopes away.
+            "run_command",
         )) {
             val c = tools.consentFor(name)
                 ?: error("$name not registered")
@@ -491,7 +494,7 @@ class McpToolsConsentTest {
         val sections = listOf(
             Section("connections", "Connections & profiles", 9,
                 "The saved SSH/SFTP/RDP/VNC/… connection profiles and their live connect/disconnect state.",
-                listOf("connection", "connect_profile", "disconnect_profile")),
+                listOf("connection", "connect_profile", "disconnect_profile", "run_command")),
             Section("terminal", "Terminal, selection & sessions", 8,
                 "Reading and driving terminal sessions: input, scrollback, text selection, snippets, and workspace layouts.",
                 listOf("terminal", "selection", "snippet", "list_sessions", "auth_prompt", "session_picker", "workspace", "compose", "open_local_shell")),

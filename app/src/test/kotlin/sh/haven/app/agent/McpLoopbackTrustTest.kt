@@ -91,6 +91,7 @@ class McpLoopbackTrustTest {
             standingPolicyRepository = mockk(relaxed = true),
             mcpStatusHolder = sh.haven.core.data.agent.McpStatusHolder(),
             mcpTunnelManager = mockk(relaxed = true),
+            headlessSshExec = mockk(relaxed = true),
             reticulumSessionManager = mockk(relaxed = true),
             reticulumForwardServer = mockk(relaxed = true),
             mailRuleRepository = mockk(relaxed = true),

@@ -29,6 +29,13 @@ data class ExecResult(
     val exitStatus: Int,
     val stdout: String,
     val stderr: String,
+    /**
+     * True when [SshClient.execCommand] aborted the channel at its
+     * `timeoutMs` deadline. [exitStatus] is then meaningless (-1) and the
+     * output may be truncated or empty (the forced channel close can tear
+     * the pipe mid-read).
+     */
+    val timedOut: Boolean = false,
 )
 
 /**
@@ -362,8 +369,14 @@ class SshClient : Closeable {
     /**
      * Execute a command on the remote host and return stdout, stderr, and exit status.
      * Must be called after [connect].
+     *
+     * [timeoutMs], when set, bounds the whole exec: at the deadline the
+     * channel is force-disconnected (the only way to unblock the stream
+     * reads — they are plain blocking IO, not cancellation-responsive) and
+     * the partial result is returned with [ExecResult.timedOut] = true.
+     * Null (the default) preserves the historical block-until-exit behaviour.
      */
-    suspend fun execCommand(command: String): ExecResult = withContext(Dispatchers.IO) {
+    suspend fun execCommand(command: String, timeoutMs: Long? = null): ExecResult = withContext(Dispatchers.IO) {
         val sess = session ?: throw IllegalStateException("Not connected")
         val channel = sess.openChannel("exec") as ChannelExec
         channel.setCommand(command)
@@ -378,14 +391,38 @@ class SshClient : Closeable {
 
         channel.connect()
 
+        val timedOut = java.util.concurrent.atomic.AtomicBoolean(false)
         // Drain stdout and stderr concurrently. JSch delivers both channels on
         // one session thread into bounded (~32 KB) pipes, so reading stdout to
         // EOF *before* touching stderr deadlocks when a command emits more than
         // a pipe-buffer of stderr before stdout closes. (#208 finding 11)
         val (outBytes, errBytes) = coroutineScope {
-            val errDeferred = async { stderr.readBytes() }
-            val out = stdout.readBytes()
-            out to errDeferred.await()
+            val watchdog = timeoutMs?.let {
+                async {
+                    kotlinx.coroutines.delay(it)
+                    timedOut.set(true)
+                    // Closing the channel closes both pipe streams, which is
+                    // what actually unblocks the readers below.
+                    runCatching { channel.disconnect() }
+                }
+            }
+            try {
+                val errDeferred = async {
+                    try {
+                        stderr.readBytes()
+                    } catch (e: java.io.IOException) {
+                        if (timedOut.get()) ByteArray(0) else throw e
+                    }
+                }
+                val out = try {
+                    stdout.readBytes()
+                } catch (e: java.io.IOException) {
+                    if (timedOut.get()) ByteArray(0) else throw e
+                }
+                out to errDeferred.await()
+            } finally {
+                watchdog?.cancel()
+            }
         }
 
         // Wait for channel to close so exitStatus is available
@@ -394,9 +431,10 @@ class SshClient : Closeable {
         }
 
         val result = ExecResult(
-            exitStatus = channel.exitStatus,
+            exitStatus = if (timedOut.get()) -1 else channel.exitStatus,
             stdout = outBytes.decodeToString(),
             stderr = errBytes.decodeToString(),
+            timedOut = timedOut.get(),
         )
         channel.disconnect()
         result

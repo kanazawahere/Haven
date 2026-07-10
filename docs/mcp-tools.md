@@ -41,13 +41,13 @@ Tools are grouped into sections by what they touch, and each tool is collapsed �
 expand one for its description and arguments. The tag after each name is its
 consent level:
 
-- **asks every call** — side-effectful or sensitive; a consent sheet describing the specific action on every call (63 tools).
+- **asks every call** — side-effectful or sensitive; a consent sheet describing the specific action on every call (64 tools).
 - **asks once per session** — reversible actions and screen-reading; prompts the first time each session, then proceeds (47 tools).
 - **no per-call prompt** — read-only queries and tap-equivalent UI actions; still behind the endpoint being enabled and the client paired (78 tools).
 
 ## Sections
 
-- [**Connections & profiles**](#sec-connections) — 7 tools
+- [**Connections & profiles**](#sec-connections) — 8 tools
 - [**Terminal, selection & sessions**](#sec-terminal) — 26 tools
 - [**Files, media & clipboard**](#sec-files) — 19 tools
 - [**Cloud storage (rclone)**](#sec-rclone) — 15 tools
@@ -61,7 +61,7 @@ consent level:
 
 <a id="sec-connections"></a>
 
-## Connections & profiles (7)
+## Connections & profiles (8)
 
 The saved SSH/SFTP/RDP/VNC/… connection profiles and their live connect/disconnect state.
 
@@ -151,6 +151,18 @@ Read the most recent ConnectionLog entries for a profile. Use this to verify pos
 <summary><code>list_connections</code> · no per-call prompt</summary>
 
 List saved connection profiles (SSH, Mosh, VNC, RDP, SMB, rclone, local, Reticulum). Secrets like passwords and keys are redacted.
+
+</details>
+
+<details markdown="1">
+<summary><code>run_command</code> · asks every call</summary>
+
+Run one command on a saved SSH connection over an exec channel (no terminal session, no PTY) and return { exitCode, stdout, stderr } — the automation-shaped verb (#367): a MacroDroid/Tasker HTTP Request macro or cron-style agent POSTs a single tools/call and reads the output straight from the response. Reuses the live connection when the profile is connected (also the only path for FIDO2/encrypted-key profiles); otherwise makes a one-shot headless connect, which needs a stored password or an unencrypted non-FIDO2 key AND a host key already trusted from a previous interactive connect (fail-closed TOFU — unknown/changed keys are refused, never silently accepted). Blocks until the command exits or timeoutMs elapses (then returns partial output with timedOut:true, exitCode:null). For unattended macros, create_standing_policy scoped to this tool + {"profileId": …} removes the per-call consent prompt. Headless-path limits: port-knock/SPA-guarded and tunnel-routed profiles aren't knocked/routed — connect those interactively first and let the reuse path serve them.
+
+- `command` (string, required) — Command line passed to the remote user's shell via SSH exec, e.g. 'uptime' or 'systemctl status nginx'.
+- `profileId` (string, required) — Saved SSH profile id (from list_connections).
+- `maxOutputChars` (integer) — Cap stdout and stderr to their last N chars each. Default 8000.
+- `timeoutMs` (integer) — Abort after this many ms, returning partial output with timedOut:true. Default 30000, range 1000–300000.
 
 </details>
 

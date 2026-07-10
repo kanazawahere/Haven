@@ -112,6 +112,11 @@ internal class McpTools(
     private val standingPolicyRepository: sh.haven.core.data.repository.StandingPolicyRepository,
     private val mcpTunnelManager: McpTunnelManager,
     private val mcpStatusHolder: sh.haven.core.data.agent.McpStatusHolder,
+    // One-shot exec on a saved SSH profile (run_command, #367). Nullable +
+    // defaulted so the many manual McpTools constructions in unit tests that
+    // don't exercise it compile unchanged; McpServer always passes the real
+    // Hilt singleton in production.
+    private val headlessSshExec: HeadlessSshExec? = null,
     // Pending password/passphrase fallback prompt, mirrored from
     // ConnectionsViewModel so get_pending_auth_prompt / answer_auth_prompt can
     // observe and answer it without a human tap. Defaulted so tests that don't
@@ -1581,6 +1586,20 @@ internal class McpTools(
             consentLevel = ConsentLevel.ONCE_PER_SESSION,
             summarise = { args -> "Connect to \"${profileLabel(args.optString("profileId"))}\"?" },
         ) { args -> connectProfile(args) },
+
+        "run_command" to ToolHandler(
+            description = "Run one command on a saved SSH connection over an exec channel (no terminal session, no PTY) and return { exitCode, stdout, stderr } — the automation-shaped verb (#367): a MacroDroid/Tasker HTTP Request macro or cron-style agent POSTs a single tools/call and reads the output straight from the response. Reuses the live connection when the profile is connected (also the only path for FIDO2/encrypted-key profiles); otherwise makes a one-shot headless connect, which needs a stored password or an unencrypted non-FIDO2 key AND a host key already trusted from a previous interactive connect (fail-closed TOFU — unknown/changed keys are refused, never silently accepted). Blocks until the command exits or timeoutMs elapses (then returns partial output with timedOut:true, exitCode:null). For unattended macros, create_standing_policy scoped to this tool + {\"profileId\": …} removes the per-call consent prompt. Headless-path limits: port-knock/SPA-guarded and tunnel-routed profiles aren't knocked/routed — connect those interactively first and let the reuse path serve them.",
+            inputSchema = objectSchema {
+                string("profileId", "Saved SSH profile id (from list_connections).", required = true)
+                string("command", "Command line passed to the remote user's shell via SSH exec, e.g. 'uptime' or 'systemctl status nginx'.", required = true)
+                integer("timeoutMs", "Abort after this many ms, returning partial output with timedOut:true. Default 30000, range 1000–300000.")
+                integer("maxOutputChars", "Cap stdout and stderr to their last N chars each. Default 8000.")
+            },
+            consentLevel = ConsentLevel.EVERY_CALL,
+            summarise = { args ->
+                "Run on \"${profileLabel(args.optString("profileId"))}\": ${args.optString("command").take(120)}"
+            },
+        ) { args -> runCommand(args) },
 
         "get_pending_auth_prompt" to ToolHandler(
             description = "Return the password / key-passphrase prompt Haven is currently waiting on for a stalled connect (its in-app fallback dialog), or { pending: false } if none. A connect started via connect_profile that needs a secret which isn't stored (a wrong/missing host password, or an assigned encrypted SSH key whose passphrase failed, #292) surfaces here instead of failing silently: { pending: true, profileId, label, requiresPassphrase } — requiresPassphrase=true means it wants the encrypted key's passphrase, false means a host/account password. Answer it with answer_auth_prompt. Read-only.",
@@ -5923,6 +5942,29 @@ internal class McpTools(
                 "note",
                 "Connect dispatched asynchronously through the same path a UI tap uses. Poll list_sessions for status."
             )
+        }
+    }
+
+    private suspend fun runCommand(args: JSONObject): JSONObject {
+        val exec = headlessSshExec
+            ?: throw McpError(-32603, "run_command is unavailable in this build")
+        val profileId = args.optString("profileId").ifBlank {
+            throw McpError(-32602, "Missing required argument: profileId")
+        }
+        val command = args.optString("command").ifBlank {
+            throw McpError(-32602, "Missing required argument: command")
+        }
+        val timeoutMs = args.optLong("timeoutMs", 30_000L).coerceIn(1_000L, 300_000L)
+        val cap = args.optInt("maxOutputChars", 8_000).coerceAtLeast(256)
+        val outcome = exec.run(profileId, command, timeoutMs)
+        return JSONObject().apply {
+            // Flat on purpose: MacroDroid/Tasker macros parse this straight
+            // out of the HTTP response body (#367).
+            put("exitCode", if (outcome.exec.timedOut) JSONObject.NULL else outcome.exec.exitStatus)
+            put("stdout", outcome.exec.stdout.takeLast(cap))
+            put("stderr", outcome.exec.stderr.takeLast(cap))
+            put("timedOut", outcome.exec.timedOut)
+            put("reusedLiveConnection", outcome.reusedLiveConnection)
         }
     }
 
