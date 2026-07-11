@@ -1,0 +1,6 @@
+Terminal locale and rclone fixes.
+
+• The chosen terminal locale now actually applies: sessions export LC_ALL alongside LANG, so e.g. zh_CN.UTF-8 is no longer overridden (#374).
+• Disconnecting an rclone cloud storage profile now really disconnects it — the card no longer stays "connected" forever (#363).
+• New proot guests prefer fakeroot-tcp where the distro ships it (Debian/Ubuntu), fixing fakeroot's "Function not implemented" (#375).
+• MCP: terminal_locale preference key.
