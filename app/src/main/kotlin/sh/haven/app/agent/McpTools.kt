@@ -584,7 +584,7 @@ internal class McpTools(
         ) { _ -> readClipboard() },
 
         "get_preference" to ToolHandler(
-            description = "Read a Haven user preference by key. Whitelisted keys: terminal_scrollback_rows, terminal_tap_to_position_cursor, terminal_font_size, terminal_color_scheme, terminal_auto_switch_scheme, terminal_light_color_scheme, terminal_dark_color_scheme, mouse_input_enabled, terminal_right_click, mcp_tunnel_endpoint_profile_id, mcp_wireguard_enabled, mcp_lan_bind_enabled, mcp_wireguard_tunnel_config_id, usb_guest_exposure_enabled, connection_logging_enabled, remap_low_ports (#300 proot launch toggle), share_storage_with_guest (#301 proot launch toggle), bind_android_system (#304 proot launch toggle). Returns { key, value } where value's type follows the preference's type (int / boolean / string). Colour-scheme values are TerminalColorScheme enum names.",
+            description = "Read a Haven user preference by key. Whitelisted keys: terminal_scrollback_rows, terminal_tap_to_position_cursor, terminal_font_size, terminal_color_scheme, terminal_auto_switch_scheme, terminal_light_color_scheme, terminal_dark_color_scheme, terminal_locale, mouse_input_enabled, terminal_right_click, mcp_tunnel_endpoint_profile_id, mcp_wireguard_enabled, mcp_lan_bind_enabled, mcp_wireguard_tunnel_config_id, usb_guest_exposure_enabled, connection_logging_enabled, remap_low_ports (#300 proot launch toggle), share_storage_with_guest (#301 proot launch toggle), bind_android_system (#304 proot launch toggle). Returns { key, value } where value's type follows the preference's type (int / boolean / string). Colour-scheme values are TerminalColorScheme enum names.",
             inputSchema = objectSchema {
                 string("key", "Preference key (see whitelist in description).", required = true)
             },
@@ -778,7 +778,7 @@ internal class McpTools(
         ) { args -> writeClipboard(args) },
 
         "set_preference" to ToolHandler(
-            description = "Write a Haven user preference. Whitelisted keys (and their types): terminal_scrollback_rows (int 100..25000), terminal_tap_to_position_cursor (bool), terminal_font_size (int 8..32), mouse_input_enabled (bool), terminal_right_click (bool), terminal_color_scheme (string — a TerminalColorScheme enum name, e.g. HAVEN, DRACULA, NORD, GRUVBOX; case-insensitive), terminal_auto_switch_scheme (bool — when true the active scheme follows system light/dark via the light/dark keys), terminal_light_color_scheme (string scheme name), terminal_dark_color_scheme (string scheme name), terminal_background_opacity (float 0.0..1.0 — below 1.0 the terminal renders over the device wallpaper), mcp_tunnel_endpoint_profile_id (string SSH profile id, empty to clear), mcp_wireguard_enabled (bool), mcp_lan_bind_enabled (bool — also bind the device Wi-Fi/LAN address for direct same-network reach), mcp_wireguard_tunnel_config_id (string tunnel config id the MCP server keeps up as its WG carrier, empty to clear), usb_guest_exposure_enabled (bool — master gate for usb_attach_to_guest), connection_logging_enabled (bool — audit-log connection lifecycle events to Settings → View connection log; off by default; enable before reproducing a connection issue, then read get_connection_log), gpu_use_venus (bool — experimental venus+zink GPU stack for accelerated desktops; off = virgl/virpipe), remap_low_ports (bool — #300 proot launch toggle: remap guest privileged ports +2000), share_storage_with_guest (bool — #301 proot launch toggle: mount /storage + /sdcard into the local guest; default on), bind_android_system (bool — #304 proot launch toggle: bind Android's read-only /system, /vendor, /apex, /product, /system_ext, /odm into the guest so it can run Android native binaries like getprop/toybox; default off, exposes device internals). Takes effect on the next local session/command. Returns { key, value }.",
+            description = "Write a Haven user preference. Whitelisted keys (and their types): terminal_scrollback_rows (int 100..25000), terminal_tap_to_position_cursor (bool), terminal_font_size (int 8..32), mouse_input_enabled (bool), terminal_right_click (bool), terminal_color_scheme (string — a TerminalColorScheme enum name, e.g. HAVEN, DRACULA, NORD, GRUVBOX; case-insensitive), terminal_auto_switch_scheme (bool — when true the active scheme follows system light/dark via the light/dark keys), terminal_light_color_scheme (string scheme name), terminal_dark_color_scheme (string scheme name), terminal_background_opacity (float 0.0..1.0 — below 1.0 the terminal renders over the device wallpaper), terminal_locale (string, e.g. zh_CN.UTF-8 — exported to local terminal sessions as LANG/LC_ALL; glibc distros need the locale generated first), mcp_tunnel_endpoint_profile_id (string SSH profile id, empty to clear), mcp_wireguard_enabled (bool), mcp_lan_bind_enabled (bool — also bind the device Wi-Fi/LAN address for direct same-network reach), mcp_wireguard_tunnel_config_id (string tunnel config id the MCP server keeps up as its WG carrier, empty to clear), usb_guest_exposure_enabled (bool — master gate for usb_attach_to_guest), connection_logging_enabled (bool — audit-log connection lifecycle events to Settings → View connection log; off by default; enable before reproducing a connection issue, then read get_connection_log), gpu_use_venus (bool — experimental venus+zink GPU stack for accelerated desktops; off = virgl/virpipe), remap_low_ports (bool — #300 proot launch toggle: remap guest privileged ports +2000), share_storage_with_guest (bool — #301 proot launch toggle: mount /storage + /sdcard into the local guest; default on), bind_android_system (bool — #304 proot launch toggle: bind Android's read-only /system, /vendor, /apex, /product, /system_ext, /odm into the guest so it can run Android native binaries like getprop/toybox; default off, exposes device internals). Takes effect on the next local session/command. Returns { key, value }.",
             inputSchema = objectSchema {
                 string("key", "Preference key (see whitelist).", required = true)
                 property("value", JSONObject().put("description", "New value. Type must match the key's type — int for the *_rows / *_size keys, bool for the rest."), required = true)
@@ -3418,6 +3418,10 @@ internal class McpTools(
         // renders over the device wallpaper. MCP-drivable so the see-through
         // path is testable without dragging the Settings slider.
         "terminal_background_opacity",
+        // Locale exported to local terminal sessions as LANG/LC_ALL (#374).
+        // MCP-drivable so the locale-propagation path is testable without
+        // driving the Settings UI.
+        "terminal_locale",
         // SSH profile id the MCP server tunnels its loopback listener back
         // to (dedicated headless `-R`). Empty string clears it. See
         // McpTunnelManager.
@@ -3482,6 +3486,7 @@ internal class McpTools(
             "terminal_auto_switch_scheme" -> preferencesRepository.terminalAutoSwitchScheme.first()
             "terminal_light_color_scheme" -> preferencesRepository.terminalLightColorScheme.first().name
             "terminal_dark_color_scheme" -> preferencesRepository.terminalDarkColorScheme.first().name
+            "terminal_locale" -> preferencesRepository.terminalLocale.first()
             "mcp_tunnel_endpoint_profile_id" -> preferencesRepository.mcpTunnelEndpointProfileId.first() ?: ""
             "mcp_wireguard_enabled" -> preferencesRepository.mcpWireguardEnabled.first()
             "mcp_lan_bind_enabled" -> preferencesRepository.mcpLanBindEnabled.first()
@@ -3561,6 +3566,16 @@ internal class McpTools(
             "terminal_light_color_scheme" -> preferencesRepository.setTerminalLightColorScheme(coerceScheme())
             "terminal_dark_color_scheme" -> preferencesRepository.setTerminalDarkColorScheme(coerceScheme())
             "terminal_background_opacity" -> preferencesRepository.setTerminalBackgroundOpacity(coerceFloat())
+            "terminal_locale" -> {
+                val locale = (rawValue as? String)?.trim()
+                    ?: throw McpError(-32602, "value must be a locale string for $key (e.g. zh_CN.UTF-8)")
+                // Single env-safe token — it lands in the session env as
+                // LANG=<value>/LC_ALL=<value> (#374).
+                if (locale.isEmpty() || !locale.matches(Regex("^[A-Za-z0-9._@-]+$"))) {
+                    throw McpError(-32602, "Invalid locale \"$locale\" for $key")
+                }
+                preferencesRepository.setTerminalLocale(locale)
+            }
             "mcp_tunnel_endpoint_profile_id" ->
                 preferencesRepository.setMcpTunnelEndpointProfileId((rawValue as? String)?.ifBlank { null })
             "mcp_wireguard_enabled" -> preferencesRepository.setMcpWireguardEnabled(coerceBool())
