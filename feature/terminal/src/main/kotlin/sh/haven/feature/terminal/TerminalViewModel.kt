@@ -1126,6 +1126,7 @@ class TerminalViewModel @Inject constructor(
             val rnsScheme = effectiveColorScheme(rnsProfile)
             val rnsInitialScheme = initialEmulatorScheme(rnsScheme)
             emulator = TerminalEmulatorFactory.create(
+                autoDetectUrls = true,
                 initialRows = 24,
                 initialCols = 80,
                 defaultForeground = Color(rnsInitialScheme.foreground),
@@ -1233,6 +1234,7 @@ class TerminalViewModel @Inject constructor(
             val moshScheme = effectiveColorScheme(moshProfile)
             val moshInitialScheme = initialEmulatorScheme(moshScheme)
             emulator = TerminalEmulatorFactory.create(
+                autoDetectUrls = true,
                 initialRows = 24,
                 initialCols = 80,
                 defaultForeground = Color(moshInitialScheme.foreground),
@@ -1339,6 +1341,7 @@ class TerminalViewModel @Inject constructor(
             val etScheme = effectiveColorScheme(etProfile)
             val etInitialScheme = initialEmulatorScheme(etScheme)
             emulator = TerminalEmulatorFactory.create(
+                autoDetectUrls = true,
                 initialRows = 24,
                 initialCols = 80,
                 defaultForeground = Color(etInitialScheme.foreground),
@@ -1499,6 +1502,7 @@ class TerminalViewModel @Inject constructor(
                 val reInitialScheme = initialEmulatorScheme(localScheme)
                 val reCoalescer = InputCoalescer { data -> localSessionManager.getActiveSession(sessionId)?.sendInput(data) }
                 reEmulator = TerminalEmulatorFactory.create(
+                    autoDetectUrls = true,
                     initialRows = 24,
                     initialCols = 80,
                     defaultForeground = Color(reInitialScheme.foreground),
@@ -1585,6 +1589,7 @@ class TerminalViewModel @Inject constructor(
             val localScheme = effectiveColorScheme(localProfile)
             val localInitialScheme = initialEmulatorScheme(localScheme)
             emulator = TerminalEmulatorFactory.create(
+                autoDetectUrls = true,
                 initialRows = 24,
                 initialCols = 80,
                 defaultForeground = Color(localInitialScheme.foreground),

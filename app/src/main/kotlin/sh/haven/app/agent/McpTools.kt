@@ -5123,6 +5123,7 @@ internal class McpTools(
         if (terminalSessionRegistry.get(sessionId) == null) {
             val scrollbackRows = preferencesRepository.terminalScrollbackRows.first()
             val agentEmulator = org.connectbot.terminal.TerminalEmulatorFactory.create(
+                autoDetectUrls = true,
                 initialRows = 24,
                 initialCols = 80,
                 onKeyboardInput = { data ->

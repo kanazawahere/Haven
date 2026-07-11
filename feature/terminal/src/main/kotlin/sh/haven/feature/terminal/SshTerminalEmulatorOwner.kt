@@ -98,6 +98,7 @@ class SshTerminalEmulatorOwner @Inject constructor(
 
     internal var emulatorFactory: EmulatorFactory = EmulatorFactory { fg, bg, alt, scrollback, oki, ors ->
         TerminalEmulatorFactory.create(
+            autoDetectUrls = true,
             initialRows = 24,
             initialCols = 80,
             defaultForeground = fg,
