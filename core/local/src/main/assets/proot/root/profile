@@ -16,7 +16,9 @@ export EDITOR=${EDITOR:-vi}
 export PAGER=${PAGER:-less}
 export LESS=${LESS:--FRX}
 export LANG=${LANG:-C.UTF-8}
-export LC_ALL=${LC_ALL:-C.UTF-8}
+# Follow LANG rather than pinning C.UTF-8 — LC_ALL outranks LANG, so a
+# hard default here silently overrode the user's chosen locale (#374).
+export LC_ALL=${LC_ALL:-$LANG}
 
 # Color hints for tools that honour them
 export CLICOLOR=1

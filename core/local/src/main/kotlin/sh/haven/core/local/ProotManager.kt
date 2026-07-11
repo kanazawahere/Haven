@@ -2009,6 +2009,23 @@ class ProotManager @Inject constructor(
             File(profileD, "haven.sh"),
             "/etc/profile.d/haven.sh",
         )
+
+        // /usr/local/bin/fakeroot — PATH shim preferring fakeroot-tcp: the
+        // distro default (sysv) needs SysV IPC, which Android lacks (#375).
+        val localBin = File(rootfsDir, "usr/local/bin").apply { mkdirs() }
+        val fakerootShim = File(localBin, "fakeroot")
+        copyAssetIfAbsent(
+            "proot/usr/local/bin/fakeroot",
+            fakerootShim,
+            "/usr/local/bin/fakeroot",
+        )
+        if (fakerootShim.exists()) {
+            try {
+                android.system.Os.chmod(fakerootShim.absolutePath, 0b111_101_101) // 0755
+            } catch (_: Throwable) {
+                fakerootShim.setExecutable(true, false)
+            }
+        }
     }
 
     /** Copy an asset into [target] unless [target] already exists. Best-effort. */

@@ -325,6 +325,10 @@ class LocalSessionManager @Inject constructor(
                 "USER=root",
                 "TERM=xterm-256color",
                 "LANG=$terminalLocale",
+                // LC_ALL outranks LANG for every locale category, and older seeded
+                // .profiles force LC_ALL=C.UTF-8 when unset — set it too so the
+                // user's chosen locale actually takes effect (#374).
+                "LC_ALL=$terminalLocale",
                 "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
                 "SHELL=/bin/sh",
                 // XDG base dirs so desktop/X11 apps and `startx`/dbus-run-session
@@ -352,6 +356,7 @@ class LocalSessionManager @Inject constructor(
                 "HOME=${context.filesDir.absolutePath}",
                 "TERM=xterm-256color",
                 "LANG=$terminalLocale",
+                "LC_ALL=$terminalLocale",
                 "PATH=/system/bin:/vendor/bin",
                 "SHELL=/system/bin/sh",
                 "TMPDIR=${context.cacheDir.absolutePath}",
