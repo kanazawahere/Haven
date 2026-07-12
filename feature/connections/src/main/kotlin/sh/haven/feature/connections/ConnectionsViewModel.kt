@@ -79,6 +79,41 @@ import javax.inject.Inject
 private const val TAG = "ConnectionsVM"
 
 /**
+ * True when [profile] would offer an SSH key during auth: it has an explicit
+ * key or a Key element in its auth chain, and keys aren't force-disabled.
+ * Used to decide whether a jump-host connect may borrow the profile's saved
+ * login password (#381).
+ */
+internal fun profileUsesKeyAuth(profile: ConnectionProfile): Boolean =
+    !profile.ignoreSavedKeys && (
+        profile.keyId != null ||
+            profile.authMethodSpecs.any { it is ConnectionProfile.AuthMethodSpec.Key }
+        )
+
+/**
+ * The password value a jump-host connect threads into `resolveAuthMethods`.
+ * `resolveAuthMethods` reuses this both as the password-auth password AND as
+ * the passphrase for an encrypted key, so the choice matters:
+ *  - A caller-supplied password (explicit SSH-side jump chain) always wins.
+ *  - #121: a PASSWORD-auth jump borrows the profile's saved sshPassword when
+ *    the auto-connect caller passed none, so password jumps still succeed.
+ *  - #381: a KEY-auth jump must NOT borrow it — the saved *login* password
+ *    would be handed to a passphrase-protected key as its passphrase, so the
+ *    key can't decrypt and is never offered (fails "publickey" on the jump leg
+ *    while a direct connect, which passes "", works). Return "" so the key
+ *    resolves via its stored passphrase, exactly like a direct connect.
+ */
+internal fun jumpConnectPassword(
+    typedPassword: String,
+    jumpUsesKeyAuth: Boolean,
+    savedSshPassword: String?,
+): String = when {
+    typedPassword.isNotEmpty() -> typedPassword
+    jumpUsesKeyAuth -> ""
+    else -> savedSshPassword ?: ""
+}
+
+/**
  * How long a host-key accept/reject prompt waits for an on-screen tap before
  * giving up. Without a bound, a prompt raised while Connections isn't the
  * composed/visible screen (a background reconnect, an MCP-triggered
@@ -3545,7 +3580,22 @@ class ConnectionsViewModel @Inject constructor(
         // actually succeed instead of bouncing off "Auth cancel for methods
         // public key,password" (#121, KoriKraut). Explicit SSH-side jump
         // chains keep the user-typed password they passed in.
-        val effectivePassword = if (password.isEmpty()) jumpProfile.sshPassword ?: "" else password
+        //
+        // #381 (BlackDex): but only when the jump authenticates with a
+        // PASSWORD. resolveAuthMethods threads this value through as the KEY
+        // passphrase too, so borrowing the saved login password for a
+        // key-auth jump hands it to a passphrase-protected key (whose real
+        // passphrase is stored separately, #290/#377) as its passphrase —
+        // the key then can't be decrypted and is never offered, so the jump
+        // leg fails "Auth fail for methods 'publickey'" even though a direct
+        // connect (which passes "") works. For key-auth jumps keep "" so the
+        // key resolves via its stored passphrase, exactly like a direct
+        // connect.
+        val effectivePassword = jumpConnectPassword(
+            typedPassword = password,
+            jumpUsesKeyAuth = profileUsesKeyAuth(jumpProfile),
+            savedSshPassword = jumpProfile.sshPassword,
+        )
 
         Log.d(TAG, "Auto-connecting jump host: ${jumpProfile.label} (${jumpProfile.host}:${jumpProfile.port})")
         // #381: a jump-host connect used to log nothing to the in-app
