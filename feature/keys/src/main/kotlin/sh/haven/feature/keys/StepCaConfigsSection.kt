@@ -636,6 +636,7 @@ private fun StepCaConfigDialog(
                     oidcClientId = oidcClientId,
                     provisioner = provisioner,
                     rootCert = rootCert,
+                    sshHostCa = sshHostCa,
                 )
                 if (problem != null) {
                     error = problem
@@ -687,11 +688,29 @@ private fun validate(
     oidcClientId: String,
     provisioner: String,
     rootCert: String,
+    sshHostCa: String,
 ): String? {
     fun req(field: String, value: String) =
         if (value.isBlank()) context.getString(R.string.stepca_validation_required, field) else null
 
     req(context.getString(R.string.stepca_field_name), name)?.let { return it }
+
+    // Host-CA-only trust config (#380): if none of the user-cert *signing*
+    // fields are filled, this config exists solely to trust host certificates
+    // signed by the given CA — validate just that key and skip the OIDC/
+    // provisioner requirements. Trusting a host CA needs no OIDC flow.
+    val signingFields = listOf(caUrl, oidcIssuer, oidcAuthUrl, oidcTokenUrl, oidcClientId, provisioner, rootCert)
+    if (signingFields.all { it.isBlank() }) {
+        if (sshHostCa.isBlank()) {
+            return context.getString(R.string.stepca_validation_host_ca_or_signing)
+        }
+        if (!StepCaFileImport.isValidHostCaPublicKey(sshHostCa)) {
+            return context.getString(R.string.stepca_validation_host_ca)
+        }
+        return null
+    }
+
+    // Full signing config — every OIDC/provisioner field is required.
     req(context.getString(R.string.stepca_field_ca_url), caUrl)?.let { return it }
     req(context.getString(R.string.stepca_field_oidc_issuer), oidcIssuer)?.let { return it }
     req(context.getString(R.string.stepca_field_oidc_auth_url), oidcAuthUrl)?.let { return it }
@@ -711,6 +730,10 @@ private fun validate(
 
     if (!rootCert.trim().startsWith("-----BEGIN CERTIFICATE-----")) {
         return context.getString(R.string.stepca_validation_pem)
+    }
+    // Host CA is optional on a signing config, but if present it must be valid.
+    if (sshHostCa.isNotBlank() && !StepCaFileImport.isValidHostCaPublicKey(sshHostCa)) {
+        return context.getString(R.string.stepca_validation_host_ca)
     }
     return null
 }

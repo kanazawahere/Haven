@@ -106,6 +106,8 @@
     <string name="stepca_validation_required">%1$s is required</string>
     <string name="stepca_validation_url">%1$s must start with https://</string>
     <string name="stepca_validation_pem">Root certificate must be PEM-encoded</string>
+    <string name="stepca_validation_host_ca_or_signing">ホスト CA 公開鍵を入力するか、署名フィールドを入力してください。</string>
+    <string name="stepca_validation_host_ca">有効な SSH ホスト CA 公開鍵ではありません。</string>
     <string name="stepca_delete_confirm_title">Delete %1$s?</string>
     <string name="stepca_delete_confirm_body">Existing keys minted via this CA will keep working until their certificates expire, but you won\'t be able to renew or generate new ones.</string>
     <string name="stepca_field_ssh_host_ca">SSH host CA public key (optional)</string>

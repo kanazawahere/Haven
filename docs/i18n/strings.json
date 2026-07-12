@@ -17825,6 +17825,44 @@
      }
     },
     {
+     "name": "stepca_validation_host_ca_or_signing",
+     "en": "Enter a host CA public key, or fill in the signing fields.",
+     "comment": "#133 phase 2b: step-ca CA registration (moved from Settings)",
+     "args": [],
+     "t": {
+      "ar": "أدخل مفتاح مرجع مصادقة المضيف العام، أو املأ حقول التوقيع.",
+      "bn": "একটি হোস্ট CA পাবলিক কী দিন, অথবা signing ক্ষেত্রগুলি পূরণ করুন।",
+      "de": "Host-CA-Public-Key eingeben oder die Signierfelder ausfüllen.",
+      "es": "Introduce una clave pública de CA de host o completa los campos de firma.",
+      "fr": "Saisissez une clé publique d\\'autorité d\\'hôte, ou remplissez les champs de signature.",
+      "hi": "एक होस्ट CA सार्वजनिक कुंजी दर्ज करें, या signing फ़ील्ड भरें।",
+      "ja": "ホスト CA 公開鍵を入力するか、署名フィールドを入力してください。",
+      "ko": "호스트 CA 공개 키를 입력하거나 서명 필드를 채우세요.",
+      "pt": "Insira uma chave pública de CA de host ou preencha os campos de assinatura.",
+      "ru": "Введите открытый ключ CA хоста или заполните поля подписи.",
+      "zh": "填写主机 CA 公钥，或填写签发（OIDC）字段。"
+     }
+    },
+    {
+     "name": "stepca_validation_host_ca",
+     "en": "Not a valid SSH host CA public key.",
+     "comment": "#133 phase 2b: step-ca CA registration (moved from Settings)",
+     "args": [],
+     "t": {
+      "ar": "مفتاح مرجع مصادقة المضيف العام غير صالح.",
+      "bn": "বৈধ SSH হোস্ট CA পাবলিক কী নয়।",
+      "de": "Kein gültiger SSH-Host-CA-Public-Key.",
+      "es": "Clave pública de CA de host SSH no válida.",
+      "fr": "Clé publique d\\'autorité d\\'hôte SSH non valide.",
+      "hi": "मान्य SSH होस्ट CA सार्वजनिक कुंजी नहीं है।",
+      "ja": "有効な SSH ホスト CA 公開鍵ではありません。",
+      "ko": "유효한 SSH 호스트 CA 공개 키가 아닙니다.",
+      "pt": "Chave pública de CA de host SSH inválida.",
+      "ru": "Недействительный открытый ключ CA хоста SSH.",
+      "zh": "不是有效的 SSH 主机 CA 公钥。"
+     }
+    },
+    {
      "name": "stepca_delete_confirm_title",
      "en": "Delete %1$s?",
      "comment": "#133 phase 2b: step-ca CA registration (moved from Settings)",

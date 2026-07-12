@@ -121,6 +121,8 @@
     <string name="stepca_validation_required">%1$s은(는) 필수입니다</string>
     <string name="stepca_validation_url">%1$s은(는) https://로 시작해야 합니다</string>
     <string name="stepca_validation_pem">루트 인증서는 PEM 형식이어야 합니다</string>
+    <string name="stepca_validation_host_ca_or_signing">호스트 CA 공개 키를 입력하거나 서명 필드를 채우세요.</string>
+    <string name="stepca_validation_host_ca">유효한 SSH 호스트 CA 공개 키가 아닙니다.</string>
     <string name="stepca_delete_confirm_title">%1$s을(를) 삭제할까요?</string>
     <string name="stepca_delete_confirm_body">이 CA로 발급된 기존 키는 인증서가 만료될 때까지 작동하지만, 갱신하거나 새로 생성할 수 없습니다.</string>
     <string name="stepca_field_ssh_host_ca">SSH 호스트 CA 공개 키 (선택)</string>

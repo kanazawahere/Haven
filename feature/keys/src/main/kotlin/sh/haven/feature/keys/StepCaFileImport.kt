@@ -69,6 +69,28 @@ internal object StepCaFileImport {
         return "${parts[0]} ${parts[1]}"
     }
 
+    /** OpenSSH public-key algorithm names accepted as an SSH host CA. */
+    private val HOST_CA_ALGOS = listOf(
+        "ssh-ed25519", "ssh-rsa", "ssh-dss",
+        "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384", "ecdsa-sha2-nistp521",
+        "sk-ssh-ed25519@openssh.com", "sk-ecdsa-sha2-nistp256@openssh.com",
+    )
+
+    /**
+     * Whether [line] is a well-formed OpenSSH public-key line usable as a host
+     * CA (#380): a recognised algorithm token followed by a base64 blob that
+     * decodes to a plausible key size. Used to validate a manually-typed host
+     * CA in the config dialog, mirroring [readSshHostCaPubkey]'s file checks.
+     */
+    fun isValidHostCaPublicKey(line: String): Boolean {
+        val parts = line.trim().split(Regex("\\s+"))
+        if (parts.size < 2) return false
+        if (parts[0] !in HOST_CA_ALGOS) return false
+        if (line.contains("PRIVATE KEY")) return false
+        val blob = runCatching { Base64.decode(parts[1], Base64.DEFAULT) }.getOrNull() ?: return false
+        return blob.size >= 32
+    }
+
     private fun derToPem(der: ByteArray): String {
         val cert = runCatching {
             CertificateFactory.getInstance("X.509")
