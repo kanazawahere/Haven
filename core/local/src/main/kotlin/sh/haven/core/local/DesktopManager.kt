@@ -855,7 +855,7 @@ class DesktopManager @Inject constructor(
                 "wait"
 
         val prootArgs = mutableListOf(
-            prootBin, "-0", "--link2symlink",
+            prootBin, "-0", "--link2symlink", "--sysvipc",
             // #325: foreign-arch rootfs runs through the bundled qemu-user loader.
             *prootManager.qemuUserArgs(prootManager.activeDistroId).toTypedArray(),
             "-r", rootfsDir.absolutePath,
@@ -1148,7 +1148,7 @@ class DesktopManager @Inject constructor(
         // path needs no real privileges. Verified: Sway now boots and
         // creates its HEADLESS-1 output.
         val prootArgs = mutableListOf(
-            prootBin, "-i", "1000:1000", "--link2symlink",
+            prootBin, "-i", "1000:1000", "--link2symlink", "--sysvipc",
             // #325: foreign-arch rootfs runs through the bundled qemu-user loader.
             *prootManager.qemuUserArgs(prootManager.activeDistroId).toTypedArray(),
             "-r", rootfsDir.absolutePath,
@@ -1645,7 +1645,7 @@ class DesktopManager @Inject constructor(
             // #301: per-distro user-defined extra binds.
             val customBinds = prootManager.customBindShortArgs(prootManager.activeDistroId).toTypedArray()
             val process = ProcessBuilder(
-                prootBin, "-0", "--link2symlink",
+                prootBin, "-0", "--link2symlink", "--sysvipc",
                 // #325: foreign-arch rootfs runs through the bundled qemu-user loader.
                 *prootManager.qemuUserArgs(prootManager.activeDistroId).toTypedArray(),
                 *portRemap,

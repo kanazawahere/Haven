@@ -287,6 +287,7 @@ class LocalSessionManager @Inject constructor(
                 prootBinary,
                 "-0",                    // fake root
                 "--link2symlink",        // fix link() for X11 lock files
+                "--sysvipc",             // #375: SysV IPC emulation (fakeroot/makepkg)
                 // #325: foreign-arch rootfs runs through the bundled qemu-user
                 // loader. Empty for host-arch rootfses.
                 *prootManager.qemuUserArgs(targetDistro).toTypedArray(),

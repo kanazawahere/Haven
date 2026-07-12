@@ -2194,6 +2194,11 @@ class ProotManager @Inject constructor(
             "-L",
             "--kernel-release=6.2.1",
             "--link2symlink",
+            // #375: emulate SysV IPC (msgget/semget/shmget) in proot — Android
+            // kernels ship without it, which broke fakeroot's default sysv
+            // faked transport (Arch makepkg). The bundled termux proot fork
+            // carries the extension; it was just never enabled.
+            "--sysvipc",
             "--kill-on-exit",
             // #325: route foreign-arch execs through a bundled qemu-user loader.
             // Inert unless the active rootfs is marked foreign AND its loader is
