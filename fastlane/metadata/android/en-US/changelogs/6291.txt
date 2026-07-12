@@ -1,0 +1,1 @@
+• Trust SSH hosts by their CA: Haven now accepts OpenSSH host certificates (@cert-authority) — a valid CA-signed host connects with no fingerprint prompt (#133). Add a trusted host CA under Keys, now saveable on its own (#380). Ed25519/ECDSA host CAs (not RSA).

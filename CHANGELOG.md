@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.49
+
+🔐 **Trust SSH hosts by their CA** (#133) — Haven now honours OpenSSH host certificates (`@cert-authority`). Add a trusted SSH host-CA public key and any server that presents a valid certificate signed by that CA connects with no per-host fingerprint prompt — signature, validity window, principals and revocation are all checked during the handshake. Hosts without a valid CA-signed certificate fall back to the usual trust-on-first-use prompt, unchanged. A trusted host CA is added under Keys → Certificate authorities, and now saves on its own without needing a full OIDC provisioner set up (#380). Known limitation: RSA host CAs aren't validated by the current SSH library (a signature-algorithm quirk) — Ed25519 and ECDSA host CAs work.
+
 ## v5.68.48
 
 ⌨️ **Optional Termux-style key grid for the toolbar** (#372) — a new "Uniform key grid" switch in Settings → Keyboard & input → Keyboard toolbar lays every key out in equal-width cells: the whole row fits on screen with no side-scrolling, columns line up across both rows, the entire cell is the tap target, and longer labels wrap inside their cell. Arrow keys join the grid as ordinary cells. Off by default — the classic adaptive-width layout is unchanged. Thanks to sugerpersion for the suggestion.
