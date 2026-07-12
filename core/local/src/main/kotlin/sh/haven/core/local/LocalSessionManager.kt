@@ -25,6 +25,27 @@ import javax.inject.Singleton
 private const val TAG = "LocalSessionManager"
 
 /**
+ * The `sh -c` wrapper that launches the picked session manager ([cmd], whose
+ * first word is [bin]) and degrades gracefully so the tab never dies silently
+ * (#294 — "pick tmux, open a proot shell, it exits instantly"). Two failure
+ * modes are handled:
+ *  - binary not installed → fall straight to a login shell.
+ *  - installed but exits non-zero — tmux can't create its socket under proot,
+ *    an unknown option on an old build, etc. — leave the error on screen (it's
+ *    also captured in the connection log) and drop to a login shell instead of
+ *    ejecting the user. tmux/zellij/screen/byobu all exit 0 on a normal detach
+ *    or quit, so the fallback only trips on a real startup failure, not on the
+ *    user ending the session.
+ *
+ * [cmd] is run (not exec'd) so the `||` fallback can fire; on a clean exit the
+ * wrapper simply ends and the PTY closes as before.
+ */
+internal fun sessionManagerWrapper(bin: String, cmd: String): String =
+    "if command -v $bin >/dev/null 2>&1; then " +
+        "$cmd || { echo \"[haven] $bin exited unexpectedly - falling back to a shell\" >&2; exec /bin/sh -l; }; " +
+        "else exec /bin/sh -l; fi"
+
+/**
  * Merge [overlay] into [base] env entries with KEY-OVERRIDE semantics: an
  * overlay key replaces the matching base `KEY=...` entry rather than relying on
  * execve duplicate-key ordering (which is libc-defined). New keys append. Used
@@ -211,10 +232,7 @@ class LocalSessionManager @Inject constructor(
         // First word of the command is the binary we test for. tmux,
         // zellij, screen, byobu — all single-word executables.
         val bin = cmd.substringBefore(' ')
-        // Wrap in `command -v` so missing binaries don't break the
-        // session. Login shell first so PATH/profile are set up.
-        val wrapped = "if command -v $bin >/dev/null 2>&1; then exec $cmd; else exec /bin/sh -l; fi"
-        return arrayOf("/bin/sh", "-l", "-c", wrapped)
+        return arrayOf("/bin/sh", "-l", "-c", sessionManagerWrapper(bin, cmd))
     }
 
     /**
