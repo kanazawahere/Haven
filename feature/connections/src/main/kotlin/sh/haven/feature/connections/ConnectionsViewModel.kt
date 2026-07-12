@@ -3548,12 +3548,20 @@ class ConnectionsViewModel @Inject constructor(
         val effectivePassword = if (password.isEmpty()) jumpProfile.sshPassword ?: "" else password
 
         Log.d(TAG, "Auto-connecting jump host: ${jumpProfile.label} (${jumpProfile.host}:${jumpProfile.port})")
+        // #381: a jump-host connect used to log nothing to the in-app
+        // connection log and never wired a verbose SSH logger, so an auth
+        // failure on the jump leg went only to logcat with no detail on WHY
+        // (which key/signature the server rejected). Wire the same verbose
+        // logger the direct path uses and persist the result below, so a
+        // failed jump is diagnosable from Settings → View connection log.
+        val jumpVerbose = if (preferencesRepository.verboseLoggingEnabled.first()) SshVerboseLogger() else null
         // Wire the FIDO authenticator before connect — a jump host with a
         // security-key (ed25519-sk) auth method (e.g. SPICE/VNC/RDP-over-SSH)
         // otherwise fails instantly with "no FidoAuthenticator configured on
         // this SshClient", never reaching the touch prompt (#286).
         val jumpClient = SshClient().apply {
             fidoAuthenticator = this@ConnectionsViewModel.fidoAuthenticator
+            verboseLogger = jumpVerbose
         }
         val jumpSessionId = sshSessionManager.registerSession(jumpProfileId, "Jump: ${jumpProfile.label}", jumpClient)
 
@@ -3604,6 +3612,7 @@ class ConnectionsViewModel @Inject constructor(
 
             sshSessionManager.updateStatus(jumpSessionId, SshSessionManager.SessionState.Status.CONNECTED)
             Log.d(TAG, "Jump host connected: ${jumpProfile.label} ($jumpSessionId), isConnected=${jumpClient.isConnected}")
+            connectionLogRepository.logEvent(jumpProfileId, ConnectionLog.Status.CONNECTED, verboseLog = jumpVerbose?.drain())
             // Newly-opened tunnel session: bind it to its owner so the
             // session is torn down when the owner disconnects (#121).
             if (tunnelOwnerProfileId != null) {
@@ -3616,6 +3625,7 @@ class ConnectionsViewModel @Inject constructor(
             // and one accumulates per retry (#121, KoriKraut: "5 active
             // sessions"). Mark it ERROR and unregister before re-throwing.
             Log.e(TAG, "Jump host connect failed for ${jumpProfile.label}: ${e.message}", e)
+            connectionLogRepository.logEvent(jumpProfileId, ConnectionLog.Status.FAILED, details = e.message, verboseLog = jumpVerbose?.drain())
             sshSessionManager.updateStatus(jumpSessionId, SshSessionManager.SessionState.Status.ERROR)
             sshSessionManager.removeSession(jumpSessionId)
             throw e
