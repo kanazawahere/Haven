@@ -685,6 +685,25 @@ fun TerminalScreen(
                                             maxLines = 1,
                                             style = MaterialTheme.typography.labelLarge,
                                         )
+                                        // #306: a one-tap close on the active tab so
+                                        // ending a session no longer needs the
+                                        // long-press menu. Only on the selected tab to
+                                        // keep the strip compact in portrait.
+                                        if (selected) {
+                                            Spacer(Modifier.width(4.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .clickable { viewModel.closeTab(tab.sessionId) },
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Icon(
+                                                    Icons.Filled.Close,
+                                                    contentDescription = stringResource(R.string.terminal_close),
+                                                    modifier = Modifier.size(16.dp),
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                                 // Refresh remote sessions when popup opens
