@@ -175,6 +175,7 @@ Edit fields on an existing connection profile (load → change → save). Pass p
 - `forwardAgent` (boolean) — SSH only: enable SSH agent forwarding. Keys with a stored passphrase (or none) are exposed to the remote's ssh-agent socket (#377).
 - `host` (string) — New hostname or IP.
 - `ignoreSavedKeys` (boolean) — SSH-family only: force password-only auth, never offer saved keystore keys (#121).
+- `jumpProfileId` (string) — SSH only: id of the SSH profile to jump through (ssh -J). The target host is dialled from the jump host, so it may be an address only the jump can reach. Empty string clears.
 - `keyId` (string) — SSH only: id of a saved key (list_ssh_keys). Empty string clears.
 - `label` (string) — New user-facing label.
 - `password` (string) — New password (stored encrypted). Mapped to the profile's transport (SSH/VNC/RDP/SMB). Pass an empty string to clear it.

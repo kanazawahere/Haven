@@ -1479,6 +1479,7 @@ internal class McpTools(
                 string("username", "New username (SSH/SMB).")
                 string("password", "New password (stored encrypted). Mapped to the profile's transport (SSH/VNC/RDP/SMB). Pass an empty string to clear it.")
                 string("keyId", "SSH only: id of a saved key (list_ssh_keys). Empty string clears.")
+                string("jumpProfileId", "SSH only: id of the SSH profile to jump through (ssh -J). The target host is dialled from the jump host, so it may be an address only the jump can reach. Empty string clears.")
                 boolean("ignoreSavedKeys", "SSH-family only: force password-only auth, never offer saved keystore keys (#121).")
                 boolean("useMosh", "SSH only: use Mosh on top of the SSH bootstrap.")
                 boolean("forwardAgent", "SSH only: enable SSH agent forwarding. Keys with a stored passphrase (or none) are exposed to the remote's ssh-agent socket (#377).")
@@ -5541,6 +5542,7 @@ internal class McpTools(
             smbPassword = if (existing.connectionType == "SMB") newPassword(existing.smbPassword) else existing.smbPassword,
             spicePassword = if (existing.connectionType == "SPICE") newPassword(existing.spicePassword) else existing.spicePassword,
             keyId = newKeyId,
+            jumpProfileId = str("jumpProfileId", existing.jumpProfileId),
             ignoreSavedKeys = bool("ignoreSavedKeys", existing.ignoreSavedKeys),
             useMosh = bool("useMosh", existing.useMosh),
             forwardAgent = bool("forwardAgent", existing.forwardAgent),
