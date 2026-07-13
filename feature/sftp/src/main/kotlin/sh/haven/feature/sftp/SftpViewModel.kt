@@ -10,7 +10,6 @@ import kotlinx.coroutines.ensureActive
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import sh.haven.core.ssh.SshIoException
-import sh.haven.core.ssh.sftp.ListResult
 import sh.haven.core.ssh.sftp.SftpSession
 import sh.haven.core.ssh.sftp.SftpWriteMode
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -50,6 +49,11 @@ import sh.haven.core.smb.SmbSessionManager
 import sh.haven.core.ssh.SshClient
 import sh.haven.core.ssh.SshSessionManager
 import sh.haven.core.ssh.SshSessionManager.SessionState
+import sh.haven.feature.sftp.transport.FileBackend
+import sh.haven.feature.sftp.transport.LocalFileBackend
+import sh.haven.feature.sftp.transport.RcloneFileBackend
+import sh.haven.feature.sftp.transport.SftpTransport
+import sh.haven.feature.sftp.transport.SmbFileBackend
 import java.io.OutputStream
 import javax.inject.Inject
 
@@ -80,6 +84,13 @@ data class SftpEntry(
     val owner: String = "",
     /** Group name (SCP `ls -la`) or numeric GID (SFTP `SftpATTRS`). Empty if unknown. */
     val group: String = "",
+    /**
+     * The entry is a symlink. Directory symlinks are still presented as
+     * navigable ([isDirectory] reflects the resolved target where the
+     * backend supports it), but the paste walker never recurses through a
+     * symlink discovered mid-walk — link cycles must terminate.
+     */
+    val isSymlink: Boolean = false,
 )
 
 /**
@@ -3612,6 +3623,23 @@ class SftpViewModel @Inject constructor(
     }
 
     /**
+     * Resolve a [FileBackend] for a paste destination described by queue-row
+     * coordinates. Mirrors the legacy per-backend dispatch: LOCAL needs no
+     * session, SFTP reuses/opens the cached session (with mosh/ET fallback),
+     * SMB uses the active client, rclone the row's remote.
+     */
+    private fun destFileBackend(
+        destType: BackendType,
+        destProfileId: String,
+        destRemote: String?,
+    ): FileBackend? = when (destType) {
+        BackendType.LOCAL -> LocalFileBackend(appContext)
+        BackendType.SFTP -> getOrOpenSession(destProfileId)?.let { s -> SftpTransport({ s }) }
+        BackendType.SMB -> activeSmbClient?.let { SmbFileBackend(it) }
+        BackendType.RCLONE -> destRemote?.let { RcloneFileBackend(rcloneClient, it, appContext) }
+    }
+
+    /**
      * Probe the destination backend for an existing file at [destPath].
      *
      * Returns the size in bytes if a regular file exists, null if the path is
@@ -3619,46 +3647,18 @@ class SftpViewModel @Inject constructor(
      * exist" so we default to the existing silent-overwrite behaviour rather
      * than blocking the paste on a flaky backend).
      */
-    private fun probeDestFile(
+    private suspend fun probeDestFile(
         destType: BackendType,
         destProfileId: String,
         destRemote: String?,
         destPath: String,
     ): Long? = try {
-        when (destType) {
-            BackendType.LOCAL -> {
-                val f = java.io.File(destPath)
-                if (f.exists() && f.isFile) f.length() else null
-            }
-            BackendType.SFTP -> {
-                val session = getOrOpenSession(destProfileId) ?: return null
-                try {
-                    val attrs = kotlinx.coroutines.runBlocking { session.stat(destPath) }
-                    if (attrs.isDirectory) null else attrs.size
-                } catch (_: Exception) { null }
-            }
-            BackendType.SMB -> {
-                val client = activeSmbClient ?: return null
-                val parent = destPath.substringBeforeLast('/', "")
-                val name = destPath.substringAfterLast('/')
-                if (parent.isEmpty()) null
-                else client.listDirectory(parent)
-                    .firstOrNull { it.name == name && !it.isDirectory }
-                    ?.size
-            }
-            BackendType.RCLONE -> {
-                val remote = destRemote ?: return null
-                val parent = destPath.substringBeforeLast('/', "")
-                val name = destPath.substringAfterLast('/')
-                if (parent.isEmpty()) null
-                else rcloneClient.listDirectory(remote, parent)
-                    .firstOrNull { it.name == name && !it.isDir }
-                    ?.size
-            }
-        }
-    } catch (e: Exception) {
-        Log.w(TAG, "probeDestFile failed for $destPath: ${e.message}")
-        null
+        destFileBackend(destType, destProfileId, destRemote)
+            ?.stat(destPath)
+            ?.takeIf { !it.isDirectory }
+            ?.size
+    } catch (_: Exception) {
+        null // stat throws for missing entries; fail open on probe errors
     }
 
     /**
@@ -3667,20 +3667,14 @@ class SftpViewModel @Inject constructor(
      * Falls back to the original path after 999 attempts (which would also be
      * a sign something else is wrong).
      */
-    private fun findUniqueName(
+    private suspend fun findUniqueName(
         destType: BackendType,
         destProfileId: String,
         destRemote: String?,
         destPath: String,
     ): String {
-        val lastSlash = destPath.lastIndexOf('/')
-        val dir = if (lastSlash >= 0) destPath.substring(0, lastSlash) else ""
-        val name = if (lastSlash >= 0) destPath.substring(lastSlash + 1) else destPath
-        val dot = name.lastIndexOf('.')
-        val stem = if (dot > 0) name.substring(0, dot) else name
-        val ext = if (dot > 0) name.substring(dot) else ""
         for (i in 1..999) {
-            val candidate = if (dir.isEmpty()) "$stem ($i)$ext" else "$dir/$stem ($i)$ext"
+            val candidate = uniqueNameCandidate(destPath, i)
             if (probeDestFile(destType, destProfileId, destRemote, candidate) == null) return candidate
         }
         return destPath
@@ -3752,150 +3746,60 @@ class SftpViewModel @Inject constructor(
     }
 
     /**
+     * Listing function for the clipboard's source backend, used by the
+     * paste walker. LOCAL stays on raw [java.io.File] listing —
+     * [LocalFileBackend.list] falls back to the synthetic storage-roots
+     * view for unreadable paths, which must never leak into a recursive
+     * copy. An unavailable session/client skips the subtree (empty list),
+     * matching the legacy walker.
+     */
+    private fun sourceLister(cb: FileClipboard): suspend (String) -> List<SftpEntry> =
+        when (cb.sourceBackendType) {
+            BackendType.LOCAL -> { path: String ->
+                java.io.File(path).listFiles()?.map { f ->
+                    SftpEntry(f.name, f.absolutePath, f.isDirectory, if (f.isDirectory) 0 else f.length(), f.lastModified() / 1000, "")
+                } ?: emptyList()
+            }
+            BackendType.RCLONE -> { path: String ->
+                RcloneFileBackend(rcloneClient, cb.sourceRemoteName!!, appContext).list(path)
+            }
+            BackendType.SFTP -> { path: String ->
+                val session = cb.sourceSftpSession ?: sessionManager.openSftpSession(cb.sourceProfileId)
+                session?.let { SftpTransport({ it }).list(path) } ?: emptyList()
+            }
+            BackendType.SMB -> { path: String ->
+                val client = cb.sourceSmbClient ?: smbSessionManager.getClientForProfile(cb.sourceProfileId)
+                client?.let { SmbFileBackend(it).list(path) } ?: emptyList()
+            }
+        }
+
+    /**
      * Pre-walk the clipboard entries to count total leaf files. Best-effort:
      * any listing error yields a partial count (or zero for that subtree),
      * which is fine — the UI falls back to "Uploading N:" without a total.
      */
-    private fun countPasteFiles(cb: FileClipboard): Int = cb.entries.sumOf { entry ->
-        try {
-            countLeafFiles(cb, entry)
-        } catch (e: Exception) {
-            Log.w(TAG, "Pre-walk failed for ${entry.path}: ${e.message}")
-            0
+    private suspend fun countPasteFiles(cb: FileClipboard): Int {
+        val lister = sourceLister(cb)
+        return cb.entries.sumOf { entry ->
+            try {
+                walkPasteLeaves(listOf(entry), "", lister).size
+            } catch (e: Exception) {
+                Log.w(TAG, "Pre-walk failed for ${entry.path}: ${e.message}")
+                0
+            }
         }
     }
 
-    private fun countLeafFiles(cb: FileClipboard, entry: SftpEntry): Int {
-        if (!entry.isDirectory) return 1
-        val children = when (cb.sourceBackendType) {
-            BackendType.LOCAL -> {
-                java.io.File(entry.path).listFiles()?.map {
-                    SftpEntry(it.name, it.absolutePath, it.isDirectory, 0, 0, "")
-                } ?: emptyList()
-            }
-            BackendType.RCLONE -> {
-                rcloneClient.listDirectory(cb.sourceRemoteName!!, entry.path).map { rc ->
-                    SftpEntry(rc.name, "${entry.path.trimEnd('/')}/${rc.name}", rc.isDir, 0, 0, "")
-                }
-            }
-            BackendType.SFTP -> {
-                val session = cb.sourceSftpSession
-                    ?: sessionManager.openSftpSession(cb.sourceProfileId) ?: return 0
-                val results = mutableListOf<SftpEntry>()
-                kotlinx.coroutines.runBlocking {
-                    session.list(entry.path) { attrs ->
-                        results.add(SftpEntry(attrs.filename, "${entry.path.trimEnd('/')}/${attrs.filename}", attrs.isDirectory, 0, 0, ""))
-                        ListResult.CONTINUE
-                    }
-                }
-                results
-            }
-            BackendType.SMB -> {
-                val client = cb.sourceSmbClient
-                    ?: smbSessionManager.getClientForProfile(cb.sourceProfileId) ?: return 0
-                client.listDirectory(entry.path).map { smb ->
-                    SftpEntry(smb.name, smb.path, smb.isDirectory, 0, 0, "")
-                }
-            }
-        }
-        return children.sumOf { countLeafFiles(cb, it) }
-    }
-
-
-    /** One flattened leaf-file operation waiting to be persisted to the paste queue. */
-    private data class PasteLeaf(
-        val sourcePath: String,
-        val sourceName: String,
-        val size: Long,
-        val destPath: String,
-        val isTopLevel: Boolean,
-    )
+    /** Flatten the clipboard into ordered leaf paste operations (see [walkPasteLeaves]). */
+    private suspend fun enumerateLeaves(cb: FileClipboard, destRootPath: String): List<PasteLeaf> =
+        walkPasteLeaves(cb.entries, destRootPath, sourceLister(cb))
 
     /**
-     * Walk a clipboard into a flat list of leaf-file paste operations, expanding
-     * directories in order. The returned [PasteLeaf.destPath] bakes in any
-     * directory prefix so the executor can treat each leaf atomically — it
-     * only needs to mkdir-p the parent before the copy.
-     *
-     * For the rclone-to-rclone case the old server-side copyFile path is still
-     * the fastest option (no bytes flow through the phone), so we return an
-     * empty list and let the caller fall through to the non-queue path.
+     * mkdir-p for the parent of [destPath] on the destination backend.
+     * Best-effort — a failure is logged and left for the copy itself to
+     * surface, matching the legacy behaviour.
      */
-    private fun enumerateLeaves(
-        cb: FileClipboard,
-        destType: BackendType,
-        destRootPath: String,
-    ): List<PasteLeaf> {
-        val leaves = mutableListOf<PasteLeaf>()
-        for (entry in cb.entries) {
-            val destTop = destRootPath.trimEnd('/') + "/" + entry.name
-            walkEntry(cb, entry, destTop, isTopLevel = true, leaves)
-        }
-        return leaves
-    }
-
-    private fun walkEntry(
-        cb: FileClipboard,
-        entry: SftpEntry,
-        destPath: String,
-        isTopLevel: Boolean,
-        out: MutableList<PasteLeaf>,
-    ) {
-        if (!entry.isDirectory) {
-            out.add(PasteLeaf(entry.path, entry.name, entry.size, destPath, isTopLevel))
-            return
-        }
-        val children: List<SftpEntry> = when (cb.sourceBackendType) {
-            BackendType.LOCAL -> {
-                java.io.File(entry.path).listFiles()?.map { f ->
-                    SftpEntry(f.name, f.absolutePath, f.isDirectory, if (f.isDirectory) 0 else f.length(), f.lastModified() / 1000, "")
-                } ?: emptyList()
-            }
-            BackendType.RCLONE -> {
-                rcloneClient.listDirectory(cb.sourceRemoteName!!, entry.path).map { rc ->
-                    SftpEntry(rc.name, "${entry.path.trimEnd('/')}/${rc.name}", rc.isDir, rc.size, 0, "")
-                }
-            }
-            BackendType.SFTP -> {
-                val session = cb.sourceSftpSession
-                    ?: sessionManager.openSftpSession(cb.sourceProfileId) ?: return
-                val results = mutableListOf<SftpEntry>()
-                kotlinx.coroutines.runBlocking {
-                    session.list(entry.path) { attrs ->
-                        results.add(
-                            SftpEntry(
-                                attrs.filename,
-                                "${entry.path.trimEnd('/')}/${attrs.filename}",
-                                attrs.isDirectory,
-                                attrs.size,
-                                attrs.modifiedTimeSeconds.toLong(),
-                                "",
-                            ),
-                        )
-                        ListResult.CONTINUE
-                    }
-                }
-                results
-            }
-            BackendType.SMB -> {
-                val client = cb.sourceSmbClient
-                    ?: smbSessionManager.getClientForProfile(cb.sourceProfileId) ?: return
-                client.listDirectory(entry.path).map { smb ->
-                    SftpEntry(smb.name, smb.path, smb.isDirectory, smb.size, smb.modifiedTime, "")
-                }
-            }
-        }
-        for (child in children) {
-            val childDest = destPath.trimEnd('/') + "/" + child.name
-            walkEntry(cb, child, childDest, isTopLevel = false, out)
-        }
-    }
-
-    /**
-     * mkdir-p equivalent for the destination backend. Safe to call for a path
-     * that already exists — each layer ignores "already exists" errors.
-     */
-    private fun ensureDestParent(
+    private suspend fun ensureDestParent(
         destType: BackendType,
         destProfileId: String,
         destRemote: String?,
@@ -3904,35 +3808,7 @@ class SftpViewModel @Inject constructor(
         val parent = destPath.substringBeforeLast('/', "").takeIf { it.isNotEmpty() && it != "/" }
             ?: return
         try {
-            when (destType) {
-                BackendType.LOCAL -> java.io.File(parent).mkdirs()
-                BackendType.SFTP -> {
-                    val session = getOrOpenSession(destProfileId) ?: return
-                    // Walk parents shallowest-first, ignoring "already exists".
-                    val parts = parent.split("/").filter { it.isNotEmpty() }
-                    val isAbsolute = parent.startsWith("/")
-                    var acc = if (isAbsolute) "" else "."
-                    kotlinx.coroutines.runBlocking {
-                        for (p in parts) {
-                            acc = if (acc.isEmpty()) "/$p" else "$acc/$p"
-                            try { session.mkdir(acc) } catch (_: Exception) { /* exists or permission */ }
-                        }
-                    }
-                }
-                BackendType.SMB -> {
-                    // smbj's DiskShare.mkdir creates ONE level and fails when the
-                    // parent is missing — the same trap as the SFTP branch above
-                    // (#273). Walk shallowest-first, ignoring "already exists".
-                    val client = activeSmbClient ?: return
-                    var acc = ""
-                    for (p in parent.split("/").filter { it.isNotEmpty() }) {
-                        acc = "$acc/$p"
-                        try { client.mkdir(acc) } catch (_: Exception) { /* exists or no permission */ }
-                    }
-                }
-                // rclone's operations/mkdir is mkdir-p for every backend, so one call is enough.
-                BackendType.RCLONE -> destRemote?.let { rcloneClient.mkdir(it, parent) }
-            }
+            destFileBackend(destType, destProfileId, destRemote)?.mkdir(parent)
         } catch (e: Exception) {
             Log.w(TAG, "ensureDestParent failed for $parent: ${e.message}")
         }
@@ -4002,7 +3878,7 @@ class SftpViewModel @Inject constructor(
                 _transferProgress.value = TransferProgress("Scanning selection…", 0, 0)
 
                 val leaves = withContext(Dispatchers.IO) {
-                    enumerateLeaves(cb, destType, destPath)
+                    enumerateLeaves(cb, destPath)
                 }
 
                 // Apply conflict resolution to top-level leaves (anything a
@@ -4662,81 +4538,6 @@ class SftpViewModel @Inject constructor(
         resolver.openOutputStream(newUri)?.use { out ->
             source.inputStream().use { it.copyTo(out) }
         } ?: throw java.io.IOException("Failed to open output stream for $newUri")
-    }
-
-    /** Recursively copy a directory between backends. */
-    private suspend fun crossCopyDir(
-        cb: FileClipboard, entry: SftpEntry,
-        destType: BackendType, destProfileId: String, destRemote: String?,
-        destPath: String,
-    ) {
-        // Create destination directory
-        when (destType) {
-            BackendType.LOCAL -> java.io.File(destPath).mkdirs()
-            BackendType.RCLONE -> rcloneClient.mkdir(destRemote!!, destPath)
-            BackendType.SFTP -> {
-                val session = getOrOpenSession(destProfileId) ?: return
-                try { kotlinx.coroutines.runBlocking { session.mkdir(destPath) } } catch (_: Exception) {}
-            }
-            BackendType.SMB -> {
-                val client = activeSmbClient ?: return
-                client.mkdir(destPath)
-            }
-        }
-
-        // List source directory and copy contents
-        Log.d(TAG, "crossCopyDir: listing ${cb.sourceBackendType} ${entry.path}")
-        val children = when (cb.sourceBackendType) {
-            BackendType.LOCAL -> {
-                java.io.File(entry.path).listFiles()?.map { f ->
-                    SftpEntry(f.name, f.absolutePath, f.isDirectory, if (f.isDirectory) 0 else f.length(), f.lastModified() / 1000, "")
-                } ?: emptyList()
-            }
-            BackendType.RCLONE -> {
-                rcloneClient.listDirectory(cb.sourceRemoteName!!, entry.path).map { rc ->
-                    val modTime = try { java.time.Instant.parse(rc.modTime).epochSecond } catch (_: Exception) { 0L }
-                    SftpEntry(rc.name, "${entry.path.trimEnd('/')}/${rc.name}", rc.isDir, rc.size, modTime, "")
-                }
-            }
-            BackendType.SFTP -> {
-                val session = cb.sourceSftpSession
-                    ?: sessionManager.openSftpSession(cb.sourceProfileId) ?: return
-                val results = mutableListOf<SftpEntry>()
-                kotlinx.coroutines.runBlocking {
-                    session.list(entry.path) { attrs ->
-                        results.add(
-                            SftpEntry(
-                                attrs.filename,
-                                "${entry.path.trimEnd('/')}/${attrs.filename}",
-                                attrs.isDirectory,
-                                attrs.size,
-                                attrs.modifiedTimeSeconds.toLong(),
-                                "",
-                            ),
-                        )
-                        ListResult.CONTINUE
-                    }
-                }
-                results
-            }
-            BackendType.SMB -> {
-                val client = cb.sourceSmbClient
-                    ?: smbSessionManager.getClientForProfile(cb.sourceProfileId) ?: return
-                client.listDirectory(entry.path).map { smb ->
-                    SftpEntry(smb.name, smb.path, smb.isDirectory, smb.size, smb.modifiedTime, "")
-                }
-            }
-        }
-
-        Log.d(TAG, "crossCopyDir: found ${children.size} children in ${entry.path}")
-        for (child in children) {
-            val childDest = "${destPath.trimEnd('/')}/${child.name}"
-            if (child.isDirectory) {
-                crossCopyDir(cb, child, destType, destProfileId, destRemote, childDest)
-            } else {
-                crossCopyFile(cb, child, destType, destProfileId, destRemote, childDest)
-            }
-        }
     }
 
     /** Recursively copy a directory within rclone (server-side). */

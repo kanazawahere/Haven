@@ -43,6 +43,7 @@ class SftpTransport(
                     // dialog; the server resolves it.
                     owner = attrs.uid.toString(),
                     group = attrs.gid.toString(),
+                    isSymlink = attrs.isSymlink,
                 ),
             )
             ListResult.CONTINUE
@@ -99,11 +100,13 @@ class SftpTransport(
             size = attrs.size,
             modifiedTime = attrs.modifiedTimeSeconds.toLong(),
             permissions = attrs.permissions,
+            isSymlink = attrs.isSymlink,
         )
     }
 
     override suspend fun mkdir(path: String) {
-        sessionProvider().mkdir(path)
+        val session = sessionProvider()
+        mkdirP(path, { session.mkdir(it) }, { session.stat(it).isDirectory })
     }
 
     override suspend fun rename(from: String, to: String) {

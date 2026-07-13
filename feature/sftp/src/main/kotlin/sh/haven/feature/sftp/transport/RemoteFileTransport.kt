@@ -14,11 +14,10 @@ import java.io.OutputStream
  *  - [ScpTransport]  — speaks legacy SCP (scp -t / -f) over an exec channel
  *                       plus `ls -la` for directory listings
  *
- * The rclone / SMB / local backends share the [FileBackend.list] surface
- * with this interface but stay on their own per-backend dispatch for
- * upload, download, mkdir, rename, delete, chmod and chown. Each of those
- * operations gets promoted to [FileBackend] once it generalises across
- * every backend (issue #126, stages 2 onwards).
+ * The rclone / SMB / local backends share the whole [FileBackend] surface
+ * with this interface; only streaming upload / download with progress
+ * reporting and the POSIX-only chmod / chown still need this richer type
+ * (issue #126).
  */
 interface RemoteFileTransport : FileBackend {
     /** Whether this transport supports recursive operations (always true). */

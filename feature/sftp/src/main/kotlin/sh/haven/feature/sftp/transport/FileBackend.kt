@@ -6,16 +6,16 @@ import java.io.InputStream
 /**
  * Backend-agnostic file operations. Implementations exist for every browser
  * surface Haven exposes: SFTP / SCP over SSH (see [RemoteFileTransport]),
- * the local Android filesystem, SMB shares, and rclone-managed cloud
- * remotes. The [SftpViewModel] dispatches its listing path through this
- * interface so the per-backend `when` blocks collapse to a single call.
+ * the local Android filesystem, SMB shares, rclone-managed cloud remotes,
+ * and Reticulum listeners.
  *
- * Stage 1 of issue #126 covered listing only. Stage 2 promotes the
- * non-streaming structural ops (delete, mkdir, rename) so creating /
- * deleting / renaming work the same way regardless of which backend the
- * user is browsing. Streaming ops (upload / download) and POSIX-only ops
- * (chmod / chown) still live on [RemoteFileTransport] and ship in later
- * stages.
+ * This is the control-plane surface for the file browser (issue #126):
+ * listing, structural ops (delete / mkdir / rename), small-file IO
+ * ([readBytes] / [writeBytes]), [stat], [openInputStream], and the
+ * copy/paste orchestration (tree walk, conflict probe, parent mkdir-p)
+ * all dispatch through it. Only streaming transfers with progress
+ * reporting and the POSIX-only chmod / chown remain on
+ * [RemoteFileTransport].
  */
 interface FileBackend {
     /** Display badge — "SFTP", "SCP", "Local", "SMB", or "Rclone". */
