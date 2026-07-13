@@ -1940,7 +1940,7 @@ Show the user HTML, an SVG, or a PDF inline in an in-app WebView — the interac
 
 *Extra capability switch — off by default: queue_terminal_input is disabled — enable in Settings → Agent endpoint → Allow agents to queue terminal input.*
 
-DEPRECATED: alias for `queue_terminal_input` kept for one release. Use queue_terminal_input — same arguments, same behaviour, plus a `submitKey` parameter you didn't have here.
+DEPRECATED: alias for `queue_terminal_input`. Use queue_terminal_input — same arguments, same behaviour, plus a `submitKey` parameter you didn't have here.
 
 - `text` (string, required)
 - `promptPattern` (string)

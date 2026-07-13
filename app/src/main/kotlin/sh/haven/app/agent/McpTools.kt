@@ -373,13 +373,14 @@ internal class McpTools(
             },
         ) { args -> queueTerminalInput(args) },
 
-        // Deprecated alias for queue_terminal_input — keeps clients that
-        // bound against the old name working for one release. Same
-        // handler, same gate, same consent shape; just routes through
-        // queueTerminalInput so the implementation only lives in one
-        // place. Drop after the next final release. (#161)
+        // Deprecated alias for queue_terminal_input (#161). Same handler,
+        // same gate, same consent shape; routes through queueTerminalInput
+        // so the implementation only lives in one place. Tool names are
+        // external contract — paired clients bound against this name still
+        // call it (VISION.md documents it), so it stays registered until a
+        // deliberate deprecation cycle. Pinned by McpToolCompatibilityTest.
         "queue_self_message" to ToolHandler(
-            description = "DEPRECATED: alias for `queue_terminal_input` kept for one release. Use queue_terminal_input — same arguments, same behaviour, plus a `submitKey` parameter you didn't have here.",
+            description = "DEPRECATED: alias for `queue_terminal_input`. Use queue_terminal_input — same arguments, same behaviour, plus a `submitKey` parameter you didn't have here.",
             inputSchema = objectSchema {
                 string("text", required = true)
                 string("sessionId")
