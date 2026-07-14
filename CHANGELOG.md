@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.65
+
+🛠️ **F-Droid builds, take two** — v5.68.62 was supposed to unblock F-Droid and didn't. The Wayland desktop stack needs a `wayland-scanner` that runs on the build machine and matches our vendored Wayland exactly; v5.68.62 started building one from our own source, but the cross build never actually *used* it — it went on quietly resolving the build image's copy, which is the very thing that was breaking. Once the now-unnecessary system package was dropped from the F-Droid recipe there was nothing left to mask it, and the build stopped at "wayland-scanner not found". Our scanner is now the one it finds, and an image that ships a different version can no longer hijack the lookup. No change to the app itself.
+
 ## v5.68.64
 
 🔗 **The terminal stopped mistaking filenames for web links** — a tap on ordinary text like `nginx.conf`, `php.ini` or a line of a Java stack trace would underline it as a link and throw you out to a browser at an invented address such as `https://nginx.co`. Two things were wrong with the link detector: it matched the *start* of any word whose dotted tail happened to begin with a domain ending, and it counted `.in`, `.cc` and `.app` as domain endings even though in a terminal those are almost always `Makefile.in`, `main.cc` or a package name. A detected link now has to end where the word ends. Real links are untouched, bare ones like `google.com` included. (#385, thanks sugerpersion)
