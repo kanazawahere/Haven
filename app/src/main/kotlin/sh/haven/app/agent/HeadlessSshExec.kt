@@ -9,6 +9,7 @@ import sh.haven.core.mcp.McpError
 import sh.haven.core.ssh.ConnectionConfig
 import sh.haven.core.ssh.ExecResult
 import sh.haven.core.ssh.HostKeyResult
+import sh.haven.core.ssh.isSshNetworkError
 import sh.haven.core.ssh.HostKeyVerifier
 import sh.haven.core.ssh.SshClient
 import sh.haven.core.ssh.SshKeyExporter
@@ -103,7 +104,7 @@ class HeadlessSshExec @Inject constructor(
                 // DHCP moved the device — follow its host key once, so
                 // automations (MacroDroid run_command against a hotspot
                 // client) survive address rotation without macro changes.
-                val newHost = if (isNetworkError(e)) {
+                val newHost = if (e.isSshNetworkError()) {
                     runCatching { hostRediscovery.rediscover(profile) }.getOrNull()
                 } else null
                 if (newHost == null) {
@@ -133,17 +134,6 @@ class HeadlessSshExec @Inject constructor(
         } finally {
             runCatching { client.disconnect() }
         }
-    }
-
-    private fun isNetworkError(e: Exception): Boolean {
-        val msg = e.message ?: ""
-        return e is java.net.ConnectException ||
-            e is java.net.UnknownHostException ||
-            e is java.net.SocketTimeoutException ||
-            e is java.net.NoRouteToHostException ||
-            msg.contains("refused", ignoreCase = true) ||
-            msg.contains("timed out", ignoreCase = true) ||
-            msg.contains("unreachable", ignoreCase = true)
     }
 
     private companion object {

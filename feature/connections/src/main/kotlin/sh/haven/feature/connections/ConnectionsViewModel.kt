@@ -36,6 +36,7 @@ import sh.haven.core.data.repository.SshKeyRepository
 import sh.haven.core.ssh.ConnectionConfig
 import sh.haven.core.ssh.HostKeyAuthFailure
 import sh.haven.core.ssh.HostKeyResult
+import sh.haven.core.ssh.isSshNetworkError
 import sh.haven.core.ssh.HostKeyVerifier
 import sh.haven.core.ssh.KeyboardInteractiveChallenge
 import sh.haven.core.ssh.KeyboardInteractivePrompter
@@ -1654,13 +1655,7 @@ class ConnectionsViewModel @Inject constructor(
         sshProfileId: String,
     ) {
         val msg = e.message ?: ""
-        val isNetworkError = e is java.net.ConnectException ||
-            e is java.net.UnknownHostException ||
-            e is java.net.SocketTimeoutException ||
-            e is java.net.NoRouteToHostException ||
-            msg.contains("refused", ignoreCase = true) ||
-            msg.contains("timed out", ignoreCase = true) ||
-            msg.contains("unreachable", ignoreCase = true)
+        val isNetworkError = e.isSshNetworkError()
         val isAuthMessage = !isNetworkError && (
             msg.contains("Auth fail", ignoreCase = true) ||
             msg.contains("Auth cancel", ignoreCase = true) ||
@@ -2809,13 +2804,7 @@ class ConnectionsViewModel @Inject constructor(
                     sshSessionManager.removeSession(jid)
                 }
                 val msg = e.message ?: ""
-                val isNetworkError = e is java.net.ConnectException ||
-                    e is java.net.UnknownHostException ||
-                    e is java.net.SocketTimeoutException ||
-                    e is java.net.NoRouteToHostException ||
-                    msg.contains("refused", ignoreCase = true) ||
-                    msg.contains("timed out", ignoreCase = true) ||
-                    msg.contains("unreachable", ignoreCase = true)
+                val isNetworkError = e.isSshNetworkError()
                 val isAuthMessage = !isNetworkError && (
                     msg.contains("Auth fail", ignoreCase = true) ||
                     msg.contains("Auth cancel", ignoreCase = true) ||
