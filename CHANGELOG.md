@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.68.66
+
+🛠️ **One more F-Droid build fix, found by running their build rather than guessing at it** — the Wayland stack's symbol-stub generator sorts two lists and compares them, and the two tools disagree about ordering unless the locale is set to C. It exits with an error *after* the library has already been built, so the build fails holding a finished-looking file. Nobody had ever seen it, because since v5.68.41 the F-Droid build has died earlier and never reached this step. No change to the app itself.
+
 ## v5.68.65
 
 🛠️ **F-Droid builds, take two** — v5.68.62 was supposed to unblock F-Droid and didn't. The Wayland desktop stack needs a `wayland-scanner` that runs on the build machine and matches our vendored Wayland exactly; v5.68.62 started building one from our own source, but the cross build never actually *used* it — it went on quietly resolving the build image's copy, which is the very thing that was breaking. Once the now-unnecessary system package was dropped from the F-Droid recipe there was nothing left to mask it, and the build stopped at "wayland-scanner not found". Our scanner is now the one it finds, and an image that ships a different version can no longer hijack the lookup. No change to the app itself.
