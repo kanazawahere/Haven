@@ -34,13 +34,27 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # combined status endpoint aggregates required-check results for
-          # this SHA. "success" means every required check passed.
-          state=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status" --jq '.state' || echo "unknown")
-          echo "CI combined state for ${GITHUB_SHA:0:7}: ${state}"
-          if [ "$state" = "success" ]; then
+          # Ask the CI workflow directly whether it passed on THIS commit.
+          #
+          # Do NOT use /commits/{sha}/status: that endpoint aggregates the legacy
+          # Statuses API, and GitHub Actions publishes *check runs*, not statuses.
+          # This repo has zero statuses, so it answered "pending" for every commit
+          # ever tagged — meaning this job never once skipped the test re-run it
+          # exists to skip, and every release paid ~16 minutes for nothing.
+          #
+          # /commits/{sha}/check-runs is the check-run equivalent but includes this
+          # very workflow's own in-flight runs, so it can never be all-green either.
+          # Filtering the CI workflow's completed runs by head_sha asks exactly the
+          # question we mean: "did CI pass on this commit?"
+          conclusion=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${GITHUB_SHA}&status=completed" \
+            --jq '.workflow_runs[0].conclusion // "none"' 2>/dev/null || echo "unknown")
+          echo "CI conclusion for ${GITHUB_SHA:0:7}: ${conclusion}"
+          if [ "$conclusion" = "success" ]; then
             echo "passed=true" >> "$GITHUB_OUTPUT"
           else
+            # Fail safe: anything else (no CI run yet, failure, API trouble) runs
+            # the tests for real rather than shipping on an unverified commit.
             echo "passed=false" >> "$GITHUB_OUTPUT"
           fi
 
