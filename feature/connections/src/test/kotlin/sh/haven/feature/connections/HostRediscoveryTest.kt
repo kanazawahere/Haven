@@ -39,11 +39,10 @@ class HostRediscoveryTest {
         responders: Set<String> = emptySet(),
         keys: Map<String, KnownHostEntry> = emptyMap(),
     ): HostRediscovery = HostRediscovery(
-        context = mockk(relaxed = true),
         knownHostDao = dao,
         connectionRepository = repo,
     ).apply {
-        subnetBase = { "192.168.43" }
+        localBases = { setOf("192.168.43") }
         probe = { host, _, _ -> host in responders }
         keyScan = { host, _ -> keys[host] }
     }
@@ -73,23 +72,38 @@ class HostRediscoveryTest {
     }
 
     @Test
-    fun `scans the device's own subnet when the phone is the hotspot`() = runTest {
-        // #367: phone tethering to the comma. The phone's ACTIVE network is the
-        // upstream cellular link (a different /24), so subnetBase() points at the
-        // wrong subnet — but the device is still on its own /24, where its lease
-        // rotated. The device's /24 must be scanned regardless of subnetBase().
-        val dao = daoWithStored() // stored host is 192.168.43.5
+    fun `finds a device on the phone's hotspot after Android reassigns the subnet`() = runTest {
+        // #367 ground truth (ehoeve786): the phone is the DHCP server for the comma
+        // over its hotspot. Android hands the AP a fresh RANDOM subnet each session,
+        // so the device moved 10.235.30.225 -> 10.50.150.4 — a DIFFERENT /24. Neither
+        // its old /24 nor the phone's cellular default network is right; the device
+        // is on the phone's TETHER interface (10.50.150.1), which only interface
+        // enumeration exposes.
+        val storedOnOldSubnet = KnownHost(
+            id = 7, hostname = "10.235.30.225", port = 22,
+            keyType = "ssh-ed25519", publicKeyBase64 = "AAAAtheRightKey",
+            fingerprint = "SHA256:right", firstSeen = 1L,
+        )
+        val dao = mockk<KnownHostDao>(relaxed = true) {
+            coEvery { findByHostPort("10.235.30.225", 22) } returns storedOnOldSubnet
+        }
+        val commaProfile = profile.copy(host = "10.235.30.225")
         val repo = mockk<ConnectionRepository>(relaxed = true)
         val r = rediscovery(
             dao, repo,
-            responders = setOf("192.168.43.60"), // comma's new lease, on its own /24
-            keys = mapOf("192.168.43.60" to entry("192.168.43.60", "AAAAtheRightKey")),
+            responders = setOf("10.50.150.4"), // comma's new lease on the tether /24
+            keys = mapOf("10.50.150.4" to entry("10.50.150.4", "AAAAtheRightKey")),
         ).apply {
-            subnetBase = { "10.99.99" } // phone's active network — the cellular upstream
+            // The phone's interfaces: cellular (default) + the hotspot AP at 10.50.150.1.
+            // The old /24 (10.235.30) is gone — nothing there to find.
+            localBases = { setOf("100.72.14", "10.50.150") }
         }
 
-        assertEquals("192.168.43.60", r.rediscover(profile))
-        coVerify(exactly = 1) { repo.updateHost("p1", "192.168.43.60") }
+        assertEquals("10.50.150.4", r.rediscover(commaProfile))
+        coVerify(exactly = 1) { repo.updateHost("p1", "10.50.150.4") }
+        coVerify(exactly = 1) {
+            dao.upsert(match { it.hostname == "10.50.150.4" && it.publicKeyBase64 == "AAAAtheRightKey" })
+        }
     }
 
     @Test
@@ -116,7 +130,7 @@ class HostRediscoveryTest {
         }
         val repo = mockk<ConnectionRepository>(relaxed = true)
         val r = rediscovery(dao, repo, responders = setOf("192.168.43.23"))
-            .apply { subnetBase = { throw AssertionError("scan must not run without a stored key") } }
+            .apply { localBases = { throw AssertionError("scan must not run without a stored key") } }
 
         assertNull(r.rediscover(profile))
         coVerify(exactly = 0) { repo.updateHost(any(), any()) }

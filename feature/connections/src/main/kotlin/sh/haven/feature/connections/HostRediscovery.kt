@@ -1,11 +1,6 @@
 package sh.haven.feature.connections
 
-import android.annotation.SuppressLint
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.LinkProperties
 import android.util.Log
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -18,6 +13,7 @@ import sh.haven.core.ssh.KnownHostEntry
 import sh.haven.core.ssh.SshClient
 import java.net.Inet4Address
 import java.net.InetSocketAddress
+import java.net.NetworkInterface
 import java.net.Socket
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -39,15 +35,15 @@ import javax.inject.Singleton
  */
 @Singleton
 class HostRediscovery @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val knownHostDao: KnownHostDao,
     private val connectionRepository: ConnectionRepository,
 ) {
-    /** Test seams — the real implementations dial sockets. */
+    /** Test seams — the real implementations dial sockets / read interfaces. */
     internal var probe: (host: String, port: Int, timeoutMs: Int) -> Boolean = ::probePort
     internal var keyScan: (host: String, port: Int) -> KnownHostEntry? =
         { h, p -> SshClient.keyScan(h, p) }
-    internal var subnetBase: () -> String? = ::localSubnetBase
+    /** /24 bases of every private-IPv4 interface the phone has right now. */
+    internal var localBases: () -> Set<String> = ::localInterfaceBases
 
     /**
      * Returns the device's new address after persisting it, or null when
@@ -59,21 +55,25 @@ class HostRediscovery @Inject constructor(
         val stored = knownHostDao.findByHostPort(profile.host, profile.port)
             ?: return@withContext null
 
-        // Scan the union of two /24s:
-        //  - the device's OWN subnet (profile.host's /24): a DHCP lease rotates
-        //    within the subnet, so this is where a moved device still is. This is
-        //    the only base that's correct when the phone is the hotspot — its
-        //    active network is then the UPSTREAM (cellular), not the tether, so
-        //    subnetBase() alone scanned the wrong network and found nothing (#367).
-        //  - the phone's active-network /24: covers "phone and device both moved
-        //    to a new LAN", where the profile's stored /24 is now stale.
-        // Identical in the common case (device on the phone's LAN) — the set
-        // dedupes to one base.
+        // Which /24s to sweep. The device's new address is unknown, so scan every
+        // subnet the phone can reach a local device on:
+        //  - each of the phone's OWN interface /24s (localBases). This is the case
+        //    #367 needs: the phone is the DHCP server for the device over its
+        //    hotspot, and Android hands the AP a *fresh, random* subnet each
+        //    session (reporter: 10.235.30.x → 10.50.150.x), so the device is on
+        //    the phone's tether interface — NOT its old /24, and NOT the phone's
+        //    default network (the cellular uplink, which is what the old
+        //    activeNetwork-only scan wrongly swept).
+        //  - the device's last-known /24 (profile.host's /24): covers a genuine
+        //    within-subnet DHCP renewal on a normal router, where the phone may
+        //    not itself hold an address on that subnet.
+        // Deduped, so the common single-LAN case is one sweep.
         val bases = buildSet {
+            addAll(localBases())
             ipv4Base(profile.host)?.let { add(it) }
-            subnetBase()?.let { add(it) }
         }
         if (bases.isEmpty()) return@withContext null
+        Log.d(TAG, "rediscover ${profile.label}: scanning ${bases.size} subnet(s) $bases on :${profile.port}")
 
         val candidates = coroutineScope {
             bases.flatMap { base ->
@@ -125,21 +125,26 @@ class HostRediscovery @Inject constructor(
             (p[0] == 172 && p[1] in 16..31)
     }
 
-    // Same logic as NetworkDiscovery.getLocalSubnetBase/probePort — duplicated
-    // (~20 lines) rather than widening that UI-lifecycle class's API.
-    @SuppressLint("MissingPermission") // ACCESS_NETWORK_STATE declared in app manifest
-    private fun localSubnetBase(): String? = try {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val props: LinkProperties? = cm.activeNetwork?.let { cm.getLinkProperties(it) }
-        props?.linkAddresses
-            ?.map { it.address }
-            ?.filterIsInstance<Inet4Address>()
-            ?.firstOrNull { !it.isLoopbackAddress }
-            ?.hostAddress?.split(".")?.takeIf { it.size == 4 }
-            ?.let { "${it[0]}.${it[1]}.${it[2]}" }
+    /**
+     * The /24 base of every private-IPv4 address the phone currently holds on any
+     * up interface — Wi-Fi, and crucially the SoftAP/tether interface when the
+     * phone is running a hotspot (#367). `ConnectivityManager.activeNetwork` only
+     * ever names the single DEFAULT network (the internet uplink), so it can't see
+     * a tether the phone is the server for; `NetworkInterface` enumerates the
+     * kernel's netdevs directly and does. Loopback and non-RFC1918 addresses
+     * (e.g. carrier CGNAT) are excluded.
+     */
+    private fun localInterfaceBases(): Set<String> = try {
+        NetworkInterface.getNetworkInterfaces()?.asSequence().orEmpty()
+            .filter { runCatching { it.isUp && !it.isLoopback }.getOrDefault(false) }
+            .flatMap { it.inetAddresses.asSequence() }
+            .filterIsInstance<Inet4Address>()
+            .filter { !it.isLoopbackAddress && isPrivateIpv4(it.hostAddress.orEmpty()) }
+            .mapNotNull { ipv4Base(it.hostAddress.orEmpty()) }
+            .toSet()
     } catch (e: Exception) {
-        Log.e(TAG, "localSubnetBase failed", e)
-        null
+        Log.e(TAG, "localInterfaceBases failed", e)
+        emptySet()
     }
 
     private fun probePort(host: String, port: Int, timeoutMs: Int): Boolean = try {
