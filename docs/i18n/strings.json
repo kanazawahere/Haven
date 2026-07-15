@@ -12315,9 +12315,44 @@
      }
     },
     {
+     "name": "connections_section_btserial",
+     "en": "Bluetooth serial",
+     "comment": "Bluetooth serial (#406)",
+     "args": [],
+     "t": {}
+    },
+    {
+     "name": "connections_btserial_desc",
+     "en": "Connect to a paired Bluetooth-to-serial adapter (e.g. a switch or router console port).",
+     "comment": "Bluetooth serial (#406)",
+     "args": [],
+     "t": {}
+    },
+    {
+     "name": "connections_btserial_device",
+     "en": "Paired device",
+     "comment": "Bluetooth serial (#406)",
+     "args": [],
+     "t": {}
+    },
+    {
+     "name": "connections_btserial_no_devices",
+     "en": "No paired Bluetooth devices. Pair the adapter in Android Settings → Bluetooth first, then reopen this.",
+     "comment": "Bluetooth serial (#406)",
+     "args": [],
+     "t": {}
+    },
+    {
+     "name": "connections_btserial_permission",
+     "en": "Grant Bluetooth permission to list paired devices",
+     "comment": "Bluetooth serial (#406)",
+     "args": [],
+     "t": {}
+    },
+    {
      "name": "connections_section_cloud_storage",
      "en": "Cloud storage",
-     "comment": "Section headings in the connection edit dialog.",
+     "comment": "Bluetooth serial (#406)",
      "args": [],
      "t": {
       "ar": "التخزين السحابي",

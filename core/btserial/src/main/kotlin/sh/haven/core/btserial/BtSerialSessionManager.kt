@@ -37,6 +37,8 @@ class BtSerialSessionManager @Inject constructor(
         val deviceAddress: String = "",
         val secure: Boolean = true,
         val deviceName: String? = null,
+        /** Open RFCOMM link, set by [connectSession], consumed by [createTerminalSession]. */
+        val transport: BtSerialTransport? = null,
         val session: BtSerialSession? = null,
     ) {
         enum class Status { CONNECTING, CONNECTED, DISCONNECTED, ERROR }
@@ -87,17 +89,15 @@ class BtSerialSessionManager @Inject constructor(
     }
 
     /**
-     * Open the RFCOMM link (blocking, on IO) and start the terminal session,
-     * wiring device output to [onDataReceived]. Idempotent: returns the existing
-     * session if already created. Throws on connect failure (status → ERROR).
+     * Open the RFCOMM link (blocking, on IO). Sets status CONNECTED and stashes
+     * the transport for [createTerminalSession] to wrap. Throws on failure
+     * (status → ERROR). Mirrors EtSessionManager.connectSession.
      */
-    suspend fun createTerminalSession(
-        sessionId: String,
-        onDataReceived: (ByteArray, Int, Int) -> Unit,
-    ): BtSerialSession? {
-        val state = _sessions.value[sessionId] ?: return null
-        state.session?.let { return it }
-        if (state.deviceAddress.isEmpty()) return null
+    suspend fun connectSession(sessionId: String) {
+        val state = _sessions.value[sessionId]
+            ?: throw IllegalStateException("Session $sessionId not found")
+        if (state.transport != null || state.session != null) return
+        if (state.deviceAddress.isEmpty()) throw IllegalStateException("No device address for $sessionId")
 
         val transport = try {
             withContext(Dispatchers.IO) { openTransport(state.deviceAddress, state.secure) }
@@ -106,6 +106,28 @@ class BtSerialSessionManager @Inject constructor(
             updateStatus(sessionId, SessionState.Status.ERROR)
             throw e
         }
+        _sessions.update { map ->
+            val existing = map[sessionId] ?: return@update map
+            map + (sessionId to existing.copy(
+                status = SessionState.Status.CONNECTED,
+                deviceName = transport.remoteName,
+                transport = transport,
+            ))
+        }
+    }
+
+    /**
+     * Wrap the already-open transport ([connectSession] first) in a terminal
+     * session, wiring device output to [onDataReceived]. Non-suspend so the
+     * terminal syncSessions loop can call it. Idempotent.
+     */
+    fun createTerminalSession(
+        sessionId: String,
+        onDataReceived: (ByteArray, Int, Int) -> Unit,
+    ): BtSerialSession? {
+        val state = _sessions.value[sessionId] ?: return null
+        state.session?.let { return it }
+        val transport = state.transport ?: return null
 
         val session = BtSerialSession(
             sessionId = sessionId,
@@ -117,19 +139,14 @@ class BtSerialSessionManager @Inject constructor(
 
         _sessions.update { map ->
             val existing = map[sessionId] ?: return@update map
-            map + (sessionId to existing.copy(
-                status = SessionState.Status.CONNECTED,
-                deviceName = session.remoteName,
-                session = session,
-            ))
+            map + (sessionId to existing.copy(session = session))
         }
         return session
     }
 
     fun isReadyForTerminal(sessionId: String): Boolean {
         val s = _sessions.value[sessionId] ?: return false
-        return s.session == null && s.deviceAddress.isNotEmpty() &&
-            s.status != SessionState.Status.ERROR
+        return s.status == SessionState.Status.CONNECTED && s.session == null && s.transport != null
     }
 
     /** Detach the terminal without dropping the link. */
@@ -156,29 +173,29 @@ class BtSerialSessionManager @Inject constructor(
         session.sendInput(text.toByteArray(Charsets.UTF_8))
     }
 
+    // Close the terminal session if one exists (it owns the transport), else the
+    // bare transport opened by connectSession before a terminal was created.
+    private fun tearDown(state: SessionState) {
+        runCatching { state.session?.close() ?: state.transport?.close() }
+            .onFailure { Log.e(TAG, "tearDown failed for ${state.sessionId}", it) }
+    }
+
     fun removeSession(sessionId: String) {
         val state = _sessions.value[sessionId] ?: return
         _sessions.update { it - sessionId }
-        ioExecutor.execute {
-            runCatching { state.session?.close() }
-                .onFailure { Log.e(TAG, "tearDown failed for $sessionId", it) }
-        }
+        ioExecutor.execute { tearDown(state) }
     }
 
     fun removeAllSessionsForProfile(profileId: String) {
         val toRemove = _sessions.value.values.filter { it.profileId == profileId }
         _sessions.update { map -> map.filterValues { it.profileId != profileId } }
-        ioExecutor.execute {
-            toRemove.forEach { runCatching { it.session?.close() } }
-        }
+        ioExecutor.execute { toRemove.forEach { tearDown(it) } }
     }
 
     fun disconnectAll() {
         val snapshot = _sessions.value.values.toList()
         _sessions.update { emptyMap() }
-        ioExecutor.execute {
-            snapshot.forEach { runCatching { it.session?.close() } }
-        }
+        ioExecutor.execute { snapshot.forEach { tearDown(it) } }
     }
 
     fun getSessionsForProfile(profileId: String): List<SessionState> =

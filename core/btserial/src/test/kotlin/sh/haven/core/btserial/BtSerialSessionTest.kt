@@ -141,9 +141,12 @@ class BtSerialSessionTest {
         val id = mgr.registerSession("p1", "core-switch", deviceAddress = "AA:BB:CC:DD:EE:FF")
         assertEquals(BtSerialSessionManager.SessionState.Status.CONNECTING, mgr.sessions.value[id]!!.status)
 
+        mgr.connectSession(id) // opens the RFCOMM transport (blocking, on IO)
+        assertEquals(BtSerialSessionManager.SessionState.Status.CONNECTED, mgr.sessions.value[id]!!.status)
+        assertTrue(mgr.isReadyForTerminal(id))
+
         val session = mgr.createTerminalSession(id) { _, _, _ -> }
         assertTrue(session != null)
-        assertEquals(BtSerialSessionManager.SessionState.Status.CONNECTED, mgr.sessions.value[id]!!.status)
         assertTrue(mgr.isProfileConnected("p1"))
 
         mgr.sendInput(id, "show version\n")

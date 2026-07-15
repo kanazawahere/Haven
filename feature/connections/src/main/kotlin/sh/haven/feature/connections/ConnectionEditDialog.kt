@@ -73,6 +73,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
@@ -195,6 +197,7 @@ fun ConnectionEditDialog(
     // Transport dropdown maps to: connectionType + useMosh + useEternalTerminal
     val initialTransport = when {
         seed?.isLocal == true -> "LOCAL"
+        seed?.isBtSerial == true -> "BTSERIAL"
         seed?.isVnc == true -> "VNC"
         seed?.isRdp == true -> "RDP"
         seed?.isSpice == true -> "SPICE"
@@ -210,6 +213,7 @@ fun ConnectionEditDialog(
     // Derived connectionType for field visibility
     val connectionType = when (selectedTransport) {
         "LOCAL" -> "LOCAL"
+        "BTSERIAL" -> "BTSERIAL"
         "RETICULUM" -> "RETICULUM"
         "VNC" -> "VNC"
         "RDP" -> "RDP"
@@ -224,6 +228,8 @@ fun ConnectionEditDialog(
     var groupId by rememberSaveable { mutableStateOf(existing?.groupId) }
     var identityId by rememberSaveable { mutableStateOf(existing?.identityId) }
     var host by rememberSaveable { mutableStateOf(seed?.host ?: "") }
+    // Bluetooth-serial selected device MAC (#406); reuses `host` on save.
+    var btDevice by rememberSaveable { mutableStateOf(seed?.takeIf { it.isBtSerial }?.host ?: "") }
     var port by rememberSaveable {
         mutableStateOf(
             when {
@@ -996,6 +1002,7 @@ fun ConnectionEditDialog(
                     "MOSH" to "Mosh",
                     "ET" to "Eternal Terminal",
                     "LOCAL" to "Local Shell (PRoot)",
+                    "BTSERIAL" to "Bluetooth Serial",
                     "VNC" to "VNC (Desktop)",
                     "RDP" to "RDP (Desktop)",
                     "SPICE" to "SPICE (Desktop)",
@@ -1244,6 +1251,14 @@ fun ConnectionEditDialog(
                             }
                         }
                     }
+                } else if (connectionType == "BTSERIAL") {
+                    BtSerialDeviceField(
+                        selectedAddress = btDevice,
+                        onSelect = { address, name ->
+                            btDevice = address
+                            if (label.isBlank()) label = name
+                        },
+                    )
                 } else if (connectionType == "RCLONE") {
                     ConnectionSection(stringResource(R.string.connections_section_cloud_storage))
                     val providerOptions = listOf(
@@ -3111,6 +3126,7 @@ fun ConnectionEditDialog(
             ).isSuccess
             val canSave = knockOk && when (connectionType) {
                 "LOCAL" -> true // No host/auth needed
+                "BTSERIAL" -> btDevice.isNotBlank() // a paired device must be picked
                 "SSH" -> host.isNotBlank()
                 "VNC" -> host.isNotBlank() && tunnelComplete(vncSshForward, vncSshProfileId)
                 "RDP" -> host.isNotBlank() && rdpUsername.isNotBlank() && tunnelComplete(rdpSshForward, rdpSshProfileId)
@@ -3140,6 +3156,22 @@ fun ConnectionEditDialog(
                             connectionType = "LOCAL",
                             useAndroidShell = useAndroidShell,
                             prootDistroId = if (useAndroidShell) null else prootDistroId,
+                            colorTag = colorTag,
+                            groupId = groupId,
+                            identityId = identityId,
+                        )
+                    } else if (connectionType == "BTSERIAL") {
+                        // The paired device MAC lives in `host` (no new column).
+                        (existing ?: ConnectionProfile(
+                            label = label,
+                            host = btDevice,
+                            username = "",
+                        )).copy(
+                            label = label.ifBlank { "Bluetooth: $btDevice" },
+                            host = btDevice,
+                            port = 0,
+                            username = "",
+                            connectionType = "BTSERIAL",
                             colorTag = colorTag,
                             groupId = groupId,
                             identityId = identityId,
@@ -4011,6 +4043,96 @@ private fun AuthMethodsEditor(
                         },
                     )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Paired-Bluetooth-device picker for a BTSERIAL connection (#406). Lists bonded
+ * Classic devices (the SPP driver connects only to already-paired ones); requests
+ * BLUETOOTH_CONNECT on demand (Android 12+). Reports (address, name) on selection.
+ */
+@android.annotation.SuppressLint("MissingPermission") // bonded-device reads are guarded by `granted`
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BtSerialDeviceField(
+    selectedAddress: String,
+    onSelect: (address: String, name: String) -> Unit,
+) {
+    val context = LocalContext.current
+    val needsRuntimePermission = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
+
+    fun hasPermission(): Boolean = !needsRuntimePermission ||
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.BLUETOOTH_CONNECT,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    var granted by remember { mutableStateOf(hasPermission()) }
+
+    fun bondedDevices(): List<Pair<String, String>> {
+        if (!granted) return emptyList()
+        val adapter = (context.getSystemService(android.content.Context.BLUETOOTH_SERVICE)
+            as? android.bluetooth.BluetoothManager)?.adapter ?: return emptyList()
+        return runCatching {
+            adapter.bondedDevices.orEmpty().map { it.address to (it.name ?: it.address) }
+        }.getOrDefault(emptyList())
+    }
+
+    var devices by remember { mutableStateOf(bondedDevices()) }
+    val permLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { ok ->
+        granted = ok
+        if (ok) devices = bondedDevices()
+    }
+
+    ConnectionSection(stringResource(R.string.connections_section_btserial))
+    Text(
+        stringResource(R.string.connections_btserial_desc),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(8.dp))
+
+    if (!granted) {
+        OutlinedButton(onClick = { permLauncher.launch(android.Manifest.permission.BLUETOOTH_CONNECT) }) {
+            Text(stringResource(R.string.connections_btserial_permission))
+        }
+        return
+    }
+    if (devices.isEmpty()) {
+        Text(
+            stringResource(R.string.connections_btserial_no_devices),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
+
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = devices.firstOrNull { it.first == selectedAddress }
+        ?.let { "${it.second} (${it.first})" } ?: ""
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+        OutlinedTextField(
+            value = selectedLabel,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.connections_btserial_device)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            devices.forEach { (address, name) ->
+                DropdownMenuItem(
+                    text = { Text("$name  ($address)") },
+                    onClick = {
+                        onSelect(address, name)
+                        expanded = false
+                    },
+                )
             }
         }
     }
