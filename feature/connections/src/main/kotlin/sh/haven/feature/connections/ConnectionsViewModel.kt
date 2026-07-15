@@ -230,6 +230,27 @@ class ConnectionsViewModel @Inject constructor(
     private val pendingVerboseLogs = mutableMapOf<String, String>()
 
     init {
+        // Log Bluetooth-serial link drops to the connection log (#406), so a user
+        // whose adapter goes out of range sees a DISCONNECTED entry they can send,
+        // not silence. Watches for a session leaving CONNECTED on its own.
+        viewModelScope.launch {
+            val wasConnected = mutableSetOf<String>()
+            btSerialSessionManager.sessions.collect { map ->
+                map.values.forEach { s ->
+                    val connected = s.status == sh.haven.core.btserial.BtSerialSessionManager.SessionState.Status.CONNECTED
+                    if (connected) {
+                        wasConnected += s.sessionId
+                    } else if (s.sessionId in wasConnected) {
+                        wasConnected -= s.sessionId
+                        connectionLogRepository.logEvent(
+                            s.profileId,
+                            ConnectionLog.Status.DISCONNECTED,
+                            details = "Bluetooth serial link to ${s.deviceAddress} dropped",
+                        )
+                    }
+                }
+            }
+        }
         // Agent-driven connect: MCP `connect_profile` tool posts here.
         // Look up the profile and dispatch through the unified connect()
         // entry so route-through, stored passwords, and key auth all
@@ -2574,25 +2595,64 @@ class ConnectionsViewModel @Inject constructor(
             }
             _connectingProfileId.value = profile.id
             _error.value = null
+            val addr = profile.btDeviceAddress
+            val startedAt = System.currentTimeMillis()
             val sessionId = btSerialSessionManager.registerSession(
                 profileId = profile.id,
                 label = profile.label,
-                deviceAddress = profile.btDeviceAddress,
+                deviceAddress = addr,
             )
             try {
                 btSerialSessionManager.connectSession(sessionId) // opens RFCOMM (blocking, on IO)
                 repository.markConnected(profile.id)
-                connectionLogRepository.logEvent(profile.id, ConnectionLog.Status.CONNECTED)
+                connectionLogRepository.logEvent(
+                    profile.id,
+                    ConnectionLog.Status.CONNECTED,
+                    durationMs = System.currentTimeMillis() - startedAt,
+                    details = "Bluetooth serial (SPP/RFCOMM) link up to $addr",
+                )
                 startForegroundServiceIfNeeded()
                 _navigateToTerminal.value = profile.id
             } catch (e: Exception) {
-                Log.e(TAG, "connectBtSerial failed: ${e.message}", e)
-                connectionLogRepository.logEvent(profile.id, ConnectionLog.Status.FAILED, details = e.message)
+                val reason = btSerialFailureHint(e)
+                Log.e(TAG, "connectBtSerial failed: $reason", e)
+                connectionLogRepository.logEvent(
+                    profile.id,
+                    ConnectionLog.Status.FAILED,
+                    durationMs = System.currentTimeMillis() - startedAt,
+                    details = "Bluetooth serial connect to $addr failed: $reason",
+                )
                 btSerialSessionManager.removeSession(sessionId)
-                _error.value = e.message ?: "Bluetooth serial connection failed"
+                _error.value = reason
             } finally {
                 _connectingProfileId.value = null
             }
+        }
+    }
+
+    /**
+     * Turn a raw RFCOMM connect exception into something a user can act on, so the
+     * connection log (Settings → connection log, exportable) is self-diagnosable
+     * rather than showing an opaque "read failed" (#406).
+     */
+    private fun btSerialFailureHint(e: Exception): String {
+        val msg = e.message ?: e.javaClass.simpleName
+        return when {
+            e is SecurityException || msg.contains("BLUETOOTH_CONNECT", ignoreCase = true) ->
+                "Bluetooth permission not granted — open this connection's editor and grant it."
+            msg.contains("socket might closed", ignoreCase = true) ||
+                msg.contains("read ret: -1", ignoreCase = true) ||
+                msg.contains("timeout", ignoreCase = true) ->
+                "the device didn't answer — is the adapter powered on and in range? ($msg)"
+            msg.contains("Service discovery failed", ignoreCase = true) ->
+                "the device isn't offering a Bluetooth serial (SPP) service ($msg)"
+            msg.contains("refused", ignoreCase = true) ||
+                msg.contains("host is down", ignoreCase = true) ||
+                msg.contains("unreachable", ignoreCase = true) ->
+                "the device is unreachable ($msg)"
+            msg.contains("Bluetooth adapter", ignoreCase = true) ->
+                "no Bluetooth adapter on this phone"
+            else -> msg
         }
     }
 
