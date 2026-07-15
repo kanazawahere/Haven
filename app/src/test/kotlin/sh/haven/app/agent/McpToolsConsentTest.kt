@@ -496,7 +496,7 @@ class McpToolsConsentTest {
         val sections = listOf(
             Section("connections", "Connections & profiles", 9,
                 "The saved SSH/SFTP/RDP/VNC/… connection profiles and their live connect/disconnect state.",
-                listOf("connection", "connect_profile", "disconnect_profile", "run_command")),
+                listOf("connection", "connect_profile", "disconnect_profile", "run_command", "bluetooth")),
             Section("terminal", "Terminal, selection & sessions", 8,
                 "Reading and driving terminal sessions: input, scrollback, text selection, snippets, and workspace layouts.",
                 listOf("terminal", "selection", "snippet", "list_sessions", "auth_prompt", "session_picker", "workspace", "compose", "open_local_shell")),

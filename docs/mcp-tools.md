@@ -43,11 +43,11 @@ consent level:
 
 - **asks every call** — side-effectful or sensitive; a consent sheet describing the specific action on every call (67 tools).
 - **asks once per session** — reversible actions and screen-reading; prompts the first time each session, then proceeds (47 tools).
-- **no per-call prompt** — read-only queries and tap-equivalent UI actions; still behind the endpoint being enabled and the client paired (80 tools).
+- **no per-call prompt** — read-only queries and tap-equivalent UI actions; still behind the endpoint being enabled and the client paired (81 tools).
 
 ## Sections
 
-- [**Connections & profiles**](#sec-connections) — 8 tools
+- [**Connections & profiles**](#sec-connections) — 9 tools
 - [**Terminal, selection & sessions**](#sec-terminal) — 26 tools
 - [**Files, media & clipboard**](#sec-files) — 19 tools
 - [**Cloud storage (rclone)**](#sec-rclone) — 15 tools
@@ -61,7 +61,7 @@ consent level:
 
 <a id="sec-connections"></a>
 
-## Connections & profiles (8)
+## Connections & profiles (9)
 
 The saved SSH/SFTP/RDP/VNC/… connection profiles and their live connect/disconnect state.
 
@@ -78,9 +78,9 @@ Initiate a connection for a saved profile via the same code path a UI tap uses (
 <details markdown="1">
 <summary><code>create_connection</code> · asks every call</summary>
 
-Create a saved connection profile. Supports connectionType=SSH, SMB, VNC, RDP, SPICE, EMAIL. SSH-family fields: username (required), password (optional, stored), keyId (optional — references list_ssh_keys), ignoreSavedKeys (force password-only auth, never offer saved keys), useMosh (turn an SSH profile into a Mosh profile), sessionManager (optional: TMUX | ZELLIJ | SCREEN | BYOBU — attach through that multiplexer; omit for a plain shell). SMB: smbShare (required), username + password, smbDomain. VNC: vncUsername, vncPassword, vncPort, and vncSshForward + vncSshProfileId to tunnel VNC through a saved SSH profile. RDP: rdpUsername (required), rdpPassword, rdpDomain, rdpPort. SPICE: spicePassword (optional ticket — no username/domain), spicePort (default 5900), and spiceSshForward + spiceSshProfileId to tunnel SPICE through a saved SSH profile. EMAIL: emailProvider ("imap" default, or "proton"); username = the email address; password = the account/app-password; for IMAP set emailServer (required) + emailPort (993) + emailSmtpPort (465) + emailTls (true), plus emailSmtpServer when the SMTP host differs (e.g. smtp.gmail.com); for Proton add emailMailboxPassword if two-password mode. EMAIL host is optional (the tunnel-ingress/bastion SPA/knock guards), not the mail server. The new profile id is returned for follow-up calls (set_profile_routing, connect_profile). For Reticulum / rclone / local create the profile in the UI — those paths need OAuth / destination-hash flows the agent can't drive.
+Create a saved connection profile. Supports connectionType=SSH, SMB, VNC, RDP, SPICE, EMAIL. SSH-family fields: username (required), password (optional, stored), keyId (optional — references list_ssh_keys), ignoreSavedKeys (force password-only auth, never offer saved keys), useMosh (turn an SSH profile into a Mosh profile), sessionManager (optional: TMUX | ZELLIJ | SCREEN | BYOBU — attach through that multiplexer; omit for a plain shell). SMB: smbShare (required), username + password, smbDomain. VNC: vncUsername, vncPassword, vncPort, and vncSshForward + vncSshProfileId to tunnel VNC through a saved SSH profile. RDP: rdpUsername (required), rdpPassword, rdpDomain, rdpPort. SPICE: spicePassword (optional ticket — no username/domain), spicePort (default 5900), and spiceSshForward + spiceSshProfileId to tunnel SPICE through a saved SSH profile. EMAIL: emailProvider ("imap" default, or "proton"); username = the email address; password = the account/app-password; for IMAP set emailServer (required) + emailPort (993) + emailSmtpPort (465) + emailTls (true), plus emailSmtpServer when the SMTP host differs (e.g. smtp.gmail.com); for Proton add emailMailboxPassword if two-password mode. EMAIL host is optional (the tunnel-ingress/bastion SPA/knock guards), not the mail server. BTSERIAL (Bluetooth-serial console, #406): host = the paired device's Bluetooth MAC (from list_bluetooth_devices); no other fields. The device must already be paired in Android Settings. The new profile id is returned for follow-up calls (set_profile_routing, connect_profile). For Reticulum / rclone / local create the profile in the UI — those paths need OAuth / destination-hash flows the agent can't drive.
 
-- `connectionType` (string, required) — SSH | SMB | VNC | RDP | SPICE | EMAIL.
+- `connectionType` (string, required) — SSH | SMB | VNC | RDP | SPICE | EMAIL | BTSERIAL.
 - `host` (string, required) — Target hostname or IP. For EMAIL this is the optional tunnel ingress/bastion (SPA/knock target), NOT the mail server — leave blank for a direct IMAP connection.
 - `label` (string, required) — User-facing label.
 - `authMethods` (string[]) — SSH only (#166): ordered multi-factor auth methods attempted in one connect, for servers requiring a chain like publickey,password. Each element is a token: "PASSWORD", "KEY" (any saved key), "KEY:<keyId>", "KEYBOARD_INTERACTIVE", or "TOTP:<id>" (auto-fill an OATH-TOTP code from list_totp_secrets, #178). Omit for the single-method default derived from keyId/password.
@@ -144,6 +144,13 @@ Read the most recent ConnectionLog entries for a profile. Use this to verify pos
 
 - `profileId` (string, required) — Profile id from list_connections.
 - `limit` (integer) — Max entries to return (default 10, max 100).
+
+</details>
+
+<details markdown="1">
+<summary><code>list_bluetooth_devices</code> · no per-call prompt</summary>
+
+List Bluetooth Classic devices already paired (bonded) with the phone — { address, name } each. Use the address as `host` when creating a BTSERIAL (Bluetooth-serial console) profile with create_connection (#406). Only paired devices appear; pair a new BT-to-serial adapter in Android Settings → Bluetooth first. Returns an error hint if BLUETOOTH_CONNECT hasn't been granted (open the app's Bluetooth-serial connection editor once to grant it).
 
 </details>
 
