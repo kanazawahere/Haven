@@ -1038,6 +1038,8 @@ class TerminalViewModel @Inject constructor(
                     etSessions[tab.sessionId]?.etSession == null
                 "LOCAL" -> tab.sessionId !in activeLocalIds ||
                     localSessions[tab.sessionId]?.localSession == null
+                "BTSERIAL" -> tab.sessionId !in activeBtIds ||
+                    btSerialSessions[tab.sessionId]?.session == null
                 else -> true
             }
         }
@@ -1811,7 +1813,7 @@ class TerminalViewModel @Inject constructor(
         // tab presence alone tore those out immediately and broke
         // every snapshot-style MCP tool against agent-owned shells.
         val knownSessionIds = sshSessions.keys + rnsSessions.keys +
-            moshSessions.keys + etSessions.keys + localSessions.keys
+            moshSessions.keys + etSessions.keys + btSerialSessions.keys + localSessions.keys
         for (id in terminalSessionRegistry.sessions.value.keys.toList()) {
             if (id !in knownSessionIds) terminalSessionRegistry.unregister(id)
         }
