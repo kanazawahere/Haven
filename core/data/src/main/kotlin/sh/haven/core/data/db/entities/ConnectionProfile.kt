@@ -473,6 +473,18 @@ data class ConnectionProfile(
     val isBtSerial: Boolean get() = connectionType == "BTSERIAL"
     /** The bonded Bluetooth device address for a [isBtSerial] profile. */
     val btDeviceAddress: String get() = host
+
+    // USB-serial console (#408). Same no-new-column trick as BTSERIAL: the
+    // `vendorId:productId` device key lives in [host] and the baud rate in
+    // [port], so no Room schema bump. Line format defaults to 8N1, which covers
+    // Arduino / Duet3D G-code / ESP32. A byte-stream terminal — isTerminal
+    // below already covers it.
+    val isUsbSerial: Boolean get() = connectionType == "USBSERIAL"
+    /** `vendorId:productId` hex, e.g. `1a86:7523`, matched against attached devices at connect. */
+    val usbDeviceKey: String get() = host
+    /** Serial baud rate; 115200 when unset. */
+    val usbBaudRate: Int get() = if (port > 0) port else 115200
+
     val isDesktop: Boolean get() = isVnc || isRdp || isSpice
     val isTerminal: Boolean get() = !isDesktop && !isSmb && !isRclone && !isEmail
 }
