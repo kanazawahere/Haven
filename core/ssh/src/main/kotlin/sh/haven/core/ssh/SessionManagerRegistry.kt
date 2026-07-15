@@ -82,7 +82,7 @@ class SessionManagerRegistry @Inject constructor(
         // owned the id; anything else is a real diagnosis from the owner.
         throw IllegalStateException(
             errors.firstOrNull { !it.startsWith("No ") }
-                ?: "No terminal session $sessionId on any transport (SSH, local, mosh, ET, Reticulum)",
+                ?: "No terminal session $sessionId on any transport (SSH, local, mosh, ET, Reticulum, Bluetooth-serial)",
         )
     }
 
