@@ -1,6 +1,7 @@
 package sh.haven.core.bleserial
 
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
@@ -26,18 +27,60 @@ private const val TAG = "BleSerialConnector"
  */
 class AndroidBleSerialConnector(private val context: Context) {
 
-    @SuppressLint("MissingPermission") // BLUETOOTH_CONNECT gated at the call site
+    @SuppressLint("MissingPermission") // BLUETOOTH_SCAN/CONNECT gated at the call site
     fun connect(address: String, params: BleSerialParams = BleSerialParams()): BleSerialLink {
         val adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
             ?: throw IllegalStateException("This device has no Bluetooth adapter")
         if (!adapter.isEnabled) throw IllegalStateException("Bluetooth is off")
-        val device = adapter.getRemoteDevice(address)
+        // Scan for the exact MAC first, then connect to the *scanned* device.
+        // `getRemoteDevice(String)`/`getRemoteLeDevice` don't reliably connect a
+        // never-seen random-static address (nRF boards, HM-10) on OEM stacks —
+        // the direct connect just times out (both were tried in the device test).
+        // A ScanResult's device carries the correct address type and primes the
+        // stack, and finding it also proves the peripheral is advertising.
+        val device = scanForDevice(adapter, address, SCAN_TIMEOUT_MS)
         val link = AndroidBleSerialLink(context, params)
         link.connectBlocking(device, CONNECT_TIMEOUT_MS)
         return link
     }
 
+    @SuppressLint("MissingPermission")
+    private fun scanForDevice(
+        adapter: BluetoothAdapter,
+        address: String,
+        timeoutMs: Long,
+    ): BluetoothDevice {
+        val scanner = adapter.bluetoothLeScanner
+            ?: throw IllegalStateException("BLE scanning unavailable")
+        val latch = CountDownLatch(1)
+        val found = java.util.concurrent.atomic.AtomicReference<BluetoothDevice?>()
+        val callback = object : android.bluetooth.le.ScanCallback() {
+            override fun onScanResult(callbackType: Int, result: android.bluetooth.le.ScanResult) {
+                if (result.device.address.equals(address, ignoreCase = true)) {
+                    found.set(result.device)
+                    latch.countDown()
+                }
+            }
+        }
+        val filter = android.bluetooth.le.ScanFilter.Builder().setDeviceAddress(address).build()
+        val settings = android.bluetooth.le.ScanSettings.Builder()
+            .setScanMode(android.bluetooth.le.ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .build()
+        scanner.startScan(listOf(filter), settings, callback)
+        try {
+            if (!latch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
+                throw IllegalStateException(
+                    "BLE peripheral $address not found — is it powered on, in range, and advertising?",
+                )
+            }
+        } finally {
+            runCatching { scanner.stopScan(callback) }
+        }
+        return found.get() ?: throw IllegalStateException("BLE peripheral $address not found")
+    }
+
     private companion object {
+        const val SCAN_TIMEOUT_MS = 12_000L
         const val CONNECT_TIMEOUT_MS = 20_000L
     }
 }
