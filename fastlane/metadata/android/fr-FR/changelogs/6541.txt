@@ -1,0 +1,2 @@
+• Correctif : la fermeture d'un onglet de terminal série Bluetooth, BLE ou USB fonctionne enfin – auparavant l'onglet se rouvrait silencieusement. La déconnexion depuis l'écran Connexions est aussi corrigée.
+• Nouveau : reliez un périphérique série Bluetooth/BLE/USB à un port TCP local via l'agent (MCP) ; un tunnel ou une redirection de port l'atteint à distance pendant que le terminal continue de fonctionner.

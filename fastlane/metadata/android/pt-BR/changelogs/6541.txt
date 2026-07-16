@@ -1,0 +1,2 @@
+• Correção: fechar uma aba de terminal serial Bluetooth, BLE ou USB agora a fecha de fato; antes a aba reabria silenciosamente. Desconectar pela tela de Conexões também foi corrigido.
+• Novo: faça a ponte de um dispositivo serial Bluetooth/BLE/USB para uma porta TCP local via o agente (MCP), para que um túnel ou encaminhamento de porta o alcance remotamente enquanto o terminal continua funcionando.

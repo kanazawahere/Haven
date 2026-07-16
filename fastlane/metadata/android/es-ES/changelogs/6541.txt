@@ -1,0 +1,2 @@
+• Corrección: cerrar una pestaña de terminal serie Bluetooth, BLE o USB ahora la cierra de verdad; antes la pestaña se reabría en silencio. También se corrige desconectar desde la pantalla Conexiones.
+• Nuevo: conecta un dispositivo serie Bluetooth/BLE/USB a un puerto TCP local mediante el agente (MCP), para que un túnel o una redirección de puerto lo alcance en remoto mientras el terminal sigue funcionando.

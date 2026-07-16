@@ -1,0 +1,2 @@
+• Fehlerbehebung: Ein Bluetooth-, BLE- oder USB-Serial-Terminal-Tab lässt sich jetzt wirklich schließen – vorher öffnete er sich still wieder. Auch das Trennen über den Verbindungsbildschirm funktioniert nun.
+• Neu: Ein Bluetooth-/BLE-/USB-Serial-Gerät lässt sich über den Agenten (MCP) an einen lokalen TCP-Port brücken, sodass ein Tunnel oder eine Portweiterleitung es außerhalb des Telefons erreicht, während das Terminal weiterläuft.
