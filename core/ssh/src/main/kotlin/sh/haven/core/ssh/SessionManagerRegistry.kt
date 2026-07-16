@@ -2,6 +2,7 @@ package sh.haven.core.ssh
 
 import sh.haven.core.bleserial.BleSerialSessionManager
 import sh.haven.core.btserial.BtSerialSessionManager
+import sh.haven.core.usbserial.UsbSerialSessionManager
 import sh.haven.core.et.EtSessionManager
 import sh.haven.core.local.LocalSessionManager
 import sh.haven.core.mail.MailSessionManager
@@ -28,6 +29,7 @@ class SessionManagerRegistry @Inject constructor(
     private val et: EtSessionManager,
     private val btSerial: BtSerialSessionManager,
     private val bleSerial: BleSerialSessionManager,
+    private val usbSerial: UsbSerialSessionManager,
     private val smb: SmbSessionManager,
     private val local: LocalSessionManager,
     private val rdp: RdpSessionManager,
@@ -49,6 +51,7 @@ class SessionManagerRegistry @Inject constructor(
         et.removeAllSessionsForProfile(profileId)
         btSerial.removeAllSessionsForProfile(profileId)
         bleSerial.removeAllSessionsForProfile(profileId)
+        usbSerial.removeAllSessionsForProfile(profileId)
         smb.removeAllSessionsForProfile(profileId)
         local.removeAllSessionsForProfile(profileId)
         rdp.removeAllSessionsForProfile(profileId)
@@ -71,7 +74,7 @@ class SessionManagerRegistry @Inject constructor(
         val errors = mutableListOf<String>()
         val attempts = listOf<(String, String) -> Unit>(
             ssh::sendInput, local::sendInput, mosh::sendInput, et::sendInput, reticulum::sendInput,
-            btSerial::sendInput, bleSerial::sendInput,
+            btSerial::sendInput, bleSerial::sendInput, usbSerial::sendInput,
         )
         for (attempt in attempts) {
             try {
@@ -85,7 +88,7 @@ class SessionManagerRegistry @Inject constructor(
         // owned the id; anything else is a real diagnosis from the owner.
         throw IllegalStateException(
             errors.firstOrNull { !it.startsWith("No ") }
-                ?: "No terminal session $sessionId on any transport (SSH, local, mosh, ET, Reticulum, Bluetooth-serial, BLE-serial)",
+                ?: "No terminal session $sessionId on any transport (SSH, local, mosh, ET, Reticulum, Bluetooth-serial, BLE-serial, USB-serial)",
         )
     }
 
@@ -103,6 +106,7 @@ class SessionManagerRegistry @Inject constructor(
             et.activeSessions.isNotEmpty() ||
             btSerial.activeSessions.isNotEmpty() ||
             bleSerial.activeSessions.isNotEmpty() ||
+            usbSerial.activeSessions.isNotEmpty() ||
             local.activeSessions.isNotEmpty() ||
             rdp.activeSessions.isNotEmpty() ||
             smb.activeSessions.isNotEmpty() ||
@@ -121,6 +125,7 @@ class SessionManagerRegistry @Inject constructor(
             et.sessions.value.values.map { it.toSession() } +
             btSerial.sessions.value.values.map { it.toSession() } +
             bleSerial.sessions.value.values.map { it.toSession() } +
+            usbSerial.sessions.value.values.map { it.toSession() } +
             smb.sessions.value.values.map { it.toSession() } +
             local.sessions.value.values.map { it.toSession() } +
             rdp.sessions.value.values.map { it.toSession() } +
@@ -162,6 +167,9 @@ private fun BtSerialSessionManager.SessionState.toSession() =
 
 private fun BleSerialSessionManager.SessionState.toSession() =
     UnifiedSession(sessionId, profileId, label, mapStatus(status.name), Transport.BLESERIAL)
+
+private fun UsbSerialSessionManager.SessionState.toSession() =
+    UnifiedSession(sessionId, profileId, label, mapStatus(status.name), Transport.USBSERIAL)
 
 private fun ReticulumSessionManager.SessionState.toSession() =
     UnifiedSession(sessionId, profileId, label, mapStatus(status.name), Transport.RETICULUM)

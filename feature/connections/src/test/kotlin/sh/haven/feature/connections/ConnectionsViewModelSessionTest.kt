@@ -122,6 +122,7 @@ class ConnectionsViewModelSessionTest {
             et = etSessionManager,
             btSerial = mockk(relaxed = true),
             bleSerial = mockk(relaxed = true),
+            usbSerial = mockk(relaxed = true),
             smb = smbSessionManager,
             local = localSessionManager,
             rdp = rdpSessionManager,
