@@ -41,6 +41,15 @@ class AndroidUsbSerialConnector(private val usbManager: UsbManager) {
                 stopBitsConst(params.stopBits),
                 parityConst(params.parity),
             )
+            // Assert DTR (and RTS) on open, exactly as a hardware terminal
+            // (PuTTY, screen, minicom) does. Many CDC-ACM devices gate ALL data
+            // flow on DTR: the nRF USB-CDC stack returns NRF_ERROR_INVALID_STATE
+            // from its write until DTR is set, and Arduino `while (!Serial)`
+            // sketches never start. Without this the port opens but no bytes
+            // move in either direction. Best-effort — some drivers/chipsets do
+            // not implement modem-control lines and throw here.
+            runCatching { port.setDTR(true) }
+            runCatching { port.setRTS(true) }
         } catch (e: Exception) {
             runCatching { port.close() }
             runCatching { connection.close() }

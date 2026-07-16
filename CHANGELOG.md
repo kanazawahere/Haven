@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.70.0
+
+🔌 **USB-serial devices that gate on DTR now work** — Haven now raises the DTR and RTS lines when it opens a USB-serial connection, exactly as a desktop terminal (PuTTY, screen, minicom) does. Some devices stay silent — sending and receiving nothing — until the terminal asserts DTR: many Arduino sketches that wait on `while (!Serial)`, and boards that only start streaming once a client "opens" the port. Verified end-to-end against a USB-CDC device. (#408)
+
 ## v5.69.0
 
 🔌 **USB-serial terminal connections** — plug a USB-serial device into the phone — an Arduino, a Duet3D G-code board, an ESP32, or a USB-to-TTL adapter — and get a full terminal, the same as SSH, Mosh or the Bluetooth-serial console. Add one from the connection editor, pick the attached device and a baud rate, and connect; Android asks for USB permission on the first connect. Works with the common adapter chipsets (CDC-ACM, CH34x, FTDI, CP21xx, Prolific). (#408)
