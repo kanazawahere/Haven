@@ -398,6 +398,11 @@
     <string name="connections_btserial_device">Paired device</string>
     <string name="connections_btserial_no_devices">No paired Bluetooth devices. Pair the adapter in Android Settings → Bluetooth first, then reopen this.</string>
     <string name="connections_btserial_permission">Grant Bluetooth permission to list paired devices</string>
+    <string name="connections_section_usbserial">USB serial</string>
+    <string name="connections_usbserial_desc">Connect to a plugged-in USB-serial adapter — an Arduino, a Duet3D G-code board, an ESP32 or a USB-to-TTL cable.</string>
+    <string name="connections_usbserial_device">USB device</string>
+    <string name="connections_usbserial_no_devices">No USB-serial adapter detected. Plug one in, then reopen this.</string>
+    <string name="connections_usbserial_baud">Baud rate</string>
     <string name="connections_section_cloud_storage">Cloud storage</string>
     <!-- Import rclone.conf (#251) -->
     <string name="rclone_import_title">Import rclone remotes</string>

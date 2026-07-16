@@ -198,6 +198,7 @@ fun ConnectionEditDialog(
     val initialTransport = when {
         seed?.isLocal == true -> "LOCAL"
         seed?.isBtSerial == true -> "BTSERIAL"
+        seed?.isUsbSerial == true -> "USBSERIAL"
         seed?.isVnc == true -> "VNC"
         seed?.isRdp == true -> "RDP"
         seed?.isSpice == true -> "SPICE"
@@ -214,6 +215,7 @@ fun ConnectionEditDialog(
     val connectionType = when (selectedTransport) {
         "LOCAL" -> "LOCAL"
         "BTSERIAL" -> "BTSERIAL"
+        "USBSERIAL" -> "USBSERIAL"
         "RETICULUM" -> "RETICULUM"
         "VNC" -> "VNC"
         "RDP" -> "RDP"
@@ -230,6 +232,9 @@ fun ConnectionEditDialog(
     var host by rememberSaveable { mutableStateOf(seed?.host ?: "") }
     // Bluetooth-serial selected device MAC (#406); reuses `host` on save.
     var btDevice by rememberSaveable { mutableStateOf(seed?.takeIf { it.isBtSerial }?.host ?: "") }
+    // USB-serial selected device vid:pid and baud (#408); reuse `host`/`port` on save.
+    var usbDevice by rememberSaveable { mutableStateOf(seed?.takeIf { it.isUsbSerial }?.host ?: "") }
+    var usbBaud by rememberSaveable { mutableStateOf((seed?.takeIf { it.isUsbSerial }?.usbBaudRate ?: 115200).toString()) }
     var port by rememberSaveable {
         mutableStateOf(
             when {
@@ -1003,6 +1008,7 @@ fun ConnectionEditDialog(
                     "ET" to "Eternal Terminal",
                     "LOCAL" to "Local Shell (PRoot)",
                     "BTSERIAL" to "Bluetooth Serial",
+                    "USBSERIAL" to "USB Serial",
                     "VNC" to "VNC (Desktop)",
                     "RDP" to "RDP (Desktop)",
                     "SPICE" to "SPICE (Desktop)",
@@ -1258,6 +1264,16 @@ fun ConnectionEditDialog(
                             btDevice = address
                             if (label.isBlank()) label = name
                         },
+                    )
+                } else if (connectionType == "USBSERIAL") {
+                    UsbSerialDeviceField(
+                        selectedKey = usbDevice,
+                        baud = usbBaud,
+                        onSelectDevice = { key, name ->
+                            usbDevice = key
+                            if (label.isBlank()) label = name
+                        },
+                        onBaudChange = { usbBaud = it },
                     )
                 } else if (connectionType == "RCLONE") {
                     ConnectionSection(stringResource(R.string.connections_section_cloud_storage))
@@ -3127,6 +3143,7 @@ fun ConnectionEditDialog(
             val canSave = knockOk && when (connectionType) {
                 "LOCAL" -> true // No host/auth needed
                 "BTSERIAL" -> btDevice.isNotBlank() // a paired device must be picked
+                "USBSERIAL" -> usbDevice.isNotBlank() && (usbBaud.toIntOrNull() ?: 0) > 0
                 "SSH" -> host.isNotBlank()
                 "VNC" -> host.isNotBlank() && tunnelComplete(vncSshForward, vncSshProfileId)
                 "RDP" -> host.isNotBlank() && rdpUsername.isNotBlank() && tunnelComplete(rdpSshForward, rdpSshProfileId)
@@ -3172,6 +3189,22 @@ fun ConnectionEditDialog(
                             port = 0,
                             username = "",
                             connectionType = "BTSERIAL",
+                            colorTag = colorTag,
+                            groupId = groupId,
+                            identityId = identityId,
+                        )
+                    } else if (connectionType == "USBSERIAL") {
+                        // vid:pid lives in `host`, baud in `port` (no new column). #408
+                        (existing ?: ConnectionProfile(
+                            label = label,
+                            host = usbDevice,
+                            username = "",
+                        )).copy(
+                            label = label.ifBlank { "USB: $usbDevice" },
+                            host = usbDevice,
+                            port = usbBaud.toIntOrNull() ?: 115200,
+                            username = "",
+                            connectionType = "USBSERIAL",
                             colorTag = colorTag,
                             groupId = groupId,
                             identityId = identityId,
@@ -4136,4 +4169,87 @@ private fun BtSerialDeviceField(
             }
         }
     }
+}
+
+/**
+ * USB-serial device + baud picker for a USBSERIAL connection (#408). Lists the
+ * currently-attached USB devices (listing needs no permission — only opening the
+ * port does, which happens at connect via the Android USB prompt). Reports the
+ * vendorId:productId key and a display name on selection.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun UsbSerialDeviceField(
+    selectedKey: String,
+    baud: String,
+    onSelectDevice: (key: String, name: String) -> Unit,
+    onBaudChange: (String) -> Unit,
+) {
+    val context = LocalContext.current
+
+    fun usbDevices(): List<Pair<String, String>> {
+        val mgr = context.getSystemService(android.content.Context.USB_SERVICE)
+            as? android.hardware.usb.UsbManager ?: return emptyList()
+        return runCatching {
+            mgr.deviceList.values.map { d ->
+                "%04x:%04x".format(d.vendorId, d.productId) to (d.productName ?: d.deviceName)
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    val devices by remember { mutableStateOf(usbDevices()) }
+
+    ConnectionSection(stringResource(R.string.connections_section_usbserial))
+    Text(
+        stringResource(R.string.connections_usbserial_desc),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(8.dp))
+
+    if (devices.isEmpty()) {
+        Text(
+            stringResource(R.string.connections_usbserial_no_devices),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    } else {
+        var expanded by remember { mutableStateOf(false) }
+        val selectedLabel = devices.firstOrNull { it.first == selectedKey }
+            ?.let { "${it.second} (${it.first})" } ?: selectedKey
+        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+            OutlinedTextField(
+                value = selectedLabel,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text(stringResource(R.string.connections_usbserial_device)) },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+            )
+            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                devices.forEach { (key, name) ->
+                    DropdownMenuItem(
+                        text = { Text("$name  ($key)") },
+                        onClick = {
+                            onSelectDevice(key, name)
+                            expanded = false
+                        },
+                    )
+                }
+            }
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+    OutlinedTextField(
+        value = baud,
+        onValueChange = { onBaudChange(it.filter(Char::isDigit)) },
+        label = { Text(stringResource(R.string.connections_usbserial_baud)) },
+        singleLine = true,
+        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    )
 }

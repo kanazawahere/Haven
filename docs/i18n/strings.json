@@ -12350,6 +12350,41 @@
      "t": {}
     },
     {
+     "name": "connections_section_usbserial",
+     "en": "USB serial",
+     "comment": "Bluetooth serial (#406)",
+     "args": [],
+     "t": {}
+    },
+    {
+     "name": "connections_usbserial_desc",
+     "en": "Connect to a plugged-in USB-serial adapter — an Arduino, a Duet3D G-code board, an ESP32 or a USB-to-TTL cable.",
+     "comment": "Bluetooth serial (#406)",
+     "args": [],
+     "t": {}
+    },
+    {
+     "name": "connections_usbserial_device",
+     "en": "USB device",
+     "comment": "Bluetooth serial (#406)",
+     "args": [],
+     "t": {}
+    },
+    {
+     "name": "connections_usbserial_no_devices",
+     "en": "No USB-serial adapter detected. Plug one in, then reopen this.",
+     "comment": "Bluetooth serial (#406)",
+     "args": [],
+     "t": {}
+    },
+    {
+     "name": "connections_usbserial_baud",
+     "en": "Baud rate",
+     "comment": "Bluetooth serial (#406)",
+     "args": [],
+     "t": {}
+    },
+    {
      "name": "connections_section_cloud_storage",
      "en": "Cloud storage",
      "comment": "Bluetooth serial (#406)",
