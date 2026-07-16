@@ -1,0 +1,2 @@
+• Fix: closing a Bluetooth, Bluetooth-LE or USB serial terminal tab now closes it. Before, the tab silently stayed open and reappeared — the close path didn't know about the serial transports. Disconnecting from the Connections screen is fixed too.
+• New: bridge a live Bluetooth/BLE/USB serial device to a raw TCP port on the phone through the agent (MCP), so an SSH port-forward or a tunnel can reach the device off-phone while the on-phone terminal keeps working.

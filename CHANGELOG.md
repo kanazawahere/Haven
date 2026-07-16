@@ -5,6 +5,12 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.72.0
+
+🧹 **Closing a serial terminal tab now actually closes it** — closing the tab of a Bluetooth, Bluetooth-LE or USB serial connection did nothing: the session stayed connected and the tab reappeared straight away. The close path didn't know about the three serial transports, so it quietly did nothing. Closing (and disconnecting from the Connections screen) now tears the serial session down properly, the same as SSH, Mosh or a local shell. Verified end-to-end over BLE against an nRF peripheral.
+
+🔀 **Bridge a serial device to a local TCP port** — a live Bluetooth, Bluetooth-LE or USB serial session can now be exposed as a raw TCP port on the phone (127.0.0.1) through the agent (MCP), so an SSH port-forward or a tunnel can carry the device off-phone — read a sensor or drive a board remotely while the on-phone terminal keeps working. Raw bytes both ways, no framing; the terminal tab keeps running while it's bridged. Verified end-to-end: a host reached an nRF over BLE through the bridge and got its echo back byte-for-byte.
+
 ## v5.71.0
 
 📡 **Bluetooth LE serial connections** — connect to a Bluetooth-LE UART peripheral — an nRF board, an HM-10 module, or a BLE RS232 adapter — and get a full terminal, the same as SSH, Mosh, or the Classic Bluetooth-serial console. Unlike Classic Bluetooth serial, a BLE peripheral doesn't need to be paired: add a connection, tap **Scan**, pick the advertising device, and connect. The GATT service is auto-detected (Nordic UART Service, then HM-10). Verified end-to-end against an nRF UART peripheral. (This is the BLE counterpart some Bluetooth adapters need — a WF610-style dual-mode box can now be reached over LE, not only Classic SPP.)
