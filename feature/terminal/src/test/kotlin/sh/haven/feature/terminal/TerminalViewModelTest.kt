@@ -54,6 +54,10 @@ class TerminalViewModelTest {
             mockk<sh.haven.core.btserial.BtSerialSessionManager>(relaxed = true) {
                 every { sessions } returns MutableStateFlow(emptyMap())
             },
+            mockk<sh.haven.core.usbserial.UsbSerialSessionManager>(relaxed = true) {
+                every { sessions } returns MutableStateFlow(emptyMap())
+            },
+            mockk<sh.haven.core.usb.UsbBroker>(relaxed = true),
             localSessionManager,
             mockk(relaxed = true), // HostKeyVerifier
             mockk(relaxed = true), // FidoAuthenticator

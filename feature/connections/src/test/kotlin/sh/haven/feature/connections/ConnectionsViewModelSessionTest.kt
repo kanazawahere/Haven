@@ -147,6 +147,10 @@ class ConnectionsViewModelSessionTest {
                 // mock returns a relaxed `collect` (declared Nothing) → KotlinNothingValueException.
                 every { sessions } returns kotlinx.coroutines.flow.MutableStateFlow(emptyMap())
             },
+            usbSerialSessionManager = mockk(relaxed = true) {
+                every { sessions } returns kotlinx.coroutines.flow.MutableStateFlow(emptyMap())
+            },
+            usbBroker = mockk(relaxed = true),
             reticulumTransport = mockk(relaxed = true) {
                 every { discoveredDestinations } returns kotlinx.coroutines.flow.MutableStateFlow(emptyList())
             },
