@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.73.0
+
+🔌 **USB-serial connections are now first-class across Haven** — a USB-serial terminal (Arduino, Duet3D, ESP32, a USB-TTL adapter…) is now integrated the same way Bluetooth and BLE serial already were. It shows up in the agent's session list, the agent can type into it and read it back, and it can be exposed as a local TCP port via the serial↔TCP bridge (v5.72.0) so a tunnel or SSH port-forward carries the device off-phone. USB-serial tabs are also captured in workspaces now, and disconnecting a USB-serial connection works from every screen. Device-verified end-to-end against a USB-CDC adapter.
+
 ## v5.72.0
 
 🧹 **Closing a serial terminal tab now actually closes it** — closing the tab of a Bluetooth, Bluetooth-LE or USB serial connection did nothing: the session stayed connected and the tab reappeared straight away. The close path didn't know about the three serial transports, so it quietly did nothing. Closing (and disconnecting from the Connections screen) now tears the serial session down properly, the same as SSH, Mosh or a local shell. Verified end-to-end over BLE against an nRF peripheral.

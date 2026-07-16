@@ -1,0 +1,1 @@
+• USB-serial connections are now first-class like Bluetooth/BLE serial: they appear in the agent's session list, the agent can drive them, and they can be bridged to a local TCP port so a tunnel or SSH port-forward reaches the device off-phone. USB-serial tabs are captured in workspaces too, and disconnecting one works from every screen.
