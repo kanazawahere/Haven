@@ -1,0 +1,7 @@
+• USB-serial terminal connections. Plug a USB-serial device into the phone — an Arduino, a Duet3D G-code board, an ESP32, or a USB-to-TTL adapter — and get a full terminal, like SSH, Mosh or the Bluetooth-serial console. Add one from the connection editor, pick the attached device and a baud rate, and connect; Android asks for USB permission on the first connect. Works with the common adapter chipsets (CDC-ACM, CH34x, FTDI, CP21xx, Prolific).
+
+• Two cloud-storage connections of the same type no longer overwrite each other. Setting up two SFTP connections used to save both under one internal rclone remote, so the second clobbered the first and both listed the same host's files. Each connection now gets its own unique remote. If you already have a colliding pair, re-create one after updating.
+
+• GNOME Remote Desktop: a clear message instead of a black screen on redirect. GRD hands a connecting client off with a server-redirection message Haven couldn't decode, so the session went black with no explanation. Haven now recognises the redirect and reports it precisely instead of dying silently. (Following the redirect automatically is still to come.)
+
+• Serial-connection screens fully translated — the Bluetooth-serial and USB-serial editors are now available in all supported languages.

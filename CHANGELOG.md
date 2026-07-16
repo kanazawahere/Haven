@@ -5,6 +5,16 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.69.0
+
+🔌 **USB-serial terminal connections** — plug a USB-serial device into the phone — an Arduino, a Duet3D G-code board, an ESP32, or a USB-to-TTL adapter — and get a full terminal, the same as SSH, Mosh or the Bluetooth-serial console. Add one from the connection editor, pick the attached device and a baud rate, and connect; Android asks for USB permission on the first connect. Works with the common adapter chipsets (CDC-ACM, CH34x, FTDI, CP21xx, Prolific). (#408)
+
+☁️ **Two cloud-storage connections of the same type no longer overwrite each other** — setting up, say, two SFTP connections used to save both under one internal rclone remote, so the second clobbered the first and both listed the same host's files. Each connection now gets its own unique remote, so same-provider connections stay independent. If you already have a colliding pair, re-create one after updating to give it a fresh remote. (#410, thanks dkoppenh)
+
+🖥️ **GNOME Remote Desktop: a clear message instead of a black screen on redirect** — GRD hands a connecting client off with a server-redirection message that Haven couldn't decode, so the session went black with no explanation. Haven now recognises the redirect and reports it precisely — naming the target — instead of dying silently. (Automatically *following* the redirect is still to come.) (#117)
+
+🌍 **Serial-connection screens fully translated** — the Bluetooth-serial and USB-serial connection editors are now available in all supported languages, not only English.
+
 ## v5.68.70
 
 🎨 **mutt and other full-screen terminal apps get their colours back** — since v5.51.0 Haven repainted the 16 standard ANSI colours to match your chosen scheme. That's fine for most prompts, but full-screen apps like mutt pick specific ANSI colours on purpose — so mutt's background turned an unreadable yellow and its headers lost contrast. Haven now leaves the 16 ANSI colours at their standard values by default, so those apps look the way they're meant to again. If you liked the theme-matched colours, a new **Settings → Appearance → "Apply scheme's ANSI palette"** toggle turns them back on. (#407, thanks for the version bisect that pinned it to v5.51.0)
