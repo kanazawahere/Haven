@@ -1,0 +1,1 @@
+• Las apps de terminal a pantalla completa (mutt, vim, less, htop…) ahora se redimensionan automáticamente para caber por encima del teclado en pantalla, de modo que su primera línea o encabezado ya no queda fuera de la pantalla. Ya no necesitas activar Ajustes → Terminal → «Redimensionar la terminal para el teclado»; los prompts de shell normales no cambian. (#407)

@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.76.0
+
+⌨️ **Full-screen terminal apps now reflow for the on-screen keyboard automatically** — opening the keyboard used to push the top line of a full-screen app (mutt's header, vim's status line, less, htop) off-screen unless you'd turned on **Settings → Terminal → "Resize terminal for keyboard"**. Now any app on the terminal's alternate screen resizes itself to fit above the keyboard, so its header stays visible — without touching the setting. Ordinary shell prompts are unchanged (they still scroll, so long output isn't squeezed into a few rows). Device-verified: with the keyboard up, entering the alternate screen drops the terminal from 40 to 25 rows and exiting restores it. (#407, thanks gitcodeerrors)
+
 ## v5.75.0
 
 🧹 **Closing a local Linux terminal now really stops it** — closing a local Linux (proot) terminal used to leave its background processes running: proot doesn't stop its own children when the launcher is signalled, so the guest kept holding memory until you force-killed the app (the "proot is hard to kill" complaint). Haven now reaps the whole process tree on close. And the optional **Auto-stop idle Linux guest** (v5.74.0) — which didn't actually reclaim anything on-device — now really does, including a guest whose terminal has already detached in the background. (#409, #411, thanks sugerpersion)

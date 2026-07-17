@@ -1,0 +1,1 @@
+• Full-screen terminal apps (mutt, vim, less, htop…) now automatically resize to fit above the on-screen keyboard, so their top line/header is no longer pushed off-screen. You no longer need to enable Settings → Terminal → "Resize terminal for keyboard" for them; ordinary shell prompts are unchanged. (#407)

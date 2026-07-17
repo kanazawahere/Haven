@@ -1,0 +1,1 @@
+• Vollbild-Terminal-Apps (mutt, vim, less, htop …) passen ihre Größe jetzt automatisch an, um über der Bildschirmtastatur zu bleiben, sodass ihre oberste Zeile bzw. Kopfzeile nicht mehr aus dem Bild geschoben wird. Du musst dafür Einstellungen → Terminal → „Terminal an Tastatur anpassen" nicht mehr aktivieren; normale Shell-Eingabeaufforderungen bleiben unverändert. (#407)
