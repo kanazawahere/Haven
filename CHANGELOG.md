@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.77.0
+
+🗂️ **Files: the show-hidden toggle now applies to the tab you switch to** — the eye / show-hidden button is a single global toggle, but switching between Files tabs (Local, an SFTP server, …) used to restore each tab's list exactly as it was last filtered. So turning show-hidden on in one tab and switching to another left the second tab still hiding dotfiles while the eye icon said they were showing. Each tab now re-applies the current show-hidden (and name-filter) state when you switch to it, so the list always matches the icon. Device-verified on two tabs (Local + an SFTP host): dotfiles appear and disappear on the tab you switch to, in step with the toggle.
+
 ## v5.76.0
 
 ⌨️ **Full-screen terminal apps now reflow for the on-screen keyboard automatically** — opening the keyboard used to push the top line of a full-screen app (mutt's header, vim's status line, less, htop) off-screen unless you'd turned on **Settings → Terminal → "Resize terminal for keyboard"**. Now any app on the terminal's alternate screen resizes itself to fit above the keyboard, so its header stays visible — without touching the setting. Ordinary shell prompts are unchanged (they still scroll, so long output isn't squeezed into a few rows). Device-verified: with the keyboard up, entering the alternate screen drops the terminal from 40 to 25 rows and exiting restores it. (#407, thanks gitcodeerrors)
