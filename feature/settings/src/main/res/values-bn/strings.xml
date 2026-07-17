@@ -74,6 +74,13 @@
 
     <!-- Wayland section -->
     <string name="settings_wayland_shell_title">Wayland ডেস্কটপ শেল</string>
+    <string name="settings_proot_idle_title">নিষ্ক্রিয় Linux গেস্ট স্বয়ংক্রিয়ভাবে বন্ধ করুন</string>
+    <string name="settings_proot_idle_off">বন্ধ — আপনি না থামানো পর্যন্ত Linux গেস্ট চলতে থাকে</string>
+    <string name="settings_proot_idle_on">Haven ছাড়ার %1$d মিনিট পরে গেস্ট বন্ধ করে (চালু থাকা কোনো গেস্ট সার্ভিস এটি চালু রাখে)</string>
+    <string name="settings_proot_idle_dialog_title">নিষ্ক্রিয় Linux গেস্ট স্বয়ংক্রিয়ভাবে বন্ধ করুন</string>
+    <string name="settings_proot_idle_dialog_body">Haven এত সময় ব্যাকগ্রাউন্ডে থাকলে, মেমরি খালি করতে Linux গেস্টের টার্মিনাল ও ডেস্কটপ বন্ধ করুন। চালু থাকা কোনো গেস্ট সার্ভিস এটি চালু রাখে। ব্যাকগ্রাউন্ড টার্মিনালে চলা দীর্ঘ কাজও বন্ধ হবে — নিষ্ক্রিয় অবস্থায় রিসোর্স ফেরত না চাইলে এটি বন্ধ রাখুন।</string>
+    <string name="settings_proot_idle_off_label">বন্ধ</string>
+    <string name="settings_proot_idle_minutes">%1$d মিনিট</string>
     <string name="settings_shizuku_title">Shizuku ইন্টিগ্রেশন</string>
     <string name="settings_shizuku_enabled">সক্রিয় — স্বয়ংক্রিয় ব্যাটারি ছাড়, Wayland সকেট শেয়ারিং</string>
     <string name="settings_shizuku_available">Shizuku ইনস্টল আছে — অনুমতি দিতে ট্যাপ করুন</string>

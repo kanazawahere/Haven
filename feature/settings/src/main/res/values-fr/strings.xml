@@ -74,6 +74,13 @@
 
     <!-- Wayland section -->
     <string name="settings_wayland_shell_title">Shell bureau Wayland</string>
+    <string name="settings_proot_idle_title">Arrêter l\'invité Linux inactif</string>
+    <string name="settings_proot_idle_off">Désactivé — l\'invité Linux continue de tourner jusqu\'à ce que vous l\'arrêtiez</string>
+    <string name="settings_proot_idle_on">Arrête l\'invité %1$d min après avoir quitté Haven (un service invité en cours le maintient actif)</string>
+    <string name="settings_proot_idle_dialog_title">Arrêter l\'invité Linux inactif</string>
+    <string name="settings_proot_idle_dialog_body">Lorsque Haven est resté en arrière-plan aussi longtemps, arrête les terminaux et bureaux de l\'invité Linux pour libérer de la mémoire. Un service invité en cours le maintient actif. Une tâche longue dans un terminal en arrière-plan serait aussi arrêtée — laissez ceci désactivé sauf si vous voulez récupérer les ressources en cas d\'inactivité.</string>
+    <string name="settings_proot_idle_off_label">Désactivé</string>
+    <string name="settings_proot_idle_minutes">%1$d minutes</string>
     <string name="settings_shizuku_title">Intégration Shizuku</string>
     <string name="settings_shizuku_enabled">Activé — exemption batterie auto, partage socket Wayland</string>
     <string name="settings_shizuku_available">Shizuku installé -- appuyez pour accorder la permission</string>

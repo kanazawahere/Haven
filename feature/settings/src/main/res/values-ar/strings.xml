@@ -74,6 +74,13 @@
 
     <!-- Wayland section -->
     <string name="settings_wayland_shell_title">Shell سطح مكتب Wayland</string>
+    <string name="settings_proot_idle_title">إيقاف ضيف Linux الخامل تلقائيًا</string>
+    <string name="settings_proot_idle_off">مُعطّل — يظل ضيف Linux قيد التشغيل حتى توقفه</string>
+    <string name="settings_proot_idle_on">يوقف الضيف بعد %1$d دقيقة من مغادرتك Haven (خدمة ضيف قيد التشغيل تُبقيه نشطًا)</string>
+    <string name="settings_proot_idle_dialog_title">إيقاف ضيف Linux الخامل تلقائيًا</string>
+    <string name="settings_proot_idle_dialog_body">بعد بقاء Haven في الخلفية هذه المدة، أوقِف طرفيات وأسطح مكتب ضيف Linux لتحرير الذاكرة. خدمة ضيف قيد التشغيل تُبقيه نشطًا. المهمة الطويلة في طرفية بالخلفية ستتوقف أيضًا — اترك هذا مُعطّلًا إلا إذا كنت تريد استعادة الموارد عند الخمول.</string>
+    <string name="settings_proot_idle_off_label">مُعطّل</string>
+    <string name="settings_proot_idle_minutes">%1$d دقيقة</string>
     <string name="settings_shizuku_title">تكامل Shizuku</string>
     <string name="settings_shizuku_enabled">مفعّل — إعفاء تلقائي من البطارية، مشاركة مقبس Wayland</string>
     <string name="settings_shizuku_available">Shizuku مثبّت — اضغط لمنح الإذن</string>

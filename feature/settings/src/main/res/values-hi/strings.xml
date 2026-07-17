@@ -74,6 +74,13 @@
 
     <!-- Wayland section -->
     <string name="settings_wayland_shell_title">Wayland डेस्कटॉप Shell</string>
+    <string name="settings_proot_idle_title">निष्क्रिय Linux गेस्ट स्वतः बंद करें</string>
+    <string name="settings_proot_idle_off">बंद — जब तक आप न रोकें, Linux गेस्ट चलता रहता है</string>
+    <string name="settings_proot_idle_on">Haven छोड़ने के %1$d मिनट बाद गेस्ट रोक देता है (कोई चालू गेस्ट सेवा इसे चालू रखती है)</string>
+    <string name="settings_proot_idle_dialog_title">निष्क्रिय Linux गेस्ट स्वतः बंद करें</string>
+    <string name="settings_proot_idle_dialog_body">जब Haven इतनी देर बैकग्राउंड में रहे, तो मेमोरी खाली करने के लिए Linux गेस्ट के टर्मिनल और डेस्कटॉप बंद कर दें। कोई चालू गेस्ट सेवा इसे चालू रखती है। बैकग्राउंड टर्मिनल में चल रहा लंबा काम भी रुक जाएगा — जब तक निष्क्रियता पर संसाधन वापस न चाहें, इसे बंद रखें।</string>
+    <string name="settings_proot_idle_off_label">बंद</string>
+    <string name="settings_proot_idle_minutes">%1$d मिनट</string>
     <string name="settings_shizuku_title">Shizuku एकीकरण</string>
     <string name="settings_shizuku_enabled">सक्रिय — स्वचालित बैटरी छूट, Wayland सॉकेट शेयरिंग</string>
     <string name="settings_shizuku_available">Shizuku इंस्टॉल है — अनुमति देने के लिए टैप करें</string>

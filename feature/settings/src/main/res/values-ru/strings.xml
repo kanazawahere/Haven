@@ -74,6 +74,13 @@
 
     <!-- Wayland section -->
     <string name="settings_wayland_shell_title">Оболочка рабочего стола Wayland</string>
+    <string name="settings_proot_idle_title">Автоостановка простаивающего гостя Linux</string>
+    <string name="settings_proot_idle_off">Выключено — гость Linux работает, пока вы его не остановите</string>
+    <string name="settings_proot_idle_on">Останавливает гостя через %1$d мин после выхода из Haven (запущенная гостевая служба удерживает его)</string>
+    <string name="settings_proot_idle_dialog_title">Автоостановка простаивающего гостя Linux</string>
+    <string name="settings_proot_idle_dialog_body">Когда Haven пробыл в фоне столько времени, остановить терминалы и рабочие столы гостя Linux, чтобы освободить память. Запущенная гостевая служба удерживает его. Долгая задача в фоновом терминале тоже будет остановлена — оставьте выключенным, если не нужна очистка при простое.</string>
+    <string name="settings_proot_idle_off_label">Выключено</string>
+    <string name="settings_proot_idle_minutes">%1$d минут</string>
     <string name="settings_shizuku_title">Интеграция Shizuku</string>
     <string name="settings_shizuku_enabled">Включено — автоисключение батареи, общий сокет Wayland</string>
     <string name="settings_shizuku_available">Shizuku установлен — нажмите для предоставления доступа</string>

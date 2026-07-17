@@ -81,6 +81,13 @@
 
     <!-- Wayland section -->
     <string name="settings_wayland_shell_title">Wayland 데스크톱 셸</string>
+    <string name="settings_proot_idle_title">유휴 Linux 게스트 자동 종료</string>
+    <string name="settings_proot_idle_off">꺼짐 — 직접 종료할 때까지 Linux 게스트가 계속 실행됩니다</string>
+    <string name="settings_proot_idle_on">Haven을 떠난 뒤 %1$d분 후 게스트를 종료합니다(실행 중인 게스트 서비스가 있으면 유지됩니다)</string>
+    <string name="settings_proot_idle_dialog_title">유휴 Linux 게스트 자동 종료</string>
+    <string name="settings_proot_idle_dialog_body">Haven이 이 시간 동안 백그라운드에 있으면 메모리를 확보하기 위해 Linux 게스트의 터미널과 데스크톱을 종료합니다. 실행 중인 게스트 서비스가 있으면 유지됩니다. 백그라운드 터미널의 장시간 작업도 종료되므로, 유휴 시 리소스 회수를 원하지 않으면 꺼 두세요.</string>
+    <string name="settings_proot_idle_off_label">꺼짐</string>
+    <string name="settings_proot_idle_minutes">%1$d분</string>
     <string name="settings_shizuku_title">Shizuku 통합</string>
     <string name="settings_shizuku_enabled">활성화됨 — 자동 배터리 예외, Wayland 소켓 공유</string>
     <string name="settings_shizuku_available">Shizuku 실행 중 — 탭하여 권한 부여</string>

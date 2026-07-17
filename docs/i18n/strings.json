@@ -24454,14 +24454,38 @@
      "en": "Auto-stop idle Linux guest",
      "comment": "Wayland section",
      "args": [],
-     "t": {}
+     "t": {
+      "ar": "إيقاف ضيف Linux الخامل تلقائيًا",
+      "bn": "নিষ্ক্রিয় Linux গেস্ট স্বয়ংক্রিয়ভাবে বন্ধ করুন",
+      "de": "Inaktiven Linux-Gast automatisch stoppen",
+      "es": "Detener el invitado Linux inactivo",
+      "fr": "Arrêter l\\'invité Linux inactif",
+      "hi": "निष्क्रिय Linux गेस्ट स्वतः बंद करें",
+      "ja": "アイドル状態の Linux ゲストを自動停止",
+      "ko": "유휴 Linux 게스트 자동 종료",
+      "pt": "Parar convidado Linux ocioso",
+      "ru": "Автоостановка простаивающего гостя Linux",
+      "zh": "自动停止空闲的 Linux 客户机"
+     }
     },
     {
      "name": "settings_proot_idle_off",
      "en": "Off — the Linux guest keeps running until you stop it",
      "comment": "Wayland section",
      "args": [],
-     "t": {}
+     "t": {
+      "ar": "مُعطّل — يظل ضيف Linux قيد التشغيل حتى توقفه",
+      "bn": "বন্ধ — আপনি না থামানো পর্যন্ত Linux গেস্ট চলতে থাকে",
+      "de": "Aus — der Linux-Gast läuft, bis du ihn stoppst",
+      "es": "Desactivado — el invitado Linux sigue en ejecución hasta que lo detengas",
+      "fr": "Désactivé — l\\'invité Linux continue de tourner jusqu\\'à ce que vous l\\'arrêtiez",
+      "hi": "बंद — जब तक आप न रोकें, Linux गेस्ट चलता रहता है",
+      "ja": "オフ — 手動で停止するまで Linux ゲストは動き続けます",
+      "ko": "꺼짐 — 직접 종료할 때까지 Linux 게스트가 계속 실행됩니다",
+      "pt": "Desligado — o convidado Linux continua em execução até você pará-lo",
+      "ru": "Выключено — гость Linux работает, пока вы его не остановите",
+      "zh": "关闭 —— Linux 客户机会一直运行，直到你手动停止"
+     }
     },
     {
      "name": "settings_proot_idle_on",
@@ -24470,28 +24494,76 @@
      "args": [
       "%1$d"
      ],
-     "t": {}
+     "t": {
+      "ar": "يوقف الضيف بعد %1$d دقيقة من مغادرتك Haven (خدمة ضيف قيد التشغيل تُبقيه نشطًا)",
+      "bn": "Haven ছাড়ার %1$d মিনিট পরে গেস্ট বন্ধ করে (চালু থাকা কোনো গেস্ট সার্ভিস এটি চালু রাখে)",
+      "de": "Stoppt den Gast %1$d Min. nachdem du Haven verlässt (ein laufender Gast-Dienst hält ihn aktiv)",
+      "es": "Detiene el invitado %1$d min después de salir de Haven (un servicio del invitado en ejecución lo mantiene activo)",
+      "fr": "Arrête l\\'invité %1$d min après avoir quitté Haven (un service invité en cours le maintient actif)",
+      "hi": "Haven छोड़ने के %1$d मिनट बाद गेस्ट रोक देता है (कोई चालू गेस्ट सेवा इसे चालू रखती है)",
+      "ja": "Haven を離れて %1$d 分後にゲストを停止します（実行中のゲストサービスがあれば維持されます）",
+      "ko": "Haven을 떠난 뒤 %1$d분 후 게스트를 종료합니다(실행 중인 게스트 서비스가 있으면 유지됩니다)",
+      "pt": "Para o convidado %1$d min depois de você sair do Haven (um serviço do convidado em execução o mantém ativo)",
+      "ru": "Останавливает гостя через %1$d мин после выхода из Haven (запущенная гостевая служба удерживает его)",
+      "zh": "离开 Haven %1$d 分钟后停止客户机（正在运行的客户机服务会使其保持运行）"
+     }
     },
     {
      "name": "settings_proot_idle_dialog_title",
      "en": "Auto-stop idle Linux guest",
      "comment": "Wayland section",
      "args": [],
-     "t": {}
+     "t": {
+      "ar": "إيقاف ضيف Linux الخامل تلقائيًا",
+      "bn": "নিষ্ক্রিয় Linux গেস্ট স্বয়ংক্রিয়ভাবে বন্ধ করুন",
+      "de": "Inaktiven Linux-Gast automatisch stoppen",
+      "es": "Detener el invitado Linux inactivo",
+      "fr": "Arrêter l\\'invité Linux inactif",
+      "hi": "निष्क्रिय Linux गेस्ट स्वतः बंद करें",
+      "ja": "アイドル状態の Linux ゲストを自動停止",
+      "ko": "유휴 Linux 게스트 자동 종료",
+      "pt": "Parar convidado Linux ocioso",
+      "ru": "Автоостановка простаивающего гостя Linux",
+      "zh": "自动停止空闲的 Linux 客户机"
+     }
     },
     {
      "name": "settings_proot_idle_dialog_body",
      "en": "After Haven has been in the background this long, stop the Linux guest\\'s terminals and desktops to free memory. A running guest service keeps it up. A long job in a backgrounded terminal would be stopped too — leave this off unless you want idle reclamation.",
      "comment": "Wayland section",
      "args": [],
-     "t": {}
+     "t": {
+      "ar": "بعد بقاء Haven في الخلفية هذه المدة، أوقِف طرفيات وأسطح مكتب ضيف Linux لتحرير الذاكرة. خدمة ضيف قيد التشغيل تُبقيه نشطًا. المهمة الطويلة في طرفية بالخلفية ستتوقف أيضًا — اترك هذا مُعطّلًا إلا إذا كنت تريد استعادة الموارد عند الخمول.",
+      "bn": "Haven এত সময় ব্যাকগ্রাউন্ডে থাকলে, মেমরি খালি করতে Linux গেস্টের টার্মিনাল ও ডেস্কটপ বন্ধ করুন। চালু থাকা কোনো গেস্ট সার্ভিস এটি চালু রাখে। ব্যাকগ্রাউন্ড টার্মিনালে চলা দীর্ঘ কাজও বন্ধ হবে — নিষ্ক্রিয় অবস্থায় রিসোর্স ফেরত না চাইলে এটি বন্ধ রাখুন।",
+      "de": "Wenn Haven so lange im Hintergrund war, werden Terminals und Desktops des Linux-Gasts gestoppt, um Speicher freizugeben. Ein laufender Gast-Dienst hält ihn aktiv. Ein langer Auftrag in einem Hintergrund-Terminal würde ebenfalls gestoppt — lass dies aus, außer du willst Ressourcen bei Inaktivität freigeben.",
+      "es": "Cuando Haven haya estado en segundo plano este tiempo, detiene las terminales y escritorios del invitado Linux para liberar memoria. Un servicio del invitado en ejecución lo mantiene activo. Un trabajo largo en una terminal en segundo plano también se detendría; déjalo desactivado salvo que quieras liberar recursos por inactividad.",
+      "fr": "Lorsque Haven est resté en arrière-plan aussi longtemps, arrête les terminaux et bureaux de l\\'invité Linux pour libérer de la mémoire. Un service invité en cours le maintient actif. Une tâche longue dans un terminal en arrière-plan serait aussi arrêtée — laissez ceci désactivé sauf si vous voulez récupérer les ressources en cas d\\'inactivité.",
+      "hi": "जब Haven इतनी देर बैकग्राउंड में रहे, तो मेमोरी खाली करने के लिए Linux गेस्ट के टर्मिनल और डेस्कटॉप बंद कर दें। कोई चालू गेस्ट सेवा इसे चालू रखती है। बैकग्राउंड टर्मिनल में चल रहा लंबा काम भी रुक जाएगा — जब तक निष्क्रियता पर संसाधन वापस न चाहें, इसे बंद रखें।",
+      "ja": "Haven がこの時間バックグラウンドにあったら、メモリを解放するために Linux ゲストのターミナルとデスクトップを停止します。実行中のゲストサービスがあれば維持されます。バックグラウンドのターミナルで実行中の長いジョブも停止されるため、アイドル時のリソース回収が不要ならオフのままにしてください。",
+      "ko": "Haven이 이 시간 동안 백그라운드에 있으면 메모리를 확보하기 위해 Linux 게스트의 터미널과 데스크톱을 종료합니다. 실행 중인 게스트 서비스가 있으면 유지됩니다. 백그라운드 터미널의 장시간 작업도 종료되므로, 유휴 시 리소스 회수를 원하지 않으면 꺼 두세요.",
+      "pt": "Depois que o Haven ficar em segundo plano por esse tempo, para os terminais e áreas de trabalho do convidado Linux para liberar memória. Um serviço do convidado em execução o mantém ativo. Uma tarefa longa em um terminal em segundo plano também seria parada — deixe desligado a menos que queira recuperar recursos por ociosidade.",
+      "ru": "Когда Haven пробыл в фоне столько времени, остановить терминалы и рабочие столы гостя Linux, чтобы освободить память. Запущенная гостевая служба удерживает его. Долгая задача в фоновом терминале тоже будет остановлена — оставьте выключенным, если не нужна очистка при простое.",
+      "zh": "当 Haven 在后台达到该时长后，停止 Linux 客户机的终端和桌面以释放内存。正在运行的客户机服务会使其保持运行。后台终端中的长时间任务也会被停止——除非你需要在空闲时回收资源，否则请保持关闭。"
+     }
     },
     {
      "name": "settings_proot_idle_off_label",
      "en": "Off",
      "comment": "Wayland section",
      "args": [],
-     "t": {}
+     "t": {
+      "ar": "مُعطّل",
+      "bn": "বন্ধ",
+      "de": "Aus",
+      "es": "Desactivado",
+      "fr": "Désactivé",
+      "hi": "बंद",
+      "ja": "オフ",
+      "ko": "꺼짐",
+      "pt": "Desligado",
+      "ru": "Выключено",
+      "zh": "关闭"
+     }
     },
     {
      "name": "settings_proot_idle_minutes",
@@ -24500,7 +24572,19 @@
      "args": [
       "%1$d"
      ],
-     "t": {}
+     "t": {
+      "ar": "%1$d دقيقة",
+      "bn": "%1$d মিনিট",
+      "de": "%1$d Minuten",
+      "es": "%1$d minutos",
+      "fr": "%1$d minutes",
+      "hi": "%1$d मिनट",
+      "ja": "%1$d 分",
+      "ko": "%1$d분",
+      "pt": "%1$d minutos",
+      "ru": "%1$d минут",
+      "zh": "%1$d 分钟"
+     }
     },
     {
      "name": "settings_shizuku_title",

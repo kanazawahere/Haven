@@ -74,6 +74,13 @@
 
     <!-- Wayland section -->
     <string name="settings_wayland_shell_title">Waylandデスクトップシェル</string>
+    <string name="settings_proot_idle_title">アイドル状態の Linux ゲストを自動停止</string>
+    <string name="settings_proot_idle_off">オフ — 手動で停止するまで Linux ゲストは動き続けます</string>
+    <string name="settings_proot_idle_on">Haven を離れて %1$d 分後にゲストを停止します（実行中のゲストサービスがあれば維持されます）</string>
+    <string name="settings_proot_idle_dialog_title">アイドル状態の Linux ゲストを自動停止</string>
+    <string name="settings_proot_idle_dialog_body">Haven がこの時間バックグラウンドにあったら、メモリを解放するために Linux ゲストのターミナルとデスクトップを停止します。実行中のゲストサービスがあれば維持されます。バックグラウンドのターミナルで実行中の長いジョブも停止されるため、アイドル時のリソース回収が不要ならオフのままにしてください。</string>
+    <string name="settings_proot_idle_off_label">オフ</string>
+    <string name="settings_proot_idle_minutes">%1$d 分</string>
     <string name="settings_shizuku_title">Shizuku連携</string>
     <string name="settings_shizuku_enabled">有効 — バッテリー最適化の自動除外、Waylandソケット共有</string>
     <string name="settings_shizuku_available">Shizukuインストール済み -- タップして権限を付与</string>

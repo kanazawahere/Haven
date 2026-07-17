@@ -74,6 +74,13 @@
 
     <!-- Wayland section -->
     <string name="settings_wayland_shell_title">Wayland 桌面 Shell</string>
+    <string name="settings_proot_idle_title">自动停止空闲的 Linux 客户机</string>
+    <string name="settings_proot_idle_off">关闭 —— Linux 客户机会一直运行，直到你手动停止</string>
+    <string name="settings_proot_idle_on">离开 Haven %1$d 分钟后停止客户机（正在运行的客户机服务会使其保持运行）</string>
+    <string name="settings_proot_idle_dialog_title">自动停止空闲的 Linux 客户机</string>
+    <string name="settings_proot_idle_dialog_body">当 Haven 在后台达到该时长后，停止 Linux 客户机的终端和桌面以释放内存。正在运行的客户机服务会使其保持运行。后台终端中的长时间任务也会被停止——除非你需要在空闲时回收资源，否则请保持关闭。</string>
+    <string name="settings_proot_idle_off_label">关闭</string>
+    <string name="settings_proot_idle_minutes">%1$d 分钟</string>
     <string name="settings_shizuku_title">Shizuku 集成</string>
     <string name="settings_shizuku_enabled">已启用 — 自动电池豁免、Wayland 套接字共享</string>
     <string name="settings_shizuku_available">Shizuku 已安装——点击授予权限</string>
