@@ -1,0 +1,1 @@
+• Closing a local Linux (proot) terminal now stops its whole process tree. Before, background processes kept running (proot doesn't stop its children when you close the tab), holding memory until you force-killed Haven. The optional idle auto-stop (v5.74.0) also now actually reclaims a backgrounded guest — including one whose terminal already detached. (#409, #411)

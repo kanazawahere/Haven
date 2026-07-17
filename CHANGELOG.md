@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.75.0
+
+🧹 **Closing a local Linux terminal now really stops it** — closing a local Linux (proot) terminal used to leave its background processes running: proot doesn't stop its own children when the launcher is signalled, so the guest kept holding memory until you force-killed the app (the "proot is hard to kill" complaint). Haven now reaps the whole process tree on close. And the optional **Auto-stop idle Linux guest** (v5.74.0) — which didn't actually reclaim anything on-device — now really does, including a guest whose terminal has already detached in the background. (#409, #411, thanks sugerpersion)
+
 ## v5.74.0
 
 ⏱️ **Auto-stop the idle Linux guest** — an optional timeout that stops the on-device Linux guest (its terminals and desktops) after Haven has sat in the background for a while, to reclaim memory. Off by default; turn it on in **Settings → Advanced → "Auto-stop idle Linux guest"** and pick 5, 15, 30 or 60 minutes. A running guest service keeps the guest up, and returning to Haven before the timeout cancels the stop. Note: a long job left running in a backgrounded terminal would be stopped too, which is why it's off by default. (#409, thanks sugerpersion)
