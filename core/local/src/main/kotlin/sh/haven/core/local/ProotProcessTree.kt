@@ -39,6 +39,10 @@ internal fun descendantPidsOf(rootPid: Int): List<Int> {
     return out
 }
 
+/** `/proc/<pid>/comm` (the process's command name), or null if unreadable. */
+internal fun commOf(pid: Int): String? =
+    runCatching { File("/proc/$pid/comm").readText().trim() }.getOrNull()
+
 private fun readPpidOf(statFile: File): Int? = try {
     // Field 4 (ppid) is the second token AFTER the ")" that closes comm —
     // parsing after the last ")" tolerates a comm containing spaces/parens.

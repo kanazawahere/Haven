@@ -176,11 +176,16 @@ class LocalSession(
         try { inputStream?.close() } catch (_: Exception) {}
         try { masterPfd?.close() } catch (_: Exception) {}
 
-        // Kill the child process if still running
+        // Kill the child process AND its proot tracees. proot's --kill-on-exit
+        // doesn't reap the ptrace tracees when the launcher is signalled, so
+        // snapshot the descendants while the tree is intact, then kill the
+        // launcher + every tracee. Killing only childPid (the old behaviour)
+        // left the whole guest (libproot + bash + …) running — the "proot is
+        // hard to kill" orphan (#409/#411).
         if (childPid > 0) {
-            try {
-                android.os.Process.killProcess(childPid)
-            } catch (_: Exception) {}
+            val tracees = runCatching { descendantPidsOf(childPid) }.getOrDefault(emptyList())
+            runCatching { android.os.Process.killProcess(childPid) }
+            tracees.forEach { runCatching { android.os.Process.killProcess(it) } }
         }
 
         writeExecutor.shutdown()

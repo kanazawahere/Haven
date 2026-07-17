@@ -57,14 +57,23 @@ class ProotIdleReaper @Inject constructor(
         }
     }
 
-    /** Stop the interactive guest, unless a guest service wants PRoot kept up. */
+    /**
+     * Stop the idle local guest. Skipped while something legitimately holds
+     * PRoot up — a running guest service, a System VM, or a live desktop are all
+     * explicit "keep it up" signals. Otherwise it tears down any still-tracked
+     * local sessions (which now kills their proot tree) AND reaps the orphaned
+     * proot a detached shell left untracked — the real case, since a
+     * backgrounded local shell deregisters before the idle timer fires while its
+     * proot lingers (the reporter's "proot is hard to kill", #409).
+     */
     internal fun reap() {
         val serviceRunning = guestServiceManager.services.value.values.any {
             it.state == GuestServiceManager.ServiceState.RUNNING
         }
         if (serviceRunning) return
-        // Both are idempotent no-ops when nothing is running.
+        if (localSessionManager.systemVmManager.isRunning) return
+        if (localSessionManager.desktopManager.desktops.value.isNotEmpty()) return
         localSessionManager.disconnectAll()
-        localSessionManager.desktopManager.stopAll()
+        localSessionManager.killOrphanedGuestProot()
     }
 }

@@ -742,6 +742,29 @@ class LocalSessionManager @Inject constructor(
     }
 
     /**
+     * Kill every proot process tree this app launched that no live session
+     * closed — the orphan a detached local shell leaves behind, and the root
+     * of "proot is hard to kill" (#409/#411). proot launchers are forkpty
+     * children of this process (comm `libproot.so`); each is signalled with its
+     * ptrace tracees, which proot's own teardown doesn't reap.
+     *
+     * Reaps unconditionally, so the caller MUST first rule out anything
+     * legitimately holding the guest up (a running guest service, System VM, or
+     * desktop). Returns the number of proot trees reaped.
+     */
+    fun killOrphanedGuestProot(): Int {
+        val myPid = android.os.Process.myPid()
+        val launchers = descendantPidsOf(myPid).filter { commOf(it) == "libproot.so" }
+        for (pid in launchers) {
+            val tracees = runCatching { descendantPidsOf(pid) }.getOrDefault(emptyList())
+            runCatching { android.os.Process.killProcess(pid) }
+            tracees.forEach { runCatching { android.os.Process.killProcess(it) } }
+        }
+        if (launchers.isNotEmpty()) Log.d(TAG, "reaped ${launchers.size} orphaned proot tree(s): $launchers")
+        return launchers.size
+    }
+
+    /**
      * Send a VNC start command to an active PRoot session's PTY.
      */
     fun startVncInSession(profileId: String) {

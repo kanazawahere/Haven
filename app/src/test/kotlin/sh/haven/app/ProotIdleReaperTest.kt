@@ -21,7 +21,12 @@ class ProotIdleReaperTest {
     private val services = mockk<GuestServiceManager>(relaxed = true)
     private val prefs = mockk<UserPreferencesRepository>(relaxed = true)
 
-    private fun reaper(timeoutMinutes: Int, serviceRunning: Boolean = false): ProotIdleReaper {
+    private fun reaper(
+        timeoutMinutes: Int,
+        serviceRunning: Boolean = false,
+        vmRunning: Boolean = false,
+        desktopRunning: Boolean = false,
+    ): ProotIdleReaper {
         every { prefs.prootIdleTimeoutMinutes } returns flowOf(timeoutMinutes)
         val svcMap = if (serviceRunning) {
             mapOf("svc" to mockk<GuestServiceManager.GuestServiceInstance>(relaxed = true) {
@@ -31,21 +36,43 @@ class ProotIdleReaperTest {
             emptyMap()
         }
         every { services.services } returns MutableStateFlow(svcMap)
+        every { local.systemVmManager.isRunning } returns vmRunning
+        every { local.desktopManager.desktops } returns MutableStateFlow(
+            if (desktopRunning) {
+                mapOf(sh.haven.core.local.ProotManager.DesktopEnvironment.entries.first() to mockk(relaxed = true))
+            } else {
+                emptyMap()
+            },
+        )
         return ProotIdleReaper(local, services, prefs)
     }
 
     @Test
-    fun `reap stops the interactive guest when no service runs`() {
+    fun `reap stops the guest and reaps orphaned proot when idle`() {
         reaper(15).reap()
         verify { local.disconnectAll() }
-        verify { local.desktopManager.stopAll() }
+        verify { local.killOrphanedGuestProot() }
     }
 
     @Test
     fun `reap is suppressed while a guest service is running`() {
         reaper(15, serviceRunning = true).reap()
         verify(exactly = 0) { local.disconnectAll() }
-        verify(exactly = 0) { local.desktopManager.stopAll() }
+        verify(exactly = 0) { local.killOrphanedGuestProot() }
+    }
+
+    @Test
+    fun `reap is suppressed while a System VM is running`() {
+        reaper(15, vmRunning = true).reap()
+        verify(exactly = 0) { local.disconnectAll() }
+        verify(exactly = 0) { local.killOrphanedGuestProot() }
+    }
+
+    @Test
+    fun `reap is suppressed while a desktop is running`() {
+        reaper(15, desktopRunning = true).reap()
+        verify(exactly = 0) { local.disconnectAll() }
+        verify(exactly = 0) { local.killOrphanedGuestProot() }
     }
 
     @Test
