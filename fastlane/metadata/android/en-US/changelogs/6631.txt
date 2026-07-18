@@ -1,0 +1,4 @@
+v5.80.0
+
+Tasker / MacroDroid plugin
+The "run a command on a Haven server" action can return the command's output to your macro as variables: %hstdout (output), %hstderr (errors), and %hexit (exit code). Turn on "wait until finished" and use them in later steps. (#367)

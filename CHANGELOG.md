@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.80.0
+
+🔌 **Tasker / MacroDroid plugin: use a command's output in your macro** — the "run a command on a Haven server" action can now hand its result back to Tasker/MacroDroid as local variables: `%hstdout` (the output), `%hstderr` (any errors), and `%hexit` (the exit code, `-1` if the connection failed). Turn on "wait until the command finishes" and the variables are ready for the next step — branch on the exit code, show the output in a notification, or feed it into whatever comes next. (#367, thanks ehoeve786)
+
 ## v5.79.1
 
 🗂️ **SFTP: recover from an "inputstream is closed" glitch when listing folders** — some servers (notably local VM SSH servers) could trip JSch's `inputstream is closed` error partway through a directory listing, and the browser would just fail. Haven now resets the SFTP channel and retries the listing once instead of surfacing the error. (#412, thanks mintleaf84)
