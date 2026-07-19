@@ -31,6 +31,9 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import sh.haven.core.data.db.entities.ConnectionLog
@@ -1220,19 +1223,27 @@ class SftpViewModel @Inject constructor(
                 .map { it.profileId }
                 .toSet()
 
-            // Collect profile IDs from mosh sessions whose bootstrap SSH client
-            // is still CONNECTED — mosh's own UDP transport can't carry SFTP, so
-            // file browsing rides the SSH client kept alive from bootstrap. A
-            // non-null-but-dropped client (server closed SSH after mosh-server
-            // handed off) would otherwise show an empty Files tab (#414-adjacent
-            // report: mosh tab appears but never lists).
-            val moshProfileIds = moshSessionManager.sessions.value.values
-                .filter {
-                    it.status == MoshSessionManager.SessionState.Status.CONNECTED &&
-                        (it.sshClient as? SshClient)?.isConnected == true
-                }
-                .map { it.profileId }
-                .toSet()
+            // Collect profile IDs from mosh sessions whose bootstrap SSH client is
+            // still ALIVE — mosh's own UDP transport can't carry SFTP, so file
+            // browsing rides the SSH client kept alive from bootstrap. Some servers
+            // close that SSH once mosh-server takes over; JSch's session.isConnected
+            // keeps reporting true until an RST lands (no round-trip), so a stale
+            // isConnected check surfaced a Files tab that shows but never lists (#413,
+            // reported by dkoppenh). Probe the transport for real (isAlive opens a
+            // bounded exec channel and waits for the server's confirmation) — in
+            // parallel, so a dead session's timeout doesn't serialise with the rest.
+            val moshProfileIds = coroutineScope {
+                moshSessionManager.sessions.value.values
+                    .filter { it.status == MoshSessionManager.SessionState.Status.CONNECTED }
+                    .map { s ->
+                        async {
+                            if ((s.sshClient as? SshClient)?.isAlive(3_000L) == true) s.profileId else null
+                        }
+                    }
+                    .awaitAll()
+                    .filterNotNull()
+                    .toSet()
+            }
 
             // Collect profile IDs from ET sessions that have a live SSH client
             val etProfileIds = etSessionManager.sessions.value.values
