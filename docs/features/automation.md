@@ -19,7 +19,7 @@ built into Haven. Add the action, tap to configure, and set:
 - **Haven server** — a dropdown of your saved SSH connections.
 - **Command** — a shell command, run in the login shell. The host substitutes
   its own variables into it *before* it fires, so a one-liner like
-  `cd .. && rm -rf openpilot && git clone https://github.com/{lv=user}/openpilot -b {lv=branch}`
+  `cd {lv=project_dir} && git pull origin {lv=branch}`
   works with your MacroDroid/Tasker variables inline.
 - **Wait until the command finishes** — hold the macro until the command exits
   (Tasker/MacroDroid's "wait for action"). Off = fire-and-forget.
