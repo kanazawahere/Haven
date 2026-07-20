@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.81.7
+
+📶 **Mosh: the "no server contact — retrying" banner no longer gets stuck** — when a mosh session actually ended (the server exited, or a fatal transport error), the red "No server contact for Ns — retrying" banner could freeze on screen forever, reading as a reconnect that never happens. The banner now clears when the transport closes, so it only shows while a live connection is genuinely stalling. This is a first fix toward #421 (mosh disconnects when scrolling tmux scrollback); the underlying disconnect is still being investigated. (#421, thanks dkoppenh)
+
 ## v5.81.6
 
 🖱️ **Terminal: touchpad two-finger scroll on some tablets** — on certain OEM tablets (reported on OPPO Pad 3 Pro) a Bluetooth-keyboard touchpad's two-finger scroll moved the app's own lists but did nothing in the terminal. Those touchpad drivers only send a scroll to a view that advertises itself as scrollable, which the terminal wasn't doing. The terminal now declares vertical scroll semantics (a mouse wheel already worked), which should route the gesture through — and, as a bonus, makes the terminal scrollable to TalkBack. Candidate fix, since I can't reproduce it here — feedback welcome. (#419, thanks wxjiee)
