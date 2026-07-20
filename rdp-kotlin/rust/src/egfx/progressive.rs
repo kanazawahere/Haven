@@ -585,6 +585,13 @@ fn decode_component(
         // HL2 3007..3279 (16x17), LH2 3279..3551 (17x16), HH2 3551..3807 (16x16),
         // HL3 3807..3879 (8x9),  LH3 3879..3951 (9x8),  HH3 3951..4015 (8x8),
         // LL3 4015..4096 (9x9).
+        // FreeRDP runs differential decode on LL3 first in BOTH modes —
+        // extrapolate on &buffer[4015], 81. Omitting it left LL3 as raw
+        // first-differences (~0 in flat regions), so IDWT dropped the DC
+        // approximation: flat areas collapsed to YCbCr(0,0,0) → RGB(128,
+        // 128,128) mid-gray with only edge detail surviving (embossed
+        // grey desktop, #418 — Windows 8+ always negotiates extrapolate).
+        differential_decode(&mut buffer[4015..4096]);
         lshift_block(&mut buffer[0..1023], shift.hl1);
         lshift_block(&mut buffer[1023..2046], shift.lh1);
         lshift_block(&mut buffer[2046..3007], shift.hh1);
