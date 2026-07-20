@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.81.6
+
+🖱️ **Terminal: touchpad two-finger scroll on some tablets** — on certain OEM tablets (reported on OPPO Pad 3 Pro) a Bluetooth-keyboard touchpad's two-finger scroll moved the app's own lists but did nothing in the terminal. Those touchpad drivers only send a scroll to a view that advertises itself as scrollable, which the terminal wasn't doing. The terminal now declares vertical scroll semantics (a mouse wheel already worked), which should route the gesture through — and, as a bonus, makes the terminal scrollable to TalkBack. Candidate fix, since I can't reproduce it here — feedback welcome. (#419, thanks wxjiee)
+
 ## v5.81.5
 
 🎨 **Windows RDP: colour is back** — connecting to a Windows desktop over RDP rendered the whole screen as a flat embossed grey (looked like a relief carving, wallpaper and all). The RemoteFX-Progressive decoder was dropping the low-frequency (DC) part of every tile in the "extrapolate" mode that Windows 8/10/11 always use, so flat areas collapsed to mid-grey and only edges survived. The decoder now reconstructs the DC band in that mode too, and colour returns. (#418, thanks ZGLinus)
