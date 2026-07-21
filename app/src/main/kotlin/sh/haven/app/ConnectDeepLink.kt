@@ -25,7 +25,7 @@ object ConnectDeepLink {
         val transport: String?,
         val session: String?,
         /** Optional remote command (Tin attach / clean tmux). `command` or `startupCommand` query. */
-        val command: String?,
+        val command: String? = null,
     )
 
     /**
