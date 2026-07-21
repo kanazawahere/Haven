@@ -624,6 +624,8 @@ class BackupServiceTest {
             reticulumPassphrase = "secret",
             postLoginCommand = "tmux attach",
             postLoginBeforeSessionManager = false,
+            remoteCommand = "tmux new -A -s work",
+            requestPty = false,
             fileTransport = "SFTP",
             tunnelConfigId = "tun-1",
         )
@@ -654,6 +656,8 @@ class BackupServiceTest {
         assertEquals("secret", imported.reticulumPassphrase)
         assertEquals("tmux attach", imported.postLoginCommand)
         assertEquals(false, imported.postLoginBeforeSessionManager)
+        assertEquals("tmux new -A -s work", imported.remoteCommand)
+        assertEquals(false, imported.requestPty)
         assertEquals("SFTP", imported.fileTransport)
         assertEquals("tun-1", imported.tunnelConfigId)
     }

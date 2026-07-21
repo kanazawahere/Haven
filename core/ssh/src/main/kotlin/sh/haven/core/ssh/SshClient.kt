@@ -3,7 +3,6 @@ package sh.haven.core.ssh
 import android.util.Log
 import com.jcraft.jsch.ChannelExec
 import com.jcraft.jsch.ChannelSftp
-
 import com.jcraft.jsch.JSch
 import com.jcraft.jsch.JSchException
 import com.jcraft.jsch.Proxy
@@ -390,8 +389,34 @@ class SshClient : SshConnection {
     }
 
     /**
-     * Resize the PTY of an open shell channel.
+     * Open a terminal-facing exec channel for [command]. This is the SSH
+     * RemoteCommand equivalent: the server receives an exec request instead of
+     * starting a login shell. Null or blank commands use [openShellChannel].
      */
+    override fun openTerminalChannel(
+        remoteCommand: String?,
+        requestPty: Boolean = true,
+        term: String = "xterm-256color",
+        cols: Int = 80,
+        rows: Int = 24,
+    ): ShellChannel {
+        val sess = session ?: throw IllegalStateException("Not connected")
+        val command = remoteCommand?.takeIf { it.isNotBlank() }
+        return if (command == null) {
+            openShellOn(sess, term, cols, rows, agentForwardingEnabled)
+        } else {
+            openRemoteCommandOn(
+                session = sess,
+                command = command,
+                requestPty = requestPty,
+                term = term,
+                cols = cols,
+                rows = rows,
+                agentForwarding = agentForwardingEnabled,
+            )
+        }
+    }
+
     /**
      * Open an SFTP channel on the current SSH session.
      * Must be called after [connect].

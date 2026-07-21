@@ -220,6 +220,19 @@ data class ConnectionProfile(
     /** When true, post-login command runs before the session manager (default); when false, runs inside it. */
     val postLoginBeforeSessionManager: Boolean = true,
     /**
+     * Command requested when the SSH channel is opened. Unlike [postLoginCommand],
+     * this uses SSH's exec request instead of typing into an interactive shell,
+     * so login-shell hooks such as `.bashrc` are not involved. Null keeps the
+     * historical interactive shell behaviour.
+     */
+    val remoteCommand: String? = null,
+    /**
+     * Request a PTY for [remoteCommand]. Default true because interactive
+     * programs such as tmux require one; ignored when [remoteCommand] is null.
+     */
+    @ColumnInfo(defaultValue = "1")
+    val requestPty: Boolean = true,
+    /**
      * USB/IP auto-forward: the VID:PID (e.g. "1050:0406") of a phone-attached
      * USB device to export over usbip when this SSH profile connects. Null = off.
      * Stored as VID:PID (not the volatile /dev/bus/usb path) so it survives a

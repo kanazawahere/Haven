@@ -8757,6 +8757,27 @@
      }
     },
     {
+     "name": "connections_field_remote_command",
+     "en": "Remote command (advanced)",
+     "comment": "Group header",
+     "args": [],
+     "t": {}
+    },
+    {
+     "name": "connections_helper_remote_command",
+     "en": "Runs as the SSH command instead of opening a login shell. Leave blank for the normal shell.",
+     "comment": "Group header",
+     "args": [],
+     "t": {}
+    },
+    {
+     "name": "connections_toggle_request_pty",
+     "en": "Request terminal (PTY)",
+     "comment": "Group header",
+     "args": [],
+     "t": {}
+    },
+    {
      "name": "connections_dropdown_none_direct",
      "en": "None (direct)",
      "comment": "Group header",

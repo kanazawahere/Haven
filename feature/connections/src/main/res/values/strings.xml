@@ -156,6 +156,9 @@
     <string name="connections_helper_ssh_options">ssh_config syntax, one per line. Supports KexAlgorithms, Ciphers, MACs, HostKeyAlgorithms, PubkeyAcceptedAlgorithms, PubkeyAuthentication, ServerAlive*. Prefix algorithm lists with + (append), - (remove) or ^ (prepend) to keep the defaults.</string>
     <string name="connections_field_post_login">Post-login command</string>
     <string name="connections_helper_post_login">Sent after login.</string>
+    <string name="connections_field_remote_command">Remote command (advanced)</string>
+    <string name="connections_helper_remote_command">Runs as the SSH command instead of opening a login shell. Leave blank for the normal shell.</string>
+    <string name="connections_toggle_request_pty">Request terminal (PTY)</string>
     <string name="connections_dropdown_none_direct">None (direct)</string>
     <string name="connections_dropdown_cloudflare_tunnel">Cloudflare Tunnel</string>
     <string name="connections_dropdown_default_none">Default (None)</string>

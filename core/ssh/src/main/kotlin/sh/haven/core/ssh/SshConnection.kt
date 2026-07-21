@@ -73,6 +73,24 @@ interface SshConnection : Closeable {
         rows: Int = 24,
     ): ShellChannel
 
+    /**
+     * Open the terminal-facing channel for a session. When [remoteCommand] is
+     * null/blank this is an interactive shell (== [openShellChannel]); when set,
+     * it's an SSH `exec` request for that command (the RemoteCommand path, e.g.
+     * `tmux new -A -s work`), so it runs before shell-startup files instead of
+     * racing them. [requestPty] allocates a PTY (required by tmux; ignored for a
+     * plain shell). Only the JSch engine implements the exec path today — a
+     * sshlib-backed shell engine is future work (#58; gated on sshlib maturity,
+     * cbssh#231).
+     */
+    fun openTerminalChannel(
+        remoteCommand: String?,
+        requestPty: Boolean = true,
+        term: String = "xterm-256color",
+        cols: Int = 80,
+        rows: Int = 24,
+    ): ShellChannel
+
     fun openSftpSession(): SftpSession
 
     suspend fun execCommand(command: String, timeoutMs: Long? = null): ExecResult
