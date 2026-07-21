@@ -8761,21 +8761,57 @@
      "en": "Remote command (advanced)",
      "comment": "Group header",
      "args": [],
-     "t": {}
+     "t": {
+      "ar": "الأمر البعيد (متقدم)",
+      "bn": "রিমোট কমান্ড (উন্নত)",
+      "de": "Remote-Befehl (erweitert)",
+      "es": "Comando remoto (avanzado)",
+      "fr": "Commande distante (avancé)",
+      "hi": "रिमोट कमांड (उन्नत)",
+      "ja": "リモートコマンド（詳細）",
+      "ko": "원격 명령(고급)",
+      "pt": "Comando remoto (avançado)",
+      "ru": "Удаленная команда (расширенные)",
+      "zh": "远程命令（高级）"
+     }
     },
     {
      "name": "connections_helper_remote_command",
      "en": "Runs as the SSH command instead of opening a login shell. Leave blank for the normal shell.",
      "comment": "Group header",
      "args": [],
-     "t": {}
+     "t": {
+      "ar": "يعمل كأمر SSH بدلاً من فتح صدفة تسجيل دخول. اتركه فارغًا للصدفة العادية.",
+      "bn": "লগইন শেল খোলার বদলে SSH কমান্ড হিসেবে চলে। স্বাভাবিক শেলের জন্য খালি রাখুন।",
+      "de": "Wird als SSH-Befehl ausgeführt, statt eine Login-Shell zu öffnen. Für die normale Shell leer lassen.",
+      "es": "Se ejecuta como comando SSH en lugar de abrir una shell de inicio de sesión. Déjelo vacío para la shell normal.",
+      "fr": "S’exécute comme commande SSH au lieu d’ouvrir un shell de connexion. Laissez vide pour le shell normal.",
+      "hi": "लॉगिन शेल खोलने के बजाय SSH कमांड के रूप में चलता है। सामान्य शेल के लिए खाली छोड़ें।",
+      "ja": "ログインシェルを開かず、SSHコマンドとして実行します。通常のシェルには空欄のままにします。",
+      "ko": "로그인 셸을 여는 대신 SSH 명령으로 실행합니다. 일반 셸에는 비워 두세요.",
+      "pt": "É executado como comando SSH em vez de abrir um shell de login. Deixe em branco para o shell normal.",
+      "ru": "Выполняется как команда SSH вместо открытия входной оболочки. Оставьте пустым для обычной оболочки.",
+      "zh": "作为 SSH 命令运行，而不是打开登录 shell。留空则使用普通 shell。"
+     }
     },
     {
      "name": "connections_toggle_request_pty",
      "en": "Request terminal (PTY)",
      "comment": "Group header",
      "args": [],
-     "t": {}
+     "t": {
+      "ar": "طلب طرفية (PTY)",
+      "bn": "টার্মিনাল অনুরোধ করুন (PTY)",
+      "de": "Terminal anfordern (PTY)",
+      "es": "Solicitar terminal (PTY)",
+      "fr": "Demander un terminal (PTY)",
+      "hi": "टर्मिनल का अनुरोध करें (PTY)",
+      "ja": "端末を要求（PTY）",
+      "ko": "터미널 요청(PTY)",
+      "pt": "Solicitar terminal (PTY)",
+      "ru": "Запросить терминал (PTY)",
+      "zh": "请求终端（PTY）"
+     }
     },
     {
      "name": "connections_dropdown_none_direct",

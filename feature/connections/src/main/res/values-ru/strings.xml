@@ -283,6 +283,9 @@
     <string name="connections_field_ssh_options">Параметры SSH</string>
     <string name="connections_helper_ssh_options">Синтаксис ssh_config, по одному в строке. Поддерживает KexAlgorithms, Ciphers, MACs, HostKeyAlgorithms, PubkeyAcceptedAlgorithms, PubkeyAuthentication, ServerAlive*. Ставьте перед списками алгоритмов + (добавить), - (удалить) или ^ (в начало), чтобы сохранить значения по умолчанию.</string>
     <string name="connections_field_post_login">Команда после входа</string>
+    <string name="connections_field_remote_command">Удаленная команда (расширенные)</string>
+    <string name="connections_helper_remote_command">Выполняется как команда SSH вместо открытия входной оболочки. Оставьте пустым для обычной оболочки.</string>
+    <string name="connections_toggle_request_pty">Запросить терминал (PTY)</string>
     <string name="connections_helper_post_login">Отправляется после входа.</string>
     <string name="connections_dropdown_none_direct">Нет (напрямую)</string>
     <string name="connections_dropdown_cloudflare_tunnel">Cloudflare Tunnel</string>
