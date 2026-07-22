@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.82.0
+
+⌨️ **Terminal: floating text input** — a new toolbar key opens a draggable, resizable text box floating over the terminal, so you can compose a whole command with your normal keyboard (autocorrect, swipe typing, voice input, cursor movement) and send it in one shot, instead of fighting the raw terminal cell character-by-character. Embedded newlines and tabs show inline as ↩ / ⇥ so you can see exactly what will be sent, and the text is bracketed-paste-wrapped on send, so a multi-line block arrives as a paste instead of executing line-by-line. Unsent drafts are kept per tab and survive rotation; the window position/size is remembered. The key sits on the default toolbar and can be moved/hidden like any other key. Ported from ConnectBot's Text Input dialog (Apache-2.0).
+
 ## v5.81.6
 
 🖱️ **Terminal: touchpad two-finger scroll on some tablets** — on certain OEM tablets (reported on OPPO Pad 3 Pro) a Bluetooth-keyboard touchpad's two-finger scroll moved the app's own lists but did nothing in the terminal. Those touchpad drivers only send a scroll to a view that advertises itself as scrollable, which the terminal wasn't doing. The terminal now declares vertical scroll semantics (a mouse wheel already worked), which should route the gesture through — and, as a bonus, makes the terminal scrollable to TalkBack. Candidate fix, since I can't reproduce it here — feedback welcome. (#419, thanks wxjiee)
