@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.83.0
+
+⌨️ **SSH profiles can run a remote command on connect — reliable tmux attach** — a new per-profile "Remote command (advanced)" field, with a "Request terminal (PTY)" toggle, runs a command via an SSH `exec` request instead of an interactive login shell. Because it runs *before* shell startup files (`.bashrc` and any auto-tmux hook), setting it to `tmux new -A -s work` attaches to — or creates — that exact named session every time, with no risk of racing a startup hook into the wrong or a duplicate session. It works over mosh too (passed as `mosh-server -- <command>`), so mosh's roaming resilience is preserved — unlike a server-side forced command, which mosh can't bootstrap through. The setting round-trips through encrypted backups. (#436, thanks kanazawahere)
+
 ## v5.82.0
 
 ⌨️ **Terminal: floating text input** — a new toolbar key opens a draggable, resizable text box floating over the terminal, so you can compose a whole command with your normal keyboard (autocorrect, swipe typing, voice input, cursor movement) and send it in one shot, instead of fighting the raw terminal cell character-by-character. Embedded newlines and tabs show inline as ↩ / ⇥ so you can see exactly what will be sent, and the text is bracketed-paste-wrapped on send, so a multi-line block arrives as a paste instead of executing line-by-line. Unsent drafts are kept per tab and survive rotation; the window position/size is remembered. The key sits on the default toolbar and can be moved/hidden like any other key. Ported from ConnectBot's Text Input dialog (Apache-2.0).
