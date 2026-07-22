@@ -283,6 +283,9 @@
     <string name="connections_field_ssh_options">خيارات SSH</string>
     <string name="connections_helper_ssh_options">صيغة ssh_config، واحدة في كل سطر. يدعم KexAlgorithms وCiphers وMACs وHostKeyAlgorithms وPubkeyAcceptedAlgorithms وPubkeyAuthentication وServerAlive*. ضع قبل قوائم الخوارزميات + (إلحاق) أو - (إزالة) أو ^ (إضافة في البداية) للحفاظ على القيم الافتراضية.</string>
     <string name="connections_field_post_login">أمر ما بعد تسجيل الدخول</string>
+    <string name="connections_field_remote_command">الأمر البعيد (متقدم)</string>
+    <string name="connections_helper_remote_command">يعمل كأمر SSH بدلاً من فتح صدفة تسجيل دخول. اتركه فارغًا للصدفة العادية.</string>
+    <string name="connections_toggle_request_pty">طلب طرفية (PTY)</string>
     <string name="connections_helper_post_login">يُرسَل بعد تسجيل الدخول.</string>
     <string name="connections_dropdown_none_direct">بلا (مباشر)</string>
     <string name="connections_dropdown_cloudflare_tunnel">Cloudflare Tunnel</string>

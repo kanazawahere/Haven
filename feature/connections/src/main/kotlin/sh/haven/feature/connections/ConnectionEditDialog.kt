@@ -352,6 +352,8 @@ fun ConnectionEditDialog(
     var moshServerCommand by rememberSaveable { mutableStateOf(existing?.moshServerCommand ?: "") }
     var postLoginCommand by rememberSaveable { mutableStateOf(existing?.postLoginCommand ?: "") }
     var postLoginBeforeSessionManager by rememberSaveable { mutableStateOf(existing?.postLoginBeforeSessionManager ?: true) }
+    var remoteCommand by rememberSaveable { mutableStateOf(existing?.remoteCommand ?: "") }
+    var requestPty by rememberSaveable { mutableStateOf(existing?.requestPty ?: true) }
     // USB/IP auto-forward: VID:PID of a phone device to export on connect (null = off).
     var usbForwardVidPid by rememberSaveable { mutableStateOf(existing?.usbForwardVidPid) }
     var disableAltScreen by rememberSaveable { mutableStateOf(existing?.disableAltScreen ?: false) }
@@ -2495,6 +2497,32 @@ fun ConnectionEditDialog(
                         )
                     }
 
+                    // Remote command runs as an SSH exec request, before any
+                    // interactive shell startup file can take control. Mosh
+                    // forwards it to mosh-server with `--`; ET has no matching
+                    // bootstrap contract, so it intentionally does not expose it.
+                    if (selectedTransport != "ET") {
+                        Spacer(Modifier.height(4.dp))
+                        OutlinedTextField(
+                            value = remoteCommand,
+                            onValueChange = { remoteCommand = it },
+                            label = { Text(stringResource(R.string.connections_field_remote_command)) },
+                            placeholder = { Text("tmux new -A -s work") },
+                            supportingText = { Text(stringResource(R.string.connections_helper_remote_command)) },
+                            singleLine = false,
+                            minLines = 1,
+                            maxLines = 3,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        if (remoteCommand.isNotBlank()) {
+                            BooleanToggleRow(
+                                label = stringResource(R.string.connections_toggle_request_pty),
+                                checked = requestPty,
+                                onCheckedChange = { requestPty = it },
+                            )
+                        }
+                    }
+
                     // USB/IP device forwarding (SSH) — export a phone-attached USB
                     // device to the remote host on connect (e.g. a YubiKey for
                     // `ssh-keygen -t ed25519-sk`, touch on the phone).
@@ -3588,6 +3616,8 @@ fun ConnectionEditDialog(
                             moshServerCommand = moshServerCommand.ifBlank { null },
                             postLoginCommand = postLoginCommand.ifBlank { null },
                             postLoginBeforeSessionManager = postLoginBeforeSessionManager,
+                            remoteCommand = remoteCommand.ifBlank { null },
+                            requestPty = requestPty,
                             usbForwardVidPid = usbForwardVidPid,
                             disableAltScreen = disableAltScreen,
                             terminalColorScheme = terminalColorScheme,

@@ -1,5 +1,6 @@
 package sh.haven.core.ssh
 
+import com.jcraft.jsch.ChannelExec
 import com.jcraft.jsch.ChannelShell
 import com.jcraft.jsch.Session
 import io.mockk.every
@@ -47,6 +48,42 @@ class ShellChannelTest {
         verify { channel.setPtySize(120, 40, 0, 0) }
         shell.disconnect()
         verify { channel.disconnect() }
+    }
+
+    @Test
+    fun `binds remote command streams before connecting with PTY`() {
+        val input = ByteArrayInputStream(ByteArray(0))
+        val output = ByteArrayOutputStream()
+        val channel = mockk<ChannelExec>(relaxed = true)
+        every { channel.inputStream } returns input
+        every { channel.outputStream } returns output
+        val session = mockk<Session>()
+        every { session.openChannel("exec") } returns channel
+
+        val remote = openRemoteCommandOn(
+            session = session,
+            command = "tmux new -A -s work",
+            requestPty = true,
+            term = "xterm-256color",
+            cols = 80,
+            rows = 24,
+            agentForwarding = false,
+        )
+
+        verifyOrder {
+            channel.setCommand("tmux new -A -s work")
+            channel.setPty(true)
+            channel.setPtyType("xterm-256color", 80, 24, 0, 0)
+            channel.inputStream
+            channel.outputStream
+            channel.connect()
+        }
+        assertSame(input, remote.input)
+        assertSame(output, remote.output)
+        // The neutral ShellChannel doesn't expose the raw channel; prove the
+        // wiring by behaviour — resize delegates to the exec channel's PTY.
+        remote.resize(100, 40)
+        verify { channel.setPtySize(100, 40, 0, 0) }
     }
 
     @Test

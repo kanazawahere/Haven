@@ -194,6 +194,8 @@ sealed class AgentUiCommand {
     data class ConnectFromDeepLink(
         val profileId: String,
         val sessionName: String? = null,
+        /** Optional remote command (e.g. tmux attach) — mosh path uses mosh-server `-- COMMAND`. */
+        val startupCommand: String? = null,
     ) : AgentUiCommand()
 
     /**

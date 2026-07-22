@@ -24,6 +24,8 @@ object ConnectDeepLink {
         /** `ssh` / `mosh` / `et`, or null when the link didn't specify one. */
         val transport: String?,
         val session: String?,
+        /** Optional remote command (Tin attach / clean tmux). `command` or `startupCommand` query. */
+        val command: String? = null,
     )
 
     /**
@@ -39,6 +41,7 @@ object ConnectDeepLink {
             port = query("port")?.trim()?.toIntOrNull(),
             transport = query("transport")?.trim()?.lowercase()?.takeIf { it.isNotEmpty() },
             session = query("session")?.trim()?.takeIf { it.isNotEmpty() },
+            command = (query("command") ?: query("startupCommand"))?.trim()?.takeIf { it.isNotEmpty() },
         )
     }
 
@@ -69,7 +72,7 @@ object ConnectDeepLink {
     fun resolve(profiles: List<ConnectionProfile>, p: Params): AgentUiCommand {
         val match = matches(profiles, p).singleOrNull()
         return if (match != null) {
-            AgentUiCommand.ConnectFromDeepLink(match.id, p.session)
+            AgentUiCommand.ConnectFromDeepLink(match.id, p.session, p.command)
         } else {
             AgentUiCommand.PrefillNewConnection(p.host, p.username, p.port, p.transport ?: "ssh", p.session)
         }

@@ -146,6 +146,9 @@
     <string name="connections_field_ssh_options">SSH 选项</string>
     <string name="connections_helper_ssh_options">ssh_config 格式：键 值（每行一个）</string>
     <string name="connections_field_post_login">登录后命令</string>
+    <string name="connections_field_remote_command">远程命令（高级）</string>
+    <string name="connections_helper_remote_command">作为 SSH 命令运行，而不是打开登录 shell。留空则使用普通 shell。</string>
+    <string name="connections_toggle_request_pty">请求终端（PTY）</string>
     <string name="connections_helper_post_login">登录后发送。</string>
     <string name="connections_dropdown_none_direct">无（直连）</string>
     <string name="connections_dropdown_default_none">默认（无）</string>

@@ -67,3 +67,41 @@ internal fun openShellOn(
         exitStatusProbe = { channel.exitStatus },
     )
 }
+
+/**
+ * Open a terminal-facing JSch exec channel on [session] for [command] (the
+ * SSH RemoteCommand path). The server receives an `exec` request instead of a
+ * login shell, so the command runs before shell startup files (`.bashrc`,
+ * auto-tmux hooks) — the whole point of the feature. A PTY is optional for
+ * non-interactive commands and required by tmux; when omitted, resize is a
+ * no-op. Binds streams before connecting for the same reason as [openShellOn].
+ */
+internal fun openRemoteCommandOn(
+    session: Session,
+    command: String,
+    requestPty: Boolean,
+    term: String,
+    cols: Int,
+    rows: Int,
+    agentForwarding: Boolean,
+): ShellChannel {
+    val channel = session.openChannel("exec") as com.jcraft.jsch.ChannelExec
+    channel.setCommand(command)
+    if (requestPty) {
+        channel.setPty(true)
+        channel.setPtyType(term, cols, rows, 0, 0)
+    }
+    if (agentForwarding) channel.setAgentForwarding(true)
+    val input = channel.inputStream
+    val output = channel.outputStream
+    channel.connect()
+    return ShellChannel(
+        input = input,
+        output = output,
+        resizeFn = { c, r -> if (requestPty) channel.setPtySize(c, r, 0, 0) },
+        disconnectFn = { channel.disconnect() },
+        connectedProbe = { channel.isConnected },
+        closedProbe = { channel.isClosed },
+        exitStatusProbe = { channel.exitStatus },
+    )
+}

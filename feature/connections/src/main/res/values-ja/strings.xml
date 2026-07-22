@@ -283,6 +283,9 @@
     <string name="connections_field_ssh_options">SSHオプション</string>
     <string name="connections_helper_ssh_options">ssh_config構文、1行に1つ。KexAlgorithms、Ciphers、MACs、HostKeyAlgorithms、PubkeyAcceptedAlgorithms、PubkeyAuthentication、ServerAlive* に対応。アルゴリズムのリストの先頭に + (追加)、- (削除)、^ (先頭に追加) を付けると既定値が維持されます。</string>
     <string name="connections_field_post_login">ログイン後のコマンド</string>
+    <string name="connections_field_remote_command">リモートコマンド（詳細）</string>
+    <string name="connections_helper_remote_command">ログインシェルを開かず、SSHコマンドとして実行します。通常のシェルには空欄のままにします。</string>
+    <string name="connections_toggle_request_pty">端末を要求（PTY）</string>
     <string name="connections_helper_post_login">ログイン後に送信されます。</string>
     <string name="connections_dropdown_none_direct">なし（直接）</string>
     <string name="connections_dropdown_cloudflare_tunnel">Cloudflare Tunnel</string>

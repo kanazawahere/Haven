@@ -327,7 +327,7 @@ class ConnectionsViewModel @Inject constructor(
                     // would use this profile's stored credentials.
                     val profile = repository.getById(command.profileId)
                     if (profile != null) {
-                        _connectConfirm.value = ConnectConfirm(profile, command.sessionName)
+                        _connectConfirm.value = ConnectConfirm(profile, command.sessionName, command.startupCommand)
                     } else {
                         Log.w(TAG, "ConnectFromDeepLink: profile ${command.profileId} not found")
                     }
@@ -927,7 +927,11 @@ class ConnectionsViewModel @Inject constructor(
     // --- haven://connect deep link (#305) ---
 
     /** A matched saved profile awaiting the user's confirm before connecting. */
-    data class ConnectConfirm(val profile: ConnectionProfile, val sessionName: String?)
+    data class ConnectConfirm(
+        val profile: ConnectionProfile,
+        val sessionName: String?,
+        val startupCommand: String? = null,
+    )
 
     private val _connectConfirm = MutableStateFlow<ConnectConfirm?>(null)
     val connectConfirm: StateFlow<ConnectConfirm?> = _connectConfirm.asStateFlow()
@@ -936,7 +940,12 @@ class ConnectionsViewModel @Inject constructor(
     fun confirmDeepLinkConnect() {
         val c = _connectConfirm.value ?: return
         _connectConfirm.value = null
-        connect(c.profile, password = c.profile.sshPassword.orEmpty(), sessionName = c.sessionName)
+        connect(
+            c.profile,
+            password = c.profile.sshPassword.orEmpty(),
+            sessionName = c.sessionName,
+            startupCommand = c.startupCommand,
+        )
     }
 
     fun dismissDeepLinkConnect() {
@@ -1759,6 +1768,7 @@ class ConnectionsViewModel @Inject constructor(
         rememberPassword: Boolean? = null,
         usernameOverride: String? = null,
         sessionName: String? = null,
+        startupCommand: String? = null,
     ) {
         // Identity resolution (#360): for SSH-family profiles, substitute the
         // effective identity's username/password/key just before dialing, so
@@ -1773,11 +1783,11 @@ class ConnectionsViewModel @Inject constructor(
                 // the identity's (mirrors the jump-host merge idiom).
                 val effectivePassword =
                     if (password.isEmpty()) resolved.sshPassword.orEmpty() else password
-                connectAfterIdentity(resolved, effectivePassword, keyOnly, rememberPassword, usernameOverride, sessionName)
+                connectAfterIdentity(resolved, effectivePassword, keyOnly, rememberPassword, usernameOverride, sessionName, startupCommand)
             }
             return
         }
-        connectAfterIdentity(profile, password, keyOnly, rememberPassword, usernameOverride, sessionName)
+        connectAfterIdentity(profile, password, keyOnly, rememberPassword, usernameOverride, sessionName, startupCommand)
     }
 
     /** Post-identity dispatch: USB-drive preflight, then [connectInner]. */
@@ -1788,6 +1798,7 @@ class ConnectionsViewModel @Inject constructor(
         rememberPassword: Boolean?,
         usernameOverride: String?,
         sessionName: String?,
+        startupCommand: String? = null,
     ) {
         // USB-drive bookmarks (#287): the "USB: …" connection's VM stops on
         // eject/sleep/app-restart, leaving the profile pointing at a dead
@@ -1800,12 +1811,12 @@ class ConnectionsViewModel @Inject constructor(
                     is sh.haven.core.data.repository.ConnectionPreflight.Result.Block ->
                         _error.value = result.message
                     is sh.haven.core.data.repository.ConnectionPreflight.Result.Proceed ->
-                        connectInner(result.profile, password, keyOnly, rememberPassword, usernameOverride, sessionName)
+                        connectInner(result.profile, password, keyOnly, rememberPassword, usernameOverride, sessionName, startupCommand)
                 }
             }
             return
         }
-        connectInner(profile, password, keyOnly, rememberPassword, usernameOverride, sessionName)
+        connectInner(profile, password, keyOnly, rememberPassword, usernameOverride, sessionName, startupCommand)
     }
 
     private fun connectInner(
@@ -1815,6 +1826,7 @@ class ConnectionsViewModel @Inject constructor(
         rememberPassword: Boolean? = null,
         usernameOverride: String? = null,
         sessionName: String? = null,
+        startupCommand: String? = null,
     ) {
         if (profile.isLocal) {
             connectLocal(profile)
@@ -1881,7 +1893,14 @@ class ConnectionsViewModel @Inject constructor(
             return
         }
         if (profile.isMosh) {
-            connectMosh(profile, password, keyOnly, usernameOverride = runtimeUsername)
+            connectMosh(
+                profile,
+                password,
+                keyOnly,
+                usernameOverride = runtimeUsername,
+                preselectedSessionName = sessionName,
+                startupCommand = startupCommand,
+            )
             return
         }
         connectSsh(profile, password, keyOnly, rememberPassword, usernameOverride = runtimeUsername, preselectedSessionName = sessionName)
@@ -2981,7 +3000,14 @@ class ConnectionsViewModel @Inject constructor(
                 }
 
                 val sshSessionMgr = withContext(Dispatchers.IO) {
-                    val sshSessionMgr = resolveSessionManager(profile)
+                    // A profile RemoteCommand is itself the program to run, so
+                    // session-manager discovery and post-login keystrokes must
+                    // not prepend another shell command to it.
+                    val sshSessionMgr = if (profile.remoteCommand.isNullOrBlank()) {
+                        resolveSessionManager(profile)
+                    } else {
+                        SessionManager.NONE
+                    }
                     val cmdOverride = preferencesRepository.sessionCommandOverride.first()
                     if (reuseClient != null) {
                         // Reuse path: the SSH connection is already up, so no
@@ -2997,6 +3023,8 @@ class ConnectionsViewModel @Inject constructor(
                             port = profile.port,
                             username = effectiveUsername,
                             authMethod = ConnectionConfig.AuthMethod.Password(""),
+                            remoteCommand = profile.remoteCommand,
+                            requestPty = profile.requestPty,
                             reconnectPolicy = ConnectionConfig.ReconnectPolicy(autoReconnect = false),
                         )
                         sshSessionManager.storeConnectionConfig(sessionId, config, sshSessionMgr, cmdOverride, profile.postLoginCommand, profile.postLoginBeforeSessionManager)
@@ -3010,6 +3038,8 @@ class ConnectionsViewModel @Inject constructor(
                             authMethod = authMethod,
                             sshOptions = ConnectionConfig.parseSshOptions(profile.sshOptions),
                             forwardAgent = profile.forwardAgent,
+                            remoteCommand = profile.remoteCommand,
+                            requestPty = profile.requestPty,
                             addressFamily = profile.addressFamilyForSsh,
                             agentIdentities = agentIdentitiesFor(profile),
                             reconnectPolicy = profile.reconnectPolicy,
@@ -3412,6 +3442,8 @@ class ConnectionsViewModel @Inject constructor(
         password: String,
         keyOnly: Boolean,
         usernameOverride: String? = null,
+        preselectedSessionName: String? = null,
+        startupCommand: String? = null,
     ) {
         val effectiveUsername = usernameOverride?.takeIf { it.isNotBlank() } ?: profile.username
         viewModelScope.launch {
@@ -3442,6 +3474,25 @@ class ConnectionsViewModel @Inject constructor(
 
                 // Phase 2: Resolve session manager, check for existing sessions
                 val smgr = resolveSessionManager(profile)
+
+                // Profile RemoteCommand is passed through mosh-server's `--`
+                // exactly like a deep-link startup command. It replaces the
+                // default remote shell before its startup files can run.
+                val effectiveStartupCommand = startupCommand ?: profile.remoteCommand?.takeIf { it.isNotBlank() }
+                // Deep-link / profile RemoteCommand: skip interactive picker when session or command given.
+                if (preselectedSessionName != null || effectiveStartupCommand != null) {
+                    finishMoshConnect(
+                        sessionId = sessionId,
+                        profileId = profile.id,
+                        serverHost = profile.host,
+                        client = client,
+                        manager = smgr,
+                        chosenSessionName = preselectedSessionName,
+                        verboseLogger = verboseLogger,
+                        startupCommand = effectiveStartupCommand,
+                    )
+                    return@launch
+                }
 
                 val existingSessions = withContext(Dispatchers.IO) {
                     listExistingMultiplexerSessions(smgr) { client.execCommand(it) }
@@ -4105,10 +4156,13 @@ class ConnectionsViewModel @Inject constructor(
         chosenSessionName: String?,
         silent: Boolean = false,
         verboseLogger: SshVerboseLogger? = null,
+        startupCommand: String? = null,
     ) {
         val moshConnect = withContext(Dispatchers.IO) {
             val customMoshCmd = repository.getById(profileId)?.moshServerCommand?.takeIf { it.isNotBlank() }
-            val moshCmd = customMoshCmd ?: "mosh-server new -s -c 256 -l LANG=en_US.UTF-8"
+            val baseMoshCmd = customMoshCmd ?: "mosh-server new -s -c 256 -l LANG=en_US.UTF-8"
+            // Tin/ATP clean attach: mosh-server execs COMMAND instead of $SHELL — no nested tmux orphan.
+            val moshCmd = if (!startupCommand.isNullOrBlank()) "$baseMoshCmd -- $startupCommand" else baseMoshCmd
             Log.d(TAG, "Running mosh-server bootstrap: $moshCmd")
             val result = client.execCommand(moshCmd)
 
@@ -4150,10 +4204,11 @@ class ConnectionsViewModel @Inject constructor(
         val (serverIp, moshPort, moshKey) = moshConnect
         Log.d(TAG, "MOSH CONNECT parsed: $serverIp:$moshPort")
 
-        // Build session manager command with chosen or default session name
+        // Build session manager command with chosen or default session name.
+        // When startupCommand was passed to mosh-server via `--`, do NOT also inject keystrokes.
         val smCmd = manager.command
         var effectiveSessionName: String? = null
-        if (smCmd != null) {
+        if (startupCommand == null && smCmd != null) {
             val rawName = chosenSessionName
                 ?: moshSessionManager.sessions.value[sessionId]?.label
                 ?: sessionId.take(8)
@@ -4679,9 +4734,14 @@ class ConnectionsViewModel @Inject constructor(
         viewModelScope.launch {
             _connectingProfileId.value = profileId
             try {
-                // Set up session manager preference (per-profile or global default)
+                // A RemoteCommand is the program for the channel itself; do
+                // not replace it with a configured multiplexer command here.
                 val profile = repository.getById(profileId)
-                val sshSessionMgr = resolveSessionManager(profile)
+                val sshSessionMgr = if (profile?.remoteCommand.isNullOrBlank()) {
+                    resolveSessionManager(profile)
+                } else {
+                    SessionManager.NONE
+                }
                 val cmdOverride = preferencesRepository.sessionCommandOverride.first()
                 val config = session.connectionConfig
                 if (config != null) {
@@ -5205,7 +5265,9 @@ class ConnectionsViewModel @Inject constructor(
                     authMethod = authMethod,
                     sshOptions = ConnectionConfig.parseSshOptions(profile.sshOptions),
                     forwardAgent = profile.forwardAgent,
-                        addressFamily = profile.addressFamilyForSsh,
+                    remoteCommand = profile.remoteCommand,
+                    requestPty = profile.requestPty,
+                    addressFamily = profile.addressFamilyForSsh,
                     agentIdentities = agentIdentitiesFor(profile),
                 )
                 val proxy = if (jumpSessionId != null) {
@@ -5239,7 +5301,11 @@ class ConnectionsViewModel @Inject constructor(
                     }
                 }
 
-                val sshSessionMgr = resolveSessionManager(profile)
+                val sshSessionMgr = if (profile.remoteCommand.isNullOrBlank()) {
+                    resolveSessionManager(profile)
+                } else {
+                    SessionManager.NONE
+                }
                 val cmdOverride = preferencesRepository.sessionCommandOverride.first()
                 sshSessionManager.storeConnectionConfig(sessionId, config, sshSessionMgr, cmdOverride, profile.postLoginCommand, profile.postLoginBeforeSessionManager)
             }
@@ -5275,8 +5341,18 @@ class ConnectionsViewModel @Inject constructor(
                 bootstrapMoshEtSsh(profile, password, config, verboseLogger, interactive = false)
             }
 
-            val smgr = resolveSessionManager(profile)
-            finishMoshConnect(sessionId, profile.id, profile.host, client, smgr, profile.lastSessionName, silent = true, verboseLogger = verboseLogger)
+            val smgr = if (profile.remoteCommand.isNullOrBlank()) resolveSessionManager(profile) else SessionManager.NONE
+            finishMoshConnect(
+                sessionId,
+                profile.id,
+                profile.host,
+                client,
+                smgr,
+                profile.lastSessionName,
+                silent = true,
+                verboseLogger = verboseLogger,
+                startupCommand = profile.remoteCommand?.takeIf { it.isNotBlank() },
+            )
         } catch (e: Exception) {
             Log.e(TAG, "connectMoshSilent failed for ${profile.label}: ${e.message}", e)
             connectionLogRepository.logEvent(profile.id, ConnectionLog.Status.FAILED, details = e.message, verboseLog = verboseLogger?.drain())
