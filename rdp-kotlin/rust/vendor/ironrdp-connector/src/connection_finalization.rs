@@ -175,8 +175,23 @@ impl Sequence for ConnectionFinalizationSequence {
             }
 
             ConnectionFinalizationState::WaitForResponse => {
-                let ctx = legacy::decode_send_data_indication(input)?;
-                let ctx = legacy::decode_share_data(ctx)?;
+                let sdi = legacy::decode_send_data_indication(input)?;
+                let user_data = sdi.user_data;
+                let ctx = match legacy::decode_share_data(sdi) {
+                    Ok(ctx) => ctx,
+                    // Some servers (VirtualBox VRDP, Haven #422) send the Server
+                    // Font Map with an empty FontPdu body that ironrdp-pdu's
+                    // strict decode rejects (NotEnoughBytes). The Font Map only
+                    // signals finalization-complete and its contents are unused,
+                    // so a structurally-recognisable-but-short Font Map is
+                    // accepted as received rather than aborting the connect.
+                    Err(e) if legacy::is_server_font_map(user_data) => {
+                        warn!("Server Font Map failed strict decode ({e}); accepting as finalization-complete (lenient FontMap, #422)");
+                        self.state = ConnectionFinalizationState::Finished;
+                        return Ok(Written::Nothing);
+                    }
+                    Err(e) => return Err(e),
+                };
 
                 debug!(message = ?ctx.pdu, "Received");
 

@@ -165,6 +165,32 @@ pub fn decode_share_data(ctx: SendDataIndicationCtx<'_>) -> ConnectorResult<Shar
     })
 }
 
+/// Peek whether this Send Data Indication's user data is a Server Font Map PDU,
+/// without decoding the FontPdu body.
+///
+/// VirtualBox's VRDP server sends the Server Font Map with an empty (0-byte)
+/// FontPdu body, where `ironrdp-pdu`'s `FontPdu::decode` requires the full 8
+/// bytes (numberEntries/totalNumEntries/mapFlags/entrySize) and fails with
+/// `NotEnoughBytes` — killing the connect right after auth (Haven #422). The
+/// Font Map's contents are ignored by the finalization sequence anyway (it's
+/// only the "server may now send graphics" signal, MS-RDPBCGR 1.3.1.1), so the
+/// finalization sequence uses this to accept a short/empty Font Map from
+/// lenient servers instead of aborting — matching mstsc/FreeRDP behaviour.
+///
+/// `pduType2` sits at offset 14: a 6-byte Share Control header (totalLength u16,
+/// pduType u16, pduSource u16) then 8 bytes into the Share Data header (shareId
+/// u32, pad1 u8, streamId u8, uncompressedLength u16). MS-RDPBCGR 2.2.8.1.1.1.1
+/// / 2.2.8.1.1.1.2; PDUTYPE_DATAPDU = 0x7 (low nibble of pduType), PDUTYPE2_FONTMAP = 0x28.
+pub fn is_server_font_map(user_data: &[u8]) -> bool {
+    const PDUTYPE_DATAPDU: u16 = 0x7;
+    const PDUTYPE2_FONTMAP: u8 = 0x28;
+    if user_data.len() < 15 {
+        return false;
+    }
+    let pdu_type = u16::from_le_bytes([user_data[2], user_data[3]]);
+    (pdu_type & 0x0F) == PDUTYPE_DATAPDU && user_data[14] == PDUTYPE2_FONTMAP
+}
+
 pub enum IoChannelPdu {
     Data(ShareDataCtx),
     DeactivateAll(ServerDeactivateAll),
@@ -217,5 +243,53 @@ pub fn decode_io_channel(ctx: SendDataIndicationCtx<'_>) -> ConnectorResult<IoCh
             "received unexpected Share Control PDU: got {} (expected Data PDU or Server Deactivate All PDU)",
             other.as_short_name(),
         )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_server_font_map;
+
+    /// Share Control header (totalLength, pduType, pduSource) + Share Data
+    /// header, with `pdu_type2` at offset 14 and no FontPdu body — the shape
+    /// VirtualBox VRDP sends for the Server Font Map (#422).
+    fn share_data_user_data(pdu_type: u16, pdu_type2: u8) -> Vec<u8> {
+        let mut v = Vec::new();
+        v.extend_from_slice(&18u16.to_le_bytes()); // totalLength
+        v.extend_from_slice(&pdu_type.to_le_bytes()); // pduType
+        v.extend_from_slice(&3u16.to_le_bytes()); // pduSource
+        v.extend_from_slice(&0u32.to_le_bytes()); // shareId
+        v.push(0); // pad1
+        v.push(0); // streamId
+        v.extend_from_slice(&0u16.to_le_bytes()); // uncompressedLength
+        v.push(pdu_type2); // pduType2 @ offset 14
+        v.push(0); // compressedType
+        v.extend_from_slice(&0u16.to_le_bytes()); // compressedLength
+        v // empty FontPdu body follows
+    }
+
+    #[test]
+    fn detects_empty_server_font_map() {
+        // PDUTYPE_DATAPDU (0x7) in the low nibble, PDUTYPE2_FONTMAP (0x28).
+        assert!(is_server_font_map(&share_data_user_data(0x17, 0x28)));
+    }
+
+    #[test]
+    fn ignores_non_font_map_data_pdu() {
+        // A Data PDU that isn't a Font Map (e.g. PDUTYPE2_CONTROL 0x14).
+        assert!(!is_server_font_map(&share_data_user_data(0x17, 0x14)));
+    }
+
+    #[test]
+    fn ignores_non_data_share_control_pdu() {
+        // pduType low nibble != DATAPDU (e.g. Confirm Active 0x3), even with the
+        // FontMap byte present, must not be mistaken for a Font Map.
+        assert!(!is_server_font_map(&share_data_user_data(0x13, 0x28)));
+    }
+
+    #[test]
+    fn ignores_truncated_buffer() {
+        assert!(!is_server_font_map(&[0u8; 10]));
+        assert!(!is_server_font_map(&[]));
     }
 }
