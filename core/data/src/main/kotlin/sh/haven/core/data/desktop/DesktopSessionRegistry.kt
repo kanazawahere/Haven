@@ -9,8 +9,12 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Live connection state of a remote-desktop (VNC/RDP) tab. */
-enum class DesktopStatus { CONNECTING, CONNECTED, ERROR }
+/**
+ * Live connection state of a remote-desktop (VNC/RDP) tab. DISCONNECTED means
+ * the tab is still open but its session ended (server logoff, transport death)
+ * — distinct from ERROR (a surfaced failure) and from absence (tab closed).
+ */
+enum class DesktopStatus { CONNECTING, CONNECTED, DISCONNECTED, ERROR }
 
 /** Current server cursor shape for a desktop tab. */
 data class CursorSnapshot(val bitmap: Bitmap, val hotspotX: Int, val hotspotY: Int)
@@ -116,4 +120,28 @@ class DesktopSessionRegistry @Inject constructor() {
 
     /** All registered input handles, keyed by profileId. */
     fun inputHandles(): Map<String, DesktopInputHandle> = inputHandles.toMap()
+
+    // --- Close handles (for MCP disconnect_profile, #437) ---
+    //
+    // Direct (non-SSH-tunnelled) desktop tabs have no tunnel lease, so the
+    // MCP disconnect path had no way to close them — the tab survived with a
+    // stale status. The tab registers a closure that closes it; mirrors the
+    // frame/input handle pattern.
+
+    private val closeHandles = ConcurrentHashMap<String, () -> Unit>()
+
+    /** Register (or replace) the tab-close closure for [profileId]. */
+    fun registerCloseHandle(profileId: String?, handle: () -> Unit) {
+        if (profileId == null) return
+        closeHandles[profileId] = handle
+    }
+
+    /** Drop the close handle for [profileId] — the desktop tab is gone. */
+    fun clearCloseHandle(profileId: String?) {
+        if (profileId == null) return
+        closeHandles.remove(profileId)
+    }
+
+    /** The close handle for [profileId], or null if none registered. */
+    fun closeHandle(profileId: String): (() -> Unit)? = closeHandles[profileId]
 }

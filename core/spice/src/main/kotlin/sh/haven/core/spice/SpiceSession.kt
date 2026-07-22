@@ -33,7 +33,7 @@ class SpiceSession(
     private val password: String?,
     private val width: Int = 1920,
     private val height: Int = 1080,
-    private val onDisconnected: (() -> Unit)? = null,
+    onDisconnected: (() -> Unit)? = null,
     private val verboseBuffer: ConcurrentLinkedQueue<String>? = null,
 ) : Closeable {
 
@@ -66,6 +66,14 @@ class SpiceSession(
 
     /** Called when an error occurs. */
     var onError: ((Exception) -> Unit)? = null
+
+    /**
+     * Called when the native session loop ends without a surfaced error — a
+     * server-side close, or a socket death the loop treats as a clean exit.
+     * Settable post-construction (like [onError]) so the desktop tab can mark
+     * itself dead instead of staying "connected" forever (#437).
+     */
+    var onDisconnected: (() -> Unit)? = onDisconnected
 
     /**
      * Called once the SPICE session is fully established. Unlike RDP, the Rust

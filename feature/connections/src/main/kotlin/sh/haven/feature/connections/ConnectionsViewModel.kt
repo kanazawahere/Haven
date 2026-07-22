@@ -575,6 +575,7 @@ class ConnectionsViewModel @Inject constructor(
                 val deskStatus = when (status) {
                     sh.haven.core.data.desktop.DesktopStatus.CONNECTED -> ProfileStatus.CONNECTED
                     sh.haven.core.data.desktop.DesktopStatus.CONNECTING -> ProfileStatus.CONNECTING
+                    sh.haven.core.data.desktop.DesktopStatus.DISCONNECTED -> ProfileStatus.DISCONNECTED
                     sh.haven.core.data.desktop.DesktopStatus.ERROR -> ProfileStatus.ERROR
                 }
                 val existing = result[profileId]

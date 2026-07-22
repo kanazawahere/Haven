@@ -3102,6 +3102,10 @@ internal class McpTools(
         // live, and live_tunnels surfaced the bogus "still depending" state.
         sshSessionManager.teardownTunnelDependent(profileId)
         tunnelManager.release(profileId)
+        // Direct (non-tunnelled) VNC/RDP/SPICE tabs have no lease to cascade
+        // through — close them via the tab's registered close handle, so the
+        // tab (and its status in list_desktop_sessions) actually goes away (#437).
+        desktopSessionRegistry.closeHandle(profileId)?.invoke()
         return JSONObject().apply {
             put("profileId", profileId)
             put("disconnected", true)

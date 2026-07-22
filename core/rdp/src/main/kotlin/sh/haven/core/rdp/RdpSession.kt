@@ -37,7 +37,7 @@ class RdpSession(
     private val height: Int = 1080,
     private val useNla: Boolean = true,
     private val colorDepth: Int = 16,
-    private val onDisconnected: (() -> Unit)? = null,
+    onDisconnected: (() -> Unit)? = null,
     private val verboseBuffer: ConcurrentLinkedQueue<String>? = null,
     /**
      * Optional SOCKS5 endpoint for routing IronRDP's TCP through a
@@ -95,6 +95,14 @@ class RdpSession(
 
     /** Called when an error occurs. */
     var onError: ((Exception) -> Unit)? = null
+
+    /**
+     * Called when the native session loop ends without a surfaced error — a
+     * server-side logoff/close, or a socket death the loop treats as a clean
+     * exit. Settable post-construction (like [onError]) so the desktop tab
+     * can mark itself dead instead of staying "connected" forever (#437).
+     */
+    var onDisconnected: (() -> Unit)? = onDisconnected
 
     /**
      * Called once the RDP handshake + capability exchange completes. Prior to

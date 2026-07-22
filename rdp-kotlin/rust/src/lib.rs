@@ -1443,8 +1443,11 @@ fn run_rdp_session(
                                 debug!("Skipping unhandled PDU: {}", msg);
                             }
                         } else {
+                            // #437: a fatal protocol error is not a clean exit —
+                            // surface it through on_error so the app layer marks
+                            // the tab dead instead of leaving it "connected".
                             error!("Session process error: {}", msg);
-                            break;
+                            return Err(format!("session error: {msg}"));
                         }
                     }
                 }

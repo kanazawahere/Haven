@@ -1366,6 +1366,11 @@ class DesktopViewModel @Inject constructor(
                         clipboard = { text -> newTab.remoteDesktop.sendClipboardText(text) },
                     ),
                 )
+                // Let MCP disconnect_profile close this tab even when there's
+                // no tunnel lease to cascade through (direct connections, #437).
+                desktopSessionRegistry.registerCloseHandle(profileId) {
+                    viewModelScope.launch { closeTab(tabId) }
+                }
 
                 val tc = tunneledConn
                 if (tc != null) {
@@ -1558,6 +1563,26 @@ class DesktopViewModel @Inject constructor(
                         }
                     }
                 }
+                session.onDisconnected = {
+                    // Session ended without a surfaced error (server logoff /
+                    // transport death). Skip if the tab was already closed by
+                    // the user — disconnectTab has cleared the registry and a
+                    // late status write would resurrect a ghost entry (#437).
+                    if (_tabs.value.any { it.id == tabId }) {
+                        connected.value = false
+                        desktopSessionRegistry.setStatus(profileId, DesktopStatus.DISCONNECTED)
+                        if (profileId != null) {
+                            viewModelScope.launch(Dispatchers.IO) {
+                                connectionLogRepository.logEvent(
+                                    profileId,
+                                    ConnectionLog.Status.DISCONNECTED,
+                                    details = "Session ended by server",
+                                    verboseLog = session.drainVerboseLog(),
+                                )
+                            }
+                        }
+                    }
+                }
 
                 // Knock only on the direct path. SSH-forward goes via a
                 // localhost tunnel (knock happened at the SSH connect)
@@ -1612,6 +1637,11 @@ class DesktopViewModel @Inject constructor(
                         clipboard = { text -> tab.remoteDesktop.sendClipboardText(text) },
                     ),
                 )
+                // Let MCP disconnect_profile close this tab even when there's
+                // no tunnel lease to cascade through (direct connections, #437).
+                desktopSessionRegistry.registerCloseHandle(profileId) {
+                    viewModelScope.launch { closeTab(tabId) }
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "RDP connect failed", e)
                 if (profileId != null) {
@@ -1735,6 +1765,24 @@ class DesktopViewModel @Inject constructor(
                         }
                     }
                 }
+                session.onDisconnected = {
+                    // Session ended without a surfaced error — mirror the RDP
+                    // path so the tab never claims "connected" past death (#437).
+                    if (_tabs.value.any { it.id == tabId }) {
+                        connected.value = false
+                        desktopSessionRegistry.setStatus(profileId, DesktopStatus.DISCONNECTED)
+                        if (profileId != null) {
+                            viewModelScope.launch(Dispatchers.IO) {
+                                connectionLogRepository.logEvent(
+                                    profileId,
+                                    ConnectionLog.Status.DISCONNECTED,
+                                    details = "Session ended by server",
+                                    verboseLog = session.drainVerboseLog(),
+                                )
+                            }
+                        }
+                    }
+                }
 
                 // Create + show the tab before start() — SPICE's connect()
                 // blocks until established, so the UI sits on "Connecting"
@@ -1775,6 +1823,11 @@ class DesktopViewModel @Inject constructor(
                         clipboard = { text -> tab.remoteDesktop.sendClipboardText(text) },
                     ),
                 )
+                // Let MCP disconnect_profile close this tab even when there's
+                // no tunnel lease to cascade through (direct connections, #437).
+                desktopSessionRegistry.registerCloseHandle(profileId) {
+                    viewModelScope.launch { closeTab(tabId) }
+                }
 
                 // Knock only on the direct path (SSH-forward knocked at SSH connect).
                 if (!sshForward && profileId != null) {
@@ -2004,6 +2057,7 @@ class DesktopViewModel @Inject constructor(
                     desktopSessionRegistry.clear(tab.profileId)
                     desktopSessionRegistry.clearFrameHandle(tab.profileId)
                     desktopSessionRegistry.clearInputHandle(tab.profileId)
+                    desktopSessionRegistry.clearCloseHandle(tab.profileId)
                 }
                 is DesktopTab.Rdp -> {
                     if (tab.profileId != null) {
@@ -2016,6 +2070,7 @@ class DesktopViewModel @Inject constructor(
                     desktopSessionRegistry.clear(tab.profileId)
                     desktopSessionRegistry.clearFrameHandle(tab.profileId)
                     desktopSessionRegistry.clearInputHandle(tab.profileId)
+                    desktopSessionRegistry.clearCloseHandle(tab.profileId)
                 }
                 is DesktopTab.Spice -> {
                     if (tab.profileId != null) {
@@ -2028,6 +2083,7 @@ class DesktopViewModel @Inject constructor(
                     desktopSessionRegistry.clear(tab.profileId)
                     desktopSessionRegistry.clearFrameHandle(tab.profileId)
                     desktopSessionRegistry.clearInputHandle(tab.profileId)
+                    desktopSessionRegistry.clearCloseHandle(tab.profileId)
                 }
                 is DesktopTab.Wayland -> {} // compositor lifecycle managed externally
             }
