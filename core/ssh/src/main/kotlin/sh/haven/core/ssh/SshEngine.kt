@@ -19,11 +19,21 @@ enum class SshEngine {
 
 private const val ENGINE_DIRECTIVE = "havensshengine"
 
+/** Engine choice from a parsed SSH Options map; [SshEngine.JSCH] unless valid. */
+fun sshEngineFrom(sshOptions: Map<String, String>): SshEngine {
+    val value = sshOptions.entries
+        .firstOrNull { it.key.trim().lowercase() == ENGINE_DIRECTIVE }
+        ?.value?.trim() ?: return SshEngine.JSCH
+    return if (value.equals("sshlib", ignoreCase = true)) SshEngine.SSHLIB else SshEngine.JSCH
+}
+
+/**
+ * Engine choice from raw SSH Options text (the `ConnectionProfile.sshOptions`
+ * column), for callers that pick the engine before a [ConnectionConfig] exists.
+ */
+fun sshEngineFromOptionsText(sshOptions: String?): SshEngine =
+    sshEngineFrom(ConnectionConfig.parseSshOptions(sshOptions))
+
 /** Engine choice carried by this config's SSH Options; [SshEngine.JSCH] unless valid. */
 val ConnectionConfig.sshEngine: SshEngine
-    get() {
-        val value = sshOptions.entries
-            .firstOrNull { it.key.trim().lowercase() == ENGINE_DIRECTIVE }
-            ?.value?.trim() ?: return SshEngine.JSCH
-        return if (value.equals("sshlib", ignoreCase = true)) SshEngine.SSHLIB else SshEngine.JSCH
-    }
+    get() = sshEngineFrom(sshOptions)

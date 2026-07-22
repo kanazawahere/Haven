@@ -23,7 +23,7 @@ class TerminalSession(
     val profileId: String,
     val label: String,
     @Volatile private var shell: ShellChannel,
-    @Volatile private var client: SshClient,
+    @Volatile private var client: SshConnection,
     @Volatile private var onDataReceived: (ByteArray, Int, Int) -> Unit,
     /**
      * Permanent, non-swappable mirror of every output chunk (the agent
@@ -269,7 +269,7 @@ class TerminalSession(
      * The old reader thread has already exited (which triggered the reconnect).
      * Starts a new reader on the new channel.
      */
-    fun reconnect(newShell: ShellChannel, newClient: SshClient) {
+    fun reconnect(newShell: ShellChannel, newClient: SshConnection) {
         // Invalidate any still-running previous reader *before* swapping the
         // channel, so when it unblocks it sees a newer generation and exits
         // instead of reading the new stream or re-triggering reconnect. (#208 #2)

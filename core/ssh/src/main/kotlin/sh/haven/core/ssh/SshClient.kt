@@ -41,12 +41,12 @@ data class ExecResult(
 /**
  * Wrapper around JSch providing coroutine-based SSH connectivity.
  */
-class SshClient : Closeable {
+class SshClient : SshConnection {
     private val jsch = JSch()
     /** Set before connecting with a FidoKey auth method. */
-    var fidoAuthenticator: FidoAuthenticator? = null
+    override var fidoAuthenticator: FidoAuthenticator? = null
     /** Set before connect() to capture verbose SSH protocol output. */
-    var verboseLogger: SshVerboseLogger? = null
+    override var verboseLogger: SshVerboseLogger? = null
     private var session: Session? = null
 
     /**
@@ -56,7 +56,7 @@ class SshClient : Closeable {
      * [connect]/[connectBlocking] returning null.
      */
     @Volatile
-    var hostVerifiedByCa: Boolean = false
+    override var hostVerifiedByCa: Boolean = false
         private set
 
     /**
@@ -66,13 +66,13 @@ class SshClient : Closeable {
      * consults this before routing a profile's SFTP to sshlib.
      */
     @Volatile
-    var connectedViaProxy: Boolean = false
+    override var connectedViaProxy: Boolean = false
         private set
 
     /** Whether the active session should set agent forwarding on newly opened shell/exec channels. */
     private var agentForwardingEnabled = false
 
-    val isConnected: Boolean
+    override val isConnected: Boolean
         get() = session?.isConnected == true
 
     /** The underlying JSch session, for creating ProxyJump tunnels. */
@@ -95,7 +95,7 @@ class SshClient : Closeable {
      * deliberately avoid [Session.sendKeepAliveMsg], which only enqueues a write
      * and never waits for the reply, so it never observes a missing answer.
      */
-    suspend fun isAlive(timeoutMs: Long = 5_000L): Boolean = withContext(Dispatchers.IO) {
+    override suspend fun isAlive(timeoutMs: Long): Boolean = withContext(Dispatchers.IO) {
         val sess = session ?: return@withContext false
         if (!sess.isConnected) return@withContext false
         runCatching {
@@ -285,15 +285,15 @@ class SshClient : Closeable {
      * This suspends on Dispatchers.IO.
      * Returns the host key as a [KnownHostEntry] for TOFU verification.
      */
-    suspend fun connect(
+    override suspend fun connect(
         config: ConnectionConfig,
-        connectTimeoutMs: Int = 10_000,
-        proxy: HavenProxy? = null,
-        keyboardInteractivePrompter: KeyboardInteractivePrompter? = null,
-        totpCodeProvider: (() -> String)? = null,
-        confirmOtp: Boolean = false,
-        preConnect: (suspend () -> Unit)? = null,
-        trustedHostCaKeys: List<String> = emptyList(),
+        connectTimeoutMs: Int,
+        proxy: HavenProxy?,
+        keyboardInteractivePrompter: KeyboardInteractivePrompter?,
+        totpCodeProvider: (() -> String)?,
+        confirmOtp: Boolean,
+        preConnect: (suspend () -> Unit)?,
+        trustedHostCaKeys: List<String>,
     ): KnownHostEntry? = withContext(Dispatchers.IO) {
         disconnect()
         hostVerifiedByCa = false
@@ -378,10 +378,10 @@ class SshClient : Closeable {
      * `getInputStream()` has installed its pipe. Read them from the returned
      * [ShellChannel] — never re-fetch `channel.inputStream` (#382).
      */
-    fun openShellChannel(
-        term: String = "xterm-256color",
-        cols: Int = 80,
-        rows: Int = 24,
+    override fun openShellChannel(
+        term: String,
+        cols: Int,
+        rows: Int,
     ): ShellChannel {
         val sess = session ?: throw IllegalStateException("Not connected")
         val shell = openShellOn(sess, term, cols, rows, agentForwardingEnabled)
@@ -392,7 +392,7 @@ class SshClient : Closeable {
     /**
      * Resize the PTY of an open shell channel.
      */
-    fun resizeShell(channel: ChannelShell, cols: Int, rows: Int) {
+    override fun resizeShell(channel: ChannelShell, cols: Int, rows: Int) {
         channel.setPtySize(cols, rows, 0, 0)
     }
 
@@ -413,7 +413,7 @@ class SshClient : Closeable {
      * feature- and app-modules do not import JSch types directly. Must be
      * called after [connect].
      */
-    fun openSftpSession(): sh.haven.core.ssh.sftp.SftpSession =
+    override fun openSftpSession(): sh.haven.core.ssh.sftp.SftpSession =
         sh.haven.core.ssh.sftp.JschSftpSession(openSftpChannel())
 
     /**
@@ -426,7 +426,7 @@ class SshClient : Closeable {
      * the partial result is returned with [ExecResult.timedOut] = true.
      * Null (the default) preserves the historical block-until-exit behaviour.
      */
-    suspend fun execCommand(command: String, timeoutMs: Long? = null): ExecResult = withContext(Dispatchers.IO) {
+    override suspend fun execCommand(command: String, timeoutMs: Long?): ExecResult = withContext(Dispatchers.IO) {
         val sess = session ?: throw IllegalStateException("Not connected")
         val channel = sess.openChannel("exec") as ChannelExec
         channel.setCommand(command)
@@ -495,15 +495,15 @@ class SshClient : Closeable {
      * Same as [connect] but without the coroutine wrapper.
      * Returns the host key as a [KnownHostEntry] for TOFU verification.
      */
-    fun connectBlocking(
+    override fun connectBlocking(
         config: ConnectionConfig,
-        connectTimeoutMs: Int = 10_000,
-        proxy: HavenProxy? = null,
-        keyboardInteractivePrompter: KeyboardInteractivePrompter? = null,
-        totpCodeProvider: (() -> String)? = null,
-        confirmOtp: Boolean = false,
-        preConnect: (() -> Unit)? = null,
-        trustedHostCaKeys: List<String> = emptyList(),
+        connectTimeoutMs: Int,
+        proxy: HavenProxy?,
+        keyboardInteractivePrompter: KeyboardInteractivePrompter?,
+        totpCodeProvider: (() -> String)?,
+        confirmOtp: Boolean,
+        preConnect: (() -> Unit)?,
+        trustedHostCaKeys: List<String>,
     ): KnownHostEntry? {
         disconnect()
         hostVerifiedByCa = false
@@ -768,7 +768,7 @@ class SshClient : Closeable {
      * Set up local port forwarding (ssh -L).
      * Returns the actual bound port (useful if bindPort is 0 for ephemeral).
      */
-    fun setPortForwardingL(bindAddress: String, localPort: Int, remoteHost: String, remotePort: Int): Int {
+    override fun setPortForwardingL(bindAddress: String, localPort: Int, remoteHost: String, remotePort: Int): Int {
         val sess = session ?: throw IllegalStateException("Not connected")
         return sess.setPortForwardingL(bindAddress, localPort, remoteHost, remotePort)
     }
@@ -776,7 +776,7 @@ class SshClient : Closeable {
     /**
      * Set up remote port forwarding (ssh -R).
      */
-    fun setPortForwardingR(bindAddress: String, remotePort: Int, localHost: String, localPort: Int) {
+    override fun setPortForwardingR(bindAddress: String, remotePort: Int, localHost: String, localPort: Int) {
         val sess = session ?: throw IllegalStateException("Not connected")
         sess.setPortForwardingR(bindAddress, remotePort, localHost, localPort)
     }
@@ -784,7 +784,7 @@ class SshClient : Closeable {
     /**
      * Remove a local port forward.
      */
-    fun delPortForwardingL(bindAddress: String, localPort: Int) {
+    override fun delPortForwardingL(bindAddress: String, localPort: Int) {
         val sess = session ?: throw IllegalStateException("Not connected")
         sess.delPortForwardingL(bindAddress, localPort)
     }
@@ -792,7 +792,7 @@ class SshClient : Closeable {
     /**
      * Remove a remote port forward.
      */
-    fun delPortForwardingR(remotePort: Int) {
+    override fun delPortForwardingR(remotePort: Int) {
         val sess = session ?: throw IllegalStateException("Not connected")
         sess.delPortForwardingR(remotePort)
     }
@@ -807,7 +807,7 @@ class SshClient : Closeable {
      * accepted connection is tunneled through an SSH `direct-tcpip` channel.
      * Returns the port actually bound (useful if bindPort is 0).
      */
-    fun setPortForwardingDynamic(bindAddress: String, bindPort: Int): Int {
+    override fun setPortForwardingDynamic(bindAddress: String, bindPort: Int): Int {
         val sess = session ?: throw IllegalStateException("Not connected")
         val server = DynamicForwardServer(sess, bindAddress, bindPort)
         val actualPort = server.start()
@@ -823,7 +823,7 @@ class SshClient : Closeable {
     }
 
     /** Stop a dynamic forward previously started with [setPortForwardingDynamic]. */
-    fun delPortForwardingDynamic(bindAddress: String, bindPort: Int) {
+    override fun delPortForwardingDynamic(bindAddress: String, bindPort: Int) {
         synchronized(dynamicForwards) {
             val server = dynamicForwards.remove(bindAddress to bindPort)
             if (server != null) {
@@ -837,7 +837,7 @@ class SshClient : Closeable {
     /**
      * Disconnect the current session and clear loaded identities.
      */
-    fun disconnect() {
+    override fun disconnect() {
         // Close any dynamic forward servers before tearing down the session
         synchronized(dynamicForwards) {
             dynamicForwards.values.toSet().forEach {

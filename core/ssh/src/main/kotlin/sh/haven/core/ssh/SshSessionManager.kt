@@ -164,7 +164,7 @@ class SshSessionManager @Inject constructor(
         val profileId: String,
         val label: String,
         val status: Status,
-        val client: SshClient,
+        val client: SshConnection,
         val shellChannel: ShellChannel? = null,
         val terminalSession: TerminalSession? = null,
         val sftpSession: SftpSession? = null,
@@ -291,7 +291,7 @@ class SshSessionManager @Inject constructor(
     fun registerSession(
         profileId: String,
         label: String,
-        client: SshClient,
+        client: SshConnection,
         headless: Boolean = false,
     ): String {
         // Reap dead sessions of the same profile AND kind so they don't pile up
@@ -608,7 +608,7 @@ class SshSessionManager @Inject constructor(
                 "SFTP: falling back to JSch — sshlib engine does not support $reason yet",
             )
         }
-        return JschSftpSession(session.client.openSftpChannel())
+        return session.client.openSftpSession()
     }
 
     /** Best-effort connection-log line for SSH-engine routing decisions (#58). */
@@ -627,7 +627,7 @@ class SshSessionManager @Inject constructor(
      * code paths that need shell exec (SCP, shell-ls browsing) — i.e. the
      * legacy transport for servers without an SFTP subsystem.
      */
-    fun getSshClientForProfile(profileId: String): SshClient? {
+    fun getSshClientForProfile(profileId: String): SshConnection? {
         return _sessions.value.values
             .firstOrNull { it.profileId == profileId && it.status == SessionState.Status.CONNECTED }
             ?.client
@@ -662,7 +662,7 @@ class SshSessionManager @Inject constructor(
      * and times out. MUST be called BEFORE the caller registers its own
      * session, so it never waits on itself.
      */
-    suspend fun awaitReusableClient(profileId: String, timeoutMs: Long = 35_000): SshClient? {
+    suspend fun awaitReusableClient(profileId: String, timeoutMs: Long = 35_000): SshConnection? {
         getSshClientForProfile(profileId)?.let { return it }
         val pending = _sessions.value.values.firstOrNull {
             it.profileId == profileId && it.status == SessionState.Status.CONNECTING
@@ -737,7 +737,7 @@ class SshSessionManager @Inject constructor(
      */
     fun openScpForProfile(profileId: String): ScpClient? {
         val client = getSshClientForProfile(profileId) ?: return null
-        val jschSession = client.jschSession ?: return null
+        val jschSession = (client as? SshClient)?.jschSession ?: return null
         return ScpClient(jschSession)
     }
 
@@ -921,7 +921,7 @@ class SshSessionManager @Inject constructor(
                     }
                 }
 
-                val newClient = SshClient().apply {
+                val newClient = SshConnectionFactory.create(config).apply {
                     // Carry FIDO wiring from the client we're replacing so a
                     // security-key profile can re-authenticate on reconnect —
                     // otherwise addFidoIdentity NPEs on the null authenticator.
@@ -1384,7 +1384,7 @@ class SshSessionManager @Inject constructor(
             Log.w(TAG, "createProxyJump: session $jumpSessionId status=${jumpSession.status}, expected CONNECTED")
             return null
         }
-        val jschSession = jumpSession.client.jschSession
+        val jschSession = (jumpSession.client as? SshClient)?.jschSession
         if (jschSession == null) {
             Log.w(TAG, "createProxyJump: session $jumpSessionId has no jschSession (client.isConnected=${jumpSession.client.isConnected})")
             return null
@@ -1462,7 +1462,7 @@ class SshSessionManager @Inject constructor(
      * both hit on reconnect and on remove→add of the same port (found
      * live: a 119MB APK download through the forward, then a rebind).
      */
-    private fun bindLocalWithRetry(client: SshClient, rule: PortForwardInfo): Int {
+    private fun bindLocalWithRetry(client: SshConnection, rule: PortForwardInfo): Int {
         var lastFailure: Exception? = null
         repeat(4) {
             try {
@@ -1491,7 +1491,7 @@ class SshSessionManager @Inject constructor(
      * already-connected session and retry once. A second failure propagates
      * to the caller (which sets `criticalFailed` as before).
      */
-    private fun bindRemoteWithSelfHeal(client: SshClient, rule: PortForwardInfo) {
+    private fun bindRemoteWithSelfHeal(client: SshConnection, rule: PortForwardInfo) {
         try {
             client.setPortForwardingR(rule.bindAddress, rule.bindPort, rule.targetHost, rule.targetPort)
         } catch (e: Exception) {
@@ -1517,7 +1517,7 @@ class SshSessionManager @Inject constructor(
      * guards against PID reuse) that is NOT the current connection's own
      * session (`$PPID`). Returns true iff it killed the recorded holder.
      */
-    private fun freeStaleReverseForward(client: SshClient, port: Int): Boolean {
+    private fun freeStaleReverseForward(client: SshConnection, port: Int): Boolean {
         val cmd =
             "F=\"\$HOME/.haven-mcp-tunnel.pid\"; old=\$(cat \"\$F\" 2>/dev/null); " +
                 "if [ -n \"\$old\" ] && [ \"\$old\" != \"\$PPID\" ] && grep -qa sshd \"/proc/\$old/comm\" 2>/dev/null; then " +
@@ -1539,7 +1539,7 @@ class SshSessionManager @Inject constructor(
      * bind, so a later instance whose bind is blocked by this (now stale)
      * session can find + kill it (see [freeStaleReverseForward]). Best-effort.
      */
-    private fun recordTunnelSshPid(client: SshClient) {
+    private fun recordTunnelSshPid(client: SshConnection) {
         try {
             runBlocking { client.execCommand("echo \"\$PPID\" > \"\$HOME/.haven-mcp-tunnel.pid\" 2>/dev/null") }
         } catch (_: Exception) {

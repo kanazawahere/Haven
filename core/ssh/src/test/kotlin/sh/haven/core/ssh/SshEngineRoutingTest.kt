@@ -39,7 +39,9 @@ class SshEngineRoutingTest {
 
     private fun jschClient(viaProxy: Boolean = false): SshClient = mockk(relaxed = true) {
         every { connectedViaProxy } returns viaProxy
-        every { openSftpChannel() } returns mockk<ChannelSftp>(relaxed = true)
+        // The JSch SFTP path goes through the engine-neutral openSftpSession()
+        // (phase 4); the real SshClient returns a JschSftpSession here.
+        every { openSftpSession() } returns JschSftpSession(mockk<ChannelSftp>(relaxed = true))
     }
 
     private fun connectedSession(

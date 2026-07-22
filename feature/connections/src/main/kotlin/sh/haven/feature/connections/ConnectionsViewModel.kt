@@ -42,6 +42,8 @@ import sh.haven.core.ssh.KeyboardInteractiveChallenge
 import sh.haven.core.ssh.KeyboardInteractivePrompter
 import sh.haven.core.ssh.KnownHostEntry
 import sh.haven.core.ssh.SshClient
+import sh.haven.core.ssh.SshConnectionFactory
+import sh.haven.core.ssh.sshEngineFromOptionsText
 import sh.haven.core.ssh.SshConnectionService
 import sh.haven.core.ssh.SshKeyExporter
 import sh.haven.core.ssh.SessionManager
@@ -2953,7 +2955,7 @@ class ConnectionsViewModel @Inject constructor(
             val reuseClient = if (profile.tunnelConfigId != null) {
                 sshSessionManager.awaitReusableClient(profile.id)
             } else null
-            val client = reuseClient ?: SshClient().apply {
+            val client = reuseClient ?: SshConnectionFactory.create(sshEngineFromOptionsText(profile.sshOptions)).apply {
                 fidoAuthenticator = this@ConnectionsViewModel.fidoAuthenticator
                 this.verboseLogger = verboseLogger
             }
@@ -5173,7 +5175,7 @@ class ConnectionsViewModel @Inject constructor(
         val password = profile.sshPassword ?: ""
         val verboseEnabled = preferencesRepository.verboseLoggingEnabled.first()
         val verboseLogger = if (verboseEnabled) SshVerboseLogger() else null
-        val client = SshClient().apply {
+        val client = SshConnectionFactory.create(sshEngineFromOptionsText(profile.sshOptions)).apply {
             fidoAuthenticator = this@ConnectionsViewModel.fidoAuthenticator
             this.verboseLogger = verboseLogger
         }
