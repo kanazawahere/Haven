@@ -80,7 +80,10 @@ class ShellChannelTest {
         }
         assertSame(input, remote.input)
         assertSame(output, remote.output)
-        assertSame(channel, remote.channel)
+        // The neutral ShellChannel doesn't expose the raw channel; prove the
+        // wiring by behaviour — resize delegates to the exec channel's PTY.
+        remote.resize(100, 40)
+        verify { channel.setPtySize(100, 40, 0, 0) }
     }
 
     @Test

@@ -395,10 +395,10 @@ class SshClient : SshConnection {
      */
     override fun openTerminalChannel(
         remoteCommand: String?,
-        requestPty: Boolean = true,
-        term: String = "xterm-256color",
-        cols: Int = 80,
-        rows: Int = 24,
+        requestPty: Boolean,
+        term: String,
+        cols: Int,
+        rows: Int,
     ): ShellChannel {
         val sess = session ?: throw IllegalStateException("Not connected")
         val command = remoteCommand?.takeIf { it.isNotBlank() }
