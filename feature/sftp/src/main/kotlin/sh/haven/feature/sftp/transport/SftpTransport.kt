@@ -1,7 +1,7 @@
 package sh.haven.feature.sftp.transport
 
 import sh.haven.core.security.posixShellQuote as shellQuote
-import sh.haven.core.ssh.SshClient
+import sh.haven.core.ssh.SshConnection
 import sh.haven.core.ssh.sftp.ListResult
 import sh.haven.core.ssh.sftp.SftpSession
 import sh.haven.feature.sftp.SftpEntry
@@ -18,7 +18,7 @@ import sh.haven.feature.sftp.SftpEntry
  */
 class SftpTransport(
     private val sessionProvider: () -> SftpSession,
-    private val sshClient: SshClient? = null,
+    private val sshClient: SshConnection? = null,
 ) : RemoteFileTransport {
 
     override val label: String = "SFTP"

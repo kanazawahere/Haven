@@ -18,6 +18,7 @@ import sh.haven.core.data.repository.ConnectionLogRepository
 import sh.haven.core.rdp.RdpSession
 import sh.haven.core.rdp.RdpSessionManager
 import sh.haven.core.ssh.SshClient
+import sh.haven.core.ssh.SshConnection
 import sh.haven.core.ssh.SshSessionManager
 import sh.haven.rdp.MouseButton
 import kotlinx.coroutines.flow.first
@@ -184,7 +185,7 @@ class RdpViewModel @Inject constructor(
     }
 
     /** Find the SSH client for a session across all session managers. */
-    private fun findSshClient(sessionId: String): SshClient? {
+    private fun findSshClient(sessionId: String): SshConnection? {
         sshSessionManager.getSession(sessionId)?.let { return it.client }
         moshSessionManager.sessions.value[sessionId]?.sshClient?.let { return it as? SshClient }
         etSessionManager.sessions.value[sessionId]?.sshClient?.let { return it as? SshClient }

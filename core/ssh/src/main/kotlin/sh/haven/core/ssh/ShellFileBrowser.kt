@@ -18,7 +18,7 @@ private const val TAG = "ShellFileBrowser"
  * Solaris or AIX installations may not — those fall back to `ls -1` which
  * returns name-only rows (size=0, mtime=0, isDirectory=false, perms=empty).
  */
-class ShellFileBrowser(private val client: SshClient) {
+class ShellFileBrowser(private val client: SshConnection) {
 
     data class Entry(
         val name: String,

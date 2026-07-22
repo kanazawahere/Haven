@@ -19,6 +19,7 @@ import sh.haven.core.knock.KnockSequence
 import sh.haven.core.knock.PortKnocker
 import sh.haven.core.mosh.MoshSessionManager
 import sh.haven.core.ssh.SshClient
+import sh.haven.core.ssh.SshConnection
 import sh.haven.core.ssh.SshSessionManager
 import sh.haven.core.ui.CursorOverlay
 import sh.haven.core.vnc.ColorDepth
@@ -241,7 +242,7 @@ class VncViewModel @Inject constructor(
     }
 
     /** Find the SSH client for a session across all session managers. */
-    private fun findSshClient(sessionId: String): SshClient? {
+    private fun findSshClient(sessionId: String): SshConnection? {
         sshSessionManager.getSession(sessionId)?.let { return it.client }
         moshSessionManager.sessions.value[sessionId]?.sshClient?.let { return it as? SshClient }
         etSessionManager.sessions.value[sessionId]?.sshClient?.let { return it as? SshClient }

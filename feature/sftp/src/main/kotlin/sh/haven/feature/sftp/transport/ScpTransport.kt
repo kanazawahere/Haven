@@ -7,6 +7,7 @@ import sh.haven.core.security.posixShellQuote as shellQuote
 import sh.haven.core.ssh.ScpClient
 import sh.haven.core.ssh.ShellFileBrowser
 import sh.haven.core.ssh.SshClient
+import sh.haven.core.ssh.SshConnection
 import sh.haven.feature.sftp.SftpEntry
 import java.io.File
 import java.io.InputStream
@@ -24,7 +25,7 @@ private const val TAG = "ScpTransport"
  */
 class ScpTransport(
     private val scp: ScpClient,
-    private val sshClient: SshClient,
+    private val sshClient: SshConnection,
     private val cacheDir: File,
 ) : RemoteFileTransport {
 

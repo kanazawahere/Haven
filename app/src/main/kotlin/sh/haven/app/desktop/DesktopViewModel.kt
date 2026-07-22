@@ -45,6 +45,7 @@ import sh.haven.core.mosh.MoshSessionManager
 import sh.haven.core.rdp.RdpSession
 import sh.haven.core.spice.SpiceSession
 import sh.haven.core.ssh.SshClient
+import sh.haven.core.ssh.SshConnection
 import sh.haven.core.ssh.SshSessionManager
 import sh.haven.core.ui.CursorOverlay
 import sh.haven.core.tunnel.TunnelResolver
@@ -1979,7 +1980,7 @@ class DesktopViewModel @Inject constructor(
         )
     }
 
-    private fun findSshClient(sessionId: String): SshClient? {
+    private fun findSshClient(sessionId: String): SshConnection? {
         sshSessionManager.getSession(sessionId)?.let { return it.client }
         moshSessionManager.sessions.value[sessionId]?.sshClient?.let { return it as? SshClient }
         etSessionManager.sessions.value[sessionId]?.sshClient?.let { return it as? SshClient }

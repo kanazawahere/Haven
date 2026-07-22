@@ -42,6 +42,7 @@ import sh.haven.core.ssh.KeyboardInteractiveChallenge
 import sh.haven.core.ssh.KeyboardInteractivePrompter
 import sh.haven.core.ssh.KnownHostEntry
 import sh.haven.core.ssh.SshClient
+import sh.haven.core.ssh.SshConnection
 import sh.haven.core.ssh.SshConnectionFactory
 import sh.haven.core.ssh.sshEngineFromOptionsText
 import sh.haven.core.ssh.SshConnectionService
@@ -782,7 +783,7 @@ class ConnectionsViewModel @Inject constructor(
 
     private suspend fun runTofuVerification(
         entry: KnownHostEntry?,
-        clientToDisconnectOnReject: SshClient? = null,
+        clientToDisconnectOnReject: SshConnection? = null,
         rejectedOnNewHostMessage: String = "Host key rejected by user",
         rejectedOnChangeMessage: String = "Host key change rejected by user",
         autoAccept: Boolean = false,
