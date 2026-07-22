@@ -44,7 +44,7 @@ class SshSessionManagerShellOutcomeTest {
         val client = mockk<SshClient>(relaxed = true)
         // Empty stream => read() returns -1 at once (EOF); channel closed with a
         // clean exit status => the "no session manager" shell-closed case.
-        every { client.openShellChannel() } returns mockChannel(
+        every { client.openShellChannel(any(), any(), any(), anyNullable(), any()) } returns mockChannel(
             input = ByteArrayInputStream(ByteArray(0)),
             connected = false, closed = true, exit = 0,
         )
@@ -63,7 +63,7 @@ class SshSessionManagerShellOutcomeTest {
     fun `Failed when openShellChannel throws`() = runBlocking {
         val mgr = newManager()
         val client = mockk<SshClient>(relaxed = true)
-        every { client.openShellChannel() } throws RuntimeException("channel refused")
+        every { client.openShellChannel(any(), any(), any(), anyNullable(), any()) } throws RuntimeException("channel refused")
         val sessionId = mgr.registerSession("p1", "S", client)
 
         val outcome = mgr.openShellAndAwaitReady(sessionId)
@@ -85,7 +85,7 @@ class SshSessionManagerShellOutcomeTest {
             override fun read(): Int { Thread.sleep(5_000); return -1 }
             override fun read(b: ByteArray): Int { Thread.sleep(5_000); return -1 }
         }
-        every { client.openShellChannel() } returns mockChannel(input = blocking, connected = true)
+        every { client.openShellChannel(any(), any(), any(), anyNullable(), any()) } returns mockChannel(input = blocking, connected = true)
         val sessionId = mgr.registerSession("p1", "S", client)
 
         val outcome = mgr.openShellAndAwaitReady(sessionId, settleMs = 300)

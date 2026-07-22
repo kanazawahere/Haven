@@ -49,6 +49,13 @@ class ConnectionProfileTest {
     }
 
     @Test
+    fun `remote command defaults to an interactive PTY-backed exec when configured`() {
+        val profile = ConnectionProfile(label = "t", host = "h", username = "u")
+        assertNull(profile.remoteCommand)
+        assertEquals(true, profile.requestPty)
+    }
+
+    @Test
     fun `copy preserves id`() {
         val original = ConnectionProfile(label = "a", host = "h", username = "u")
         val copy = original.copy(label = "b")

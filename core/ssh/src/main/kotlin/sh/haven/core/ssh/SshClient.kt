@@ -370,8 +370,10 @@ class SshClient : SshConnection {
     }
 
     /**
-     * Open an interactive shell channel on the current SSH session.
-     * Must be called after [connect].
+     * Open the terminal channel on the current SSH session: an interactive
+     * shell, or — when [remoteCommand] is non-blank — a terminal-facing exec
+     * request for that command (the SSH RemoteCommand equivalent; the server
+     * never starts a login shell). Must be called after [connect].
      *
      * Returns the channel together with its streams: they are bound before the
      * channel is connected, because JSch drops anything the remote sends before
@@ -382,16 +384,28 @@ class SshClient : SshConnection {
         term: String,
         cols: Int,
         rows: Int,
+        remoteCommand: String?,
+        requestPty: Boolean,
     ): ShellChannel {
         val sess = session ?: throw IllegalStateException("Not connected")
-        val shell = openShellOn(sess, term, cols, rows, agentForwardingEnabled)
+        val command = remoteCommand?.takeIf { it.isNotBlank() }
+        val shell = if (command == null) {
+            openShellOn(sess, term, cols, rows, agentForwardingEnabled)
+        } else {
+            openExecOn(
+                session = sess,
+                command = command,
+                requestPty = requestPty,
+                term = term,
+                cols = cols,
+                rows = rows,
+                agentForwarding = agentForwardingEnabled,
+            )
+        }
         if (agentForwardingEnabled) diag("Shell channel opened with agent forwarding enabled")
         return shell
     }
 
-    /**
-     * Resize the PTY of an open shell channel.
-     */
     /**
      * Open an SFTP channel on the current SSH session.
      * Must be called after [connect].

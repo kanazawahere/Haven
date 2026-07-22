@@ -122,6 +122,8 @@ class BackupService @Inject constructor(
                 put("reticulumPassphrase", p.reticulumPassphrase ?: JSONObject.NULL)
                 put("postLoginCommand", p.postLoginCommand ?: JSONObject.NULL)
                 put("postLoginBeforeSessionManager", p.postLoginBeforeSessionManager)
+                put("remoteCommand", p.remoteCommand ?: JSONObject.NULL)
+                put("requestPty", p.requestPty)
                 put("fileTransport", p.fileTransport)
                 put("tunnelConfigId", p.tunnelConfigId ?: JSONObject.NULL)
                 put("terminalColorScheme", p.terminalColorScheme ?: JSONObject.NULL)
@@ -431,6 +433,8 @@ class BackupService @Inject constructor(
                             reticulumPassphrase = c.optStringOrNull("reticulumPassphrase"),
                             postLoginCommand = c.optStringOrNull("postLoginCommand"),
                             postLoginBeforeSessionManager = c.optBoolean("postLoginBeforeSessionManager", true),
+                            remoteCommand = c.optStringOrNull("remoteCommand"),
+                            requestPty = c.optBoolean("requestPty", true),
                             fileTransport = c.optString("fileTransport", "AUTO"),
                             tunnelConfigId = c.optStringOrNull("tunnelConfigId"),
                             terminalColorScheme = c.optStringOrNull("terminalColorScheme"),

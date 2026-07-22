@@ -1,5 +1,6 @@
 package sh.haven.core.ssh
 
+import com.jcraft.jsch.ChannelExec
 import com.jcraft.jsch.ChannelShell
 import com.jcraft.jsch.Session
 import io.mockk.every
@@ -47,6 +48,70 @@ class ShellChannelTest {
         verify { channel.setPtySize(120, 40, 0, 0) }
         shell.disconnect()
         verify { channel.disconnect() }
+    }
+
+    @Test
+    fun `binds remote command streams before connecting with PTY`() {
+        val input = ByteArrayInputStream(ByteArray(0))
+        val output = ByteArrayOutputStream()
+        val channel = mockk<ChannelExec>(relaxed = true)
+        every { channel.inputStream } returns input
+        every { channel.outputStream } returns output
+        val session = mockk<Session>()
+        every { session.openChannel("exec") } returns channel
+
+        val remote = openExecOn(
+            session = session,
+            command = "tmux new -A -s work",
+            requestPty = true,
+            term = "xterm-256color",
+            cols = 80,
+            rows = 24,
+            agentForwarding = false,
+        )
+
+        verifyOrder {
+            channel.setCommand("tmux new -A -s work")
+            // ChannelExec defaults to NO PTY — setPty(true) must precede the type.
+            channel.setPty(true)
+            channel.setPtyType("xterm-256color", 80, 24, 0, 0)
+            channel.inputStream
+            channel.outputStream
+            channel.connect()
+        }
+        assertSame(input, remote.input)
+        assertSame(output, remote.output)
+        // resize/disconnect delegate to the JSch exec channel via the neutral
+        // ShellChannel closures, same shape as the shell path.
+        remote.resize(120, 40)
+        verify { channel.setPtySize(120, 40, 0, 0) }
+        remote.disconnect()
+        verify { channel.disconnect() }
+    }
+
+    @Test
+    fun `remote command without PTY neither requests one nor resizes`() {
+        val channel = mockk<ChannelExec>(relaxed = true)
+        every { channel.inputStream } returns ByteArrayInputStream(ByteArray(0))
+        every { channel.outputStream } returns ByteArrayOutputStream()
+        val session = mockk<Session>()
+        every { session.openChannel("exec") } returns channel
+
+        val remote = openExecOn(
+            session = session,
+            command = "uname -a",
+            requestPty = false,
+            term = "xterm",
+            cols = 80,
+            rows = 24,
+            agentForwarding = false,
+        )
+
+        verify(exactly = 0) { channel.setPty(any()) }
+        verify(exactly = 0) { channel.setPtyType(any(), any(), any(), any(), any()) }
+        // No PTY was granted, so a window-change would be noise — resize no-ops.
+        remote.resize(100, 30)
+        verify(exactly = 0) { channel.setPtySize(any(), any(), any(), any()) }
     }
 
     @Test

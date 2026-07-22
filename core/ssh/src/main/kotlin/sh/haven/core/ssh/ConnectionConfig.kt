@@ -8,6 +8,10 @@ data class ConnectionConfig(
     val sshOptions: Map<String, String> = emptyMap(),
     /** Enable SSH agent forwarding (OpenSSH `ForwardAgent`). */
     val forwardAgent: Boolean = false,
+    /** SSH exec request to send instead of opening an interactive shell. */
+    val remoteCommand: String? = null,
+    /** Whether the [remoteCommand] exec channel requests a terminal PTY. */
+    val requestPty: Boolean = true,
     /**
      * Address-family preference (#137). [AddressFamily.AUTO] keeps the
      * dual-stack default; [AddressFamily.IPV4_ONLY] skips AAAA records

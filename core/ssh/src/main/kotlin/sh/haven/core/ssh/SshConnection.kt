@@ -67,10 +67,21 @@ interface SshConnection : Closeable {
 
     suspend fun isAlive(timeoutMs: Long = 5_000L): Boolean
 
+    /**
+     * Open the profile's terminal channel: an interactive shell, or — when
+     * [remoteCommand] is non-blank — an SSH exec request for that command
+     * (the RemoteCommand equivalent, e.g. `tmux new -A -s work`). The exec
+     * request replaces the login shell entirely, so `.bashrc`-style startup
+     * hooks never run; [requestPty] keeps it terminal-backed (tmux and other
+     * interactive programs require one) and is ignored for the plain shell,
+     * which always has a PTY.
+     */
     fun openShellChannel(
         term: String = "xterm-256color",
         cols: Int = 80,
         rows: Int = 24,
+        remoteCommand: String? = null,
+        requestPty: Boolean = true,
     ): ShellChannel
 
     fun openSftpSession(): SftpSession

@@ -283,6 +283,9 @@
     <string name="connections_field_ssh_options">Opções de SSH</string>
     <string name="connections_helper_ssh_options">Sintaxe do ssh_config, uma por linha. Suporta KexAlgorithms, Ciphers, MACs, HostKeyAlgorithms, PubkeyAcceptedAlgorithms, PubkeyAuthentication, ServerAlive*. Prefixe as listas de algoritmos com + (anexar), - (remover) ou ^ (preceder) para manter os padrões.</string>
     <string name="connections_field_post_login">Comando pós-login</string>
+    <string name="connections_field_remote_command">Comando remoto (avançado)</string>
+    <string name="connections_helper_remote_command">É executado como comando SSH em vez de abrir um shell de login. Deixe em branco para o shell normal.</string>
+    <string name="connections_toggle_request_pty">Solicitar terminal (PTY)</string>
     <string name="connections_helper_post_login">Enviado após o login.</string>
     <string name="connections_dropdown_none_direct">Nenhum (direto)</string>
     <string name="connections_dropdown_cloudflare_tunnel">Cloudflare Tunnel</string>

@@ -57,4 +57,28 @@ internal object SshlibShell {
             throw SshIoException("sshlib: server rejected shell request")
         }
     }
+
+    /**
+     * Request execution of [command] on the session channel instead of a
+     * shell — the RemoteCommand equivalent of [requestShell]. sshlib 0.3.1
+     * supports the RFC 4254 pty-req + exec pairing directly
+     * (`SshSession.requestPty` then `SshSession.requestExec`), so a PTY-backed
+     * exec (tmux attach-or-create) works the same as on JSch. [requestPty]
+     * false skips the pty-req for non-interactive commands.
+     */
+    suspend fun requestExec(
+        session: SshSession,
+        command: String,
+        requestPty: Boolean,
+        term: String,
+        cols: Int,
+        rows: Int,
+    ) {
+        if (requestPty && !session.requestPty(term, cols, rows)) {
+            throw SshIoException("sshlib: server rejected PTY request")
+        }
+        if (!session.requestExec(command)) {
+            throw SshIoException("sshlib: server rejected exec request")
+        }
+    }
 }

@@ -183,6 +183,9 @@ class SshSessionManager @Inject constructor(
         val bypassSessionManager: Boolean = false,
         val postLoginCommand: String? = null,
         val postLoginBeforeSessionManager: Boolean = false,
+        /** SSH exec request configured by the profile; null means shell. */
+        val remoteCommand: String? = null,
+        val requestPty: Boolean = true,
         val activeForwards: List<PortForwardInfo> = emptyList(),
         /** Session ID of the jump host session, if this connection goes through one. */
         val jumpSessionId: String? = null,
@@ -331,6 +334,8 @@ class SshSessionManager @Inject constructor(
         sessionCommandOverride: String? = null,
         postLoginCommand: String? = null,
         postLoginBeforeSessionManager: Boolean = true,
+        remoteCommand: String? = config.remoteCommand,
+        requestPty: Boolean = config.requestPty,
     ) {
         _sessions.update { map ->
             val existing = map[sessionId] ?: return@update map
@@ -340,6 +345,8 @@ class SshSessionManager @Inject constructor(
                 sessionCommandOverride = sessionCommandOverride,
                 postLoginCommand = postLoginCommand,
                 postLoginBeforeSessionManager = postLoginBeforeSessionManager,
+                remoteCommand = remoteCommand?.takeIf { it.isNotBlank() },
+                requestPty = requestPty,
             ))
         }
         if (config.sshEngine == SshEngine.SSHLIB) {
@@ -385,7 +392,10 @@ class SshSessionManager @Inject constructor(
      */
     fun openShellForSession(sessionId: String) {
         val session = _sessions.value[sessionId] ?: return
-        val channel = session.client.openShellChannel()
+        val channel = session.client.openShellChannel(
+            remoteCommand = session.remoteCommand,
+            requestPty = session.requestPty,
+        )
         attachShellChannel(sessionId, channel)
     }
 
@@ -409,7 +419,14 @@ class SshSessionManager @Inject constructor(
     ): TerminalSession? {
         val session = _sessions.value[sessionId] ?: return null
         val channel = session.shellChannel ?: return null
-        val pendingCmds = buildPendingCommands(sessionId, session.sessionManager, session.postLoginCommand, session.postLoginBeforeSessionManager)
+        // A remote-command channel IS the command: there is no login shell to
+        // type session-manager or post-login keystrokes into, so the pending
+        // queue must stay empty.
+        val pendingCmds = if (session.remoteCommand == null) {
+            buildPendingCommands(sessionId, session.sessionManager, session.postLoginCommand, session.postLoginBeforeSessionManager)
+        } else {
+            emptyList()
+        }
         // Mirror raw SSH stdout into an app-scoped ring buffer so the
         // agent transport can read the same bytes the emulator sees,
         // without reaching into activity-scoped state.
@@ -493,7 +510,10 @@ class SshSessionManager @Inject constructor(
         val session = _sessions.value[sessionId]
             ?: return ShellOutcome.Failed(sessionId, "session not found")
         val channel = try {
-            session.client.openShellChannel()
+            session.client.openShellChannel(
+                remoteCommand = session.remoteCommand,
+                requestPty = session.requestPty,
+            )
         } catch (e: Exception) {
             Log.w(TAG, "openShellChannel failed for $sessionId: ${e.message}")
             updateStatus(sessionId, SessionState.Status.ERROR)
@@ -724,6 +744,8 @@ class SshSessionManager @Inject constructor(
             port = ref?.port ?: 22,
             username = ref?.username ?: "reused",
             authMethod = ConnectionConfig.AuthMethod.Password(""),
+            remoteCommand = ref?.remoteCommand,
+            requestPty = ref?.requestPty ?: true,
             reconnectPolicy = ConnectionConfig.ReconnectPolicy(autoReconnect = false),
         )
         storeConnectionConfig(sessionId, config, sessionMgr)
@@ -973,13 +995,22 @@ class SshSessionManager @Inject constructor(
                 // null and still skips this.
                 val reconnecting = _sessions.value[sessionId]
                 if (reconnecting?.headless != true || reconnecting.terminalSession != null) {
-                    val channel = newClient.openShellChannel()
+                    val channel = newClient.openShellChannel(
+                        remoteCommand = reconnecting?.remoteCommand,
+                        requestPty = reconnecting?.requestPty ?: true,
+                    )
                     attachShellChannel(sessionId, channel)
 
-                    // Swap channel in the terminal session and restart reader
+                    // Swap channel in the terminal session and restart reader.
+                    // Same rule as createTerminalSession: an exec channel has no
+                    // login shell, so no reattach keystrokes may be queued.
                     val termSession = _sessions.value[sessionId]?.terminalSession
                     val sess = _sessions.value[sessionId]
-                    val pendingCmds = buildPendingCommands(sessionId, sessionMgr, sess?.postLoginCommand, sess?.postLoginBeforeSessionManager ?: false)
+                    val pendingCmds = if (sess?.remoteCommand == null) {
+                        buildPendingCommands(sessionId, sessionMgr, sess?.postLoginCommand, sess?.postLoginBeforeSessionManager ?: false)
+                    } else {
+                        emptyList()
+                    }
                     if (pendingCmds.isNotEmpty()) {
                         termSession?.setPendingCommands(pendingCmds)
                     }

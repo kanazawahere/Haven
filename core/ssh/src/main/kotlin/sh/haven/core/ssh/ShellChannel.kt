@@ -67,3 +67,46 @@ internal fun openShellOn(
         exitStatusProbe = { channel.exitStatus },
     )
 }
+
+/**
+ * Open a terminal-facing JSch exec channel: the RemoteCommand equivalent.
+ * The command is requested before a login shell can start, which is
+ * materially different from typing after shell startup. A PTY is optional
+ * for non-interactive commands and required by tmux. Streams are bound
+ * before connect for the same first-output reason as [openShellOn].
+ *
+ * Unlike `ChannelShell`, JSch's `ChannelExec` defaults to NO PTY —
+ * `setPty(true)` must be called explicitly before `setPtyType(...)` has any
+ * effect on the wire (`ChannelSession.pty` gates the pty-req at connect).
+ */
+internal fun openExecOn(
+    session: Session,
+    command: String,
+    requestPty: Boolean,
+    term: String,
+    cols: Int,
+    rows: Int,
+    agentForwarding: Boolean,
+): ShellChannel {
+    val channel = session.openChannel("exec") as com.jcraft.jsch.ChannelExec
+    channel.setCommand(command)
+    if (requestPty) {
+        channel.setPty(true)
+        channel.setPtyType(term, cols, rows, 0, 0)
+    }
+    if (agentForwarding) channel.setAgentForwarding(true)
+    val input = channel.inputStream
+    val output = channel.outputStream
+    channel.connect()
+    return ShellChannel(
+        input = input,
+        output = output,
+        // Resize is only meaningful when a PTY was granted; without one the
+        // window-change request would be noise, so it degrades to a no-op.
+        resizeFn = { c, r -> if (requestPty) channel.setPtySize(c, r, 0, 0) },
+        disconnectFn = { channel.disconnect() },
+        connectedProbe = { channel.isConnected },
+        closedProbe = { channel.isClosed },
+        exitStatusProbe = { channel.exitStatus },
+    )
+}

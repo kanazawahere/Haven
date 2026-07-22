@@ -283,6 +283,9 @@
     <string name="connections_field_ssh_options">SSH विकल्प</string>
     <string name="connections_helper_ssh_options">ssh_config सिंटैक्स, प्रति पंक्ति एक। KexAlgorithms, Ciphers, MACs, HostKeyAlgorithms, PubkeyAcceptedAlgorithms, PubkeyAuthentication, ServerAlive* समर्थित हैं। डिफ़ॉल्ट बनाए रखने के लिए एल्गोरिथम सूचियों के आगे + (जोड़ें), - (हटाएँ) या ^ (आगे जोड़ें) लगाएँ।</string>
     <string name="connections_field_post_login">लॉगिन-पश्चात कमांड</string>
+    <string name="connections_field_remote_command">रिमोट कमांड (उन्नत)</string>
+    <string name="connections_helper_remote_command">लॉगिन शेल खोलने के बजाय SSH कमांड के रूप में चलता है। सामान्य शेल के लिए खाली छोड़ें।</string>
+    <string name="connections_toggle_request_pty">टर्मिनल का अनुरोध करें (PTY)</string>
     <string name="connections_helper_post_login">लॉगिन के बाद भेजा गया।</string>
     <string name="connections_dropdown_none_direct">कोई नहीं (सीधा)</string>
     <string name="connections_dropdown_cloudflare_tunnel">Cloudflare Tunnel</string>

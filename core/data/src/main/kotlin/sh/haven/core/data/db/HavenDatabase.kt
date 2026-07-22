@@ -54,7 +54,7 @@ import sh.haven.core.data.db.entities.WorkspaceProfile
         AgeIdentityEntity::class,
         SshIdentity::class,
     ],
-    version = 79,
+    version = 80,
     exportSchema = true,
 )
 abstract class HavenDatabase : RoomDatabase() {
@@ -1277,6 +1277,18 @@ abstract class HavenDatabase : RoomDatabase() {
         val MIGRATION_78_79 = object : Migration(78, 79) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 addColumnIfMissing(db, "connection_profiles", "safTreeUri", "TEXT DEFAULT NULL")
+            }
+        }
+
+        /**
+         * Profile-level SSH exec request. Existing profiles keep their shell
+         * channel because remoteCommand is null; PTY defaults on for a future
+         * command such as `tmux new -A -s work`.
+         */
+        val MIGRATION_79_80 = object : Migration(79, 80) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                addColumnIfMissing(db, "connection_profiles", "remoteCommand", "TEXT DEFAULT NULL")
+                addColumnIfMissing(db, "connection_profiles", "requestPty", "INTEGER NOT NULL DEFAULT 1")
             }
         }
 
