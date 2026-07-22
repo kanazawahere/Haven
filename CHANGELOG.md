@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.81.13
+
+🔄 **RDP: sessions survive a server-side "reactivation" instead of dying** — an RDP server is allowed to renegotiate the session mid-flight (a Deactivation-Reactivation sequence): FreeRDP's shadow server does it right after connect to resize you to its display, and Windows does it when the desktop resolution changes. Haven treated it as a fatal protocol error and the session died — this is what v5.81.12 made fail *honestly*, and this release makes it not fail at all. Haven now re-runs the capability exchange, adopts the new desktop size (the viewer resizes), and carries on. Verified end-to-end against a FreeRDP shadow server whose display size differs from the phone's: the session now connects, resizes, and renders where it previously died within a second. A Windows resolution change mid-session should now survive too, though that exact scenario is untested. (#438)
+
 ## v5.81.12
 
 🪦 **Remote desktops: a dead session no longer pretends to be connected** — when an RDP/SPICE session died right after the handshake (a protocol error, a server restart, a network drop the session loop shrugged off), the desktop tab kept claiming "connected" while showing a frozen or black frame — and worse, tapping Connect again silently did nothing until you closed the zombie tab by hand. Fatal protocol errors now surface as real errors, a server-side session end flips the tab to a new "disconnected" state (shown in the connections list and `list_desktop_sessions`), reconnecting replaces the dead tab instead of no-opping, and the session's end is written to the connection audit log. Verified on-device against a server that kills the session milliseconds after connect. (#437)
