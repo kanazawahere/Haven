@@ -28,6 +28,7 @@ import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +41,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -49,25 +51,34 @@ import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalTextToolbar
+import androidx.compose.ui.platform.TextToolbar
+import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
@@ -153,6 +164,74 @@ private const val MIN_HEIGHT_DP = 80f
 private const val A11Y_STEP_RATIO = 0.1f
 
 /**
+ * One selection-menu request captured from Compose's text-selection machinery:
+ * where the selection is (in the popup content's root coordinates) and which
+ * actions currently apply. A null callback means the machinery considers that
+ * action inapplicable right now (e.g. Paste with an empty clipboard, Select
+ * all when everything is already selected) — the menu simply omits the button,
+ * mirroring what the platform ActionMode toolbar does.
+ *
+ * Internal (not private) so unit tests can drive [FloatingInputTextToolbar]
+ * directly.
+ */
+internal class TextSelectionMenuRequest(
+    val rect: Rect,
+    val onCopyRequested: (() -> Unit)?,
+    val onPasteRequested: (() -> Unit)?,
+    val onCutRequested: (() -> Unit)?,
+    val onSelectAllRequested: (() -> Unit)?,
+)
+
+/**
+ * Replacement for Compose's default ActionMode-backed text toolbar, needed
+ * because this dialog's TextField lives inside a focusable [Popup]: a popup
+ * window has no real DecorView, so `View.startActionMode(TYPE_FLOATING)` —
+ * which the default `AndroidTextToolbar` relies on — silently does nothing
+ * there, and the Copy/Cut/Paste/Select-all toolbar never appears (no crash,
+ * no log; see docs/plans/floating-text-input-toolbar-fix.md). Provided via
+ * `LocalTextToolbar` scoped to just the TextField.
+ *
+ * This class only *captures* the show/hide requests as snapshot state; the
+ * menu itself is rendered by [TextSelectionMenu] inside the popup's own
+ * window — deliberately NOT another Popup window, so there is no second
+ * focusable window to recreate the same focus conflict one level down.
+ *
+ * Signature verified against androidx.compose.ui:ui 1.11.4 (the version the
+ * pinned compose-bom 2026.06.01 resolves to): the abstract `showMenu` takes
+ * (rect, onCopy, onPaste, onCut, onSelectAll), all callbacks nullable; the
+ * 5-callback `onAutofillRequested` overload is an interface default that
+ * delegates here, so it needs no override (this menu offers no Autofill
+ * entry, matching the pre-fix behavior of this dialog).
+ */
+internal class FloatingInputTextToolbar : TextToolbar {
+    var menuRequest by mutableStateOf<TextSelectionMenuRequest?>(null)
+        private set
+
+    override val status: TextToolbarStatus
+        get() = if (menuRequest != null) TextToolbarStatus.Shown else TextToolbarStatus.Hidden
+
+    override fun showMenu(
+        rect: Rect,
+        onCopyRequested: (() -> Unit)?,
+        onPasteRequested: (() -> Unit)?,
+        onCutRequested: (() -> Unit)?,
+        onSelectAllRequested: (() -> Unit)?,
+    ) {
+        menuRequest = TextSelectionMenuRequest(
+            rect = rect,
+            onCopyRequested = onCopyRequested,
+            onPasteRequested = onPasteRequested,
+            onCutRequested = onCutRequested,
+            onSelectAllRequested = onSelectAllRequested,
+        )
+    }
+
+    override fun hide() {
+        menuRequest = null
+    }
+}
+
+/**
  * Floating, draggable, resizable text-entry window over the terminal: type a
  * full command/line with the normal IME (autocorrect, swipe typing, voice
  * input, cursor movement), review it, then send the whole string to the
@@ -201,6 +280,11 @@ internal fun FloatingTextInputDialog(
     var windowHeightPx by remember { mutableFloatStateOf(screenHeightPx * savedHeight) }
 
     val textFieldFocusRequester = remember { FocusRequester() }
+
+    // Custom selection toolbar (Copy/Cut/Paste/Select all) — the platform
+    // ActionMode one never shows inside this focusable Popup; see the class
+    // docs on FloatingInputTextToolbar.
+    val selectionTextToolbar = remember { FloatingInputTextToolbar() }
 
     // Focus the field as soon as the window opens so typing can start
     // immediately.
@@ -331,28 +415,34 @@ internal fun FloatingTextInputDialog(
                         .fillMaxWidth()
                         .height(with(density) { (windowHeightPx - 36.dp.toPx()).coerceAtLeast(minHeightPx).toDp() }),
                 ) {
-                    TextField(
-                        value = text,
-                        onValueChange = onTextChange,
-                        placeholder = {
-                            Text(stringResource(R.string.terminal_text_input_placeholder))
-                        },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Text,
-                        ),
-                        visualTransformation = SpecialCharVisualTransformation,
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                        ),
-                        shape = RoundedCornerShape(bottomStart = 12.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .focusRequester(textFieldFocusRequester),
-                    )
+                    // LocalTextToolbar is scoped to just this TextField: the
+                    // selection machinery inside it routes its ActionMode
+                    // requests to our toolbar, while everything else in the
+                    // dialog keeps the ambient default.
+                    CompositionLocalProvider(LocalTextToolbar provides selectionTextToolbar) {
+                        TextField(
+                            value = text,
+                            onValueChange = onTextChange,
+                            placeholder = {
+                                Text(stringResource(R.string.terminal_text_input_placeholder))
+                            },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Text,
+                            ),
+                            visualTransformation = SpecialCharVisualTransformation,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                            ),
+                            shape = RoundedCornerShape(bottomStart = 12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .focusRequester(textFieldFocusRequester),
+                        )
+                    }
 
                     Column(
                         modifier = Modifier
@@ -400,6 +490,93 @@ internal fun FloatingTextInputDialog(
                     }
                 }
             }
+
+            // Selection menu, rendered INSIDE this popup's own window (a
+            // sibling drawn after — therefore above — the dialog itself).
+            // Not a nested Popup/PopupWindow on purpose: a second window
+            // would reintroduce the exact focus/window problem this replaces.
+            // The empty area of the overlay doesn't consume touches, so the
+            // scrim's tap-outside-to-dismiss keeps working.
+            selectionTextToolbar.menuRequest?.let { request ->
+                TextSelectionMenu(request = request)
+            }
         }
+    }
+}
+
+/**
+ * The floating Copy/Cut/Paste/Select-all menu for [FloatingInputTextToolbar].
+ * Positioned above the selection rect ([TextSelectionMenuRequest.rect], in
+ * root coordinates — the popup content fills its window, so root == window),
+ * falling back to below the rect when there is no room above, clamped to the
+ * window horizontally. Button order matches the platform ActionMode toolbar
+ * (Cut, Copy, Paste, Select all) and labels reuse the system's own localized
+ * android.R strings, so no new string resources are needed.
+ */
+@Composable
+private fun TextSelectionMenu(
+    request: TextSelectionMenuRequest,
+    modifier: Modifier = Modifier,
+) {
+    val margin = with(LocalDensity.current) { 8.dp.roundToPx() }
+    Layout(
+        content = {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 3.dp,
+                shadowElevation = 6.dp,
+            ) {
+                // horizontalScroll: on very narrow windows four buttons can
+                // exceed the width; the native toolbar overflows into a "⋮"
+                // menu, we just let the row scroll instead.
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    request.onCutRequested?.let {
+                        TextSelectionMenuButton(android.R.string.cut, it)
+                    }
+                    request.onCopyRequested?.let {
+                        TextSelectionMenuButton(android.R.string.copy, it)
+                    }
+                    request.onPasteRequested?.let {
+                        TextSelectionMenuButton(android.R.string.paste, it)
+                    }
+                    request.onSelectAllRequested?.let {
+                        TextSelectionMenuButton(android.R.string.selectAll, it)
+                    }
+                }
+            }
+        },
+        modifier = modifier.fillMaxSize(),
+    ) { measurables, constraints ->
+        val placeable = measurables.first().measure(
+            constraints.copy(minWidth = 0, minHeight = 0),
+        )
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            val maxX = (constraints.maxWidth - placeable.width).coerceAtLeast(0)
+            val x = (request.rect.center.x - placeable.width / 2f)
+                .roundToInt()
+                .coerceIn(0, maxX)
+            val maxY = (constraints.maxHeight - placeable.height).coerceAtLeast(0)
+            val yAbove = (request.rect.top - margin - placeable.height).roundToInt()
+            val y = if (yAbove >= 0) {
+                yAbove
+            } else {
+                (request.rect.bottom + margin).roundToInt().coerceIn(0, maxY)
+            }
+            placeable.place(x, y)
+        }
+    }
+}
+
+@Composable
+private fun TextSelectionMenuButton(labelRes: Int, onClick: () -> Unit) {
+    TextButton(onClick = onClick) {
+        Text(
+            text = stringResource(labelRes),
+            style = MaterialTheme.typography.labelLarge,
+        )
     }
 }
