@@ -1,6 +1,63 @@
 # Plan — custom text-selection toolbar for the floating text input dialog
 
-## Context
+## ⚠️ ROUND 2 (2026-07-23) — round-1 fix FAILED real-device test, new lead found
+
+The round-1 implementation (custom `TextToolbar` via `LocalTextToolbar`, committed as
+`f420edf1` on `fix/floating-text-input-selection-toolbar`) compiled clean, passed its own unit
+tests, and was reasoned to be correct — but **Batin tested the real debug APK on his device and
+the toolbar still does not appear.** Selection still works (handles visible), still no
+Copy/Cut/Paste/Select-all menu. This is a genuine implementation failure, not a test error — do
+not re-ship round 1 as-is.
+
+**New lead, found by reading real Compose Foundation source** (`androidx/androidx` on GitHub,
+`compose/foundation/foundation/.../text/selection/TextFieldSelectionManager.kt` and
+`ComposeFoundationFlags.kt`): recent Compose Foundation has **two parallel context-menu systems**
+gated by `ComposeFoundationFlags.isNewContextMenuEnabled` (default comes from a per-platform
+`internal expect val isNewContextMenuInitiallyEnabled`, not confirmed for Android/this exact
+version via web source alone — **verify the REAL compiled default by decompiling the actual
+pinned `androidx.compose.foundation` AAR classes in this machine's Gradle cache, not by trusting
+a web search** of the source, which hit rate limits and inconclusive results this round).
+
+The doc comment on the flag: *"Whether to use the new context menu API and default
+implementations in SelectionContainer and all BasicTextFields. If false, the previous context
+menu that has no public APIs will be used instead."* `TextFieldSelectionManager.kt` branches on
+this flag for how it decides the toolbar is "shown" (`textToolbarShownViaProvider` vs
+`textToolbar?.status`), and toolbar display in the new-flag-true path appears to go through
+`textContextMenuToolbarHandler()` / `updateFloatingToolbar()` — a **different mechanism than
+`LocalTextToolbar.showMenu()`** entirely. **If this flag defaults to true for the pinned Compose
+version, round 1's entire `LocalTextToolbar` override may be a no-op**, because the real UI path
+never calls `showMenu` at all in that mode — this would fully explain the real-device failure
+without any bug in round 1's own code.
+
+**What round 2 must do, in order:**
+1. Decompile/inspect the REAL `androidx.compose.foundation:foundation` jar for the exact version
+   this repo pins (check `gradle/libs.versions.toml` → compose-bom → resolve to the exact
+   foundation artifact version, same technique round 1 used successfully for the `TextToolbar`
+   interface via `javap`) to get the actual compiled default of `isNewContextMenuInitiallyEnabled`
+   on Android for that version. Don't guess from web search.
+2. If the new system is enabled by default: find the real, current public API for customizing the
+   NEW context menu (search the same real Compose Foundation source/jar for whatever composition
+   local or provider interface the new system exposes — the AndroidX doc comment says the new
+   system "has public APIs", implying there IS a documented customization point; find its actual
+   name from the real source/jar, don't guess a name).
+3. Decide and implement one of: (a) wire the fix through the new system's real customization API
+   instead of `LocalTextToolbar`, or (b) if `ComposeFoundationFlags.isNewContextMenuEnabled` can be
+   scoped/overridden narrowly (not just a single global static toggle affecting the whole app) —
+   verify whether it's genuinely global-only or has some scoping mechanism — and only fall back to
+   forcing it off globally if there's no narrower option, flagging that as an app-wide behavior
+   change for the reviewer to weigh consciously (it would also change every OTHER text field in
+   Haven, not just this dialog — that's a real, non-trivial trade-off to surface honestly, not
+   silently take).
+4. This dialog uses Material3 `TextField`, not `BasicTextField` directly — confirm which context-
+   menu path Material3's `TextField` actually wires up to for the pinned Compose Material3
+   version too (it may not follow `BasicTextField`'s flag-gated behavior identically; verify, don't
+   assume it's the same).
+5. Still no real device available in this environment — be exactly as honest as round 1 was about
+   what's proven vs. reasoned. If genuinely impossible to verify visual rendering without a real
+   device/emulator here, say so plainly and say what the NEXT real-device test should specifically
+   check, rather than re-claiming confidence that didn't hold up last time.
+
+## Context (round 1, still accurate)
 
 Batin found (real device, 2026-07-23): highlighting/selecting text inside the floating Text
 Input dialog (`FloatingTextInputDialog.kt`) shows the selection handles fine, but the native
