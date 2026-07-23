@@ -5,6 +5,10 @@ the corresponding GitHub Release; a release can't ship without its section
 (enforced by `scripts/check-changelog.sh` in CI). The GitHub "Full Changelog"
 compare link is appended automatically — don't add it here.
 
+## v5.83.3
+
+📁 **Files: the folder picker on the Local tab is no longer a trap** — the built-in "Local" Files tab showed "Upload folder" and "Upload file" buttons that couldn't work there (uploads target a connected remote, so on Local they just failed with "Not connected"). Worse, "Upload folder" sat right next to "Add folder location" and opened the same Android folder picker — so picking, say, your Termux home to *browse* it easily went through the wrong button and did nothing. Those upload buttons are now hidden on the Local tab, leaving "Add folder location" as the clear way to add a folder to browse. (#415, thanks timerloggedout-spec)
+
 ## v5.83.2
 
 🔌 **RDP: connecting to VirtualBox works past login (empty Font Map)** — after v5.81.10 fixed the certificate handshake, RDP to a VirtualBox VM authenticated ("access granted") but then died immediately with a protocol decode error. VirtualBox's built-in RDP server sends an *empty* Server Font Map in the connection-finalisation handshake, and Haven's decoder rejected it as malformed. The Font Map is only a "you may start drawing now" signal and its contents are unused, so Haven now accepts an empty/short one and continues — the same leniency mstsc and FreeRDP have. Reported for VirtualBox; should also help other RDP servers that send a minimal Font Map. (#422, thanks pawlosck)
